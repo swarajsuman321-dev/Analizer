@@ -1,0 +1,8 @@
+# Versions used for the reviewed analyzer; Windows wheels are available.
+numpy==2.3.5
+pandas==2.2.3
+matplotlib==3.10.8
+Pillow==12.3.0
+openpyxl==3.1.5
+xlrd==2.0.1
+PyInstaller==6.22.3
