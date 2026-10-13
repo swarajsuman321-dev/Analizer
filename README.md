@@ -4,6 +4,47 @@ Extract the entire folder. For Python, install `requirements.txt` and run
 `python main.py`. To create a Windows EXE, double-click **build_windows.bat**;
 see [BUILD_EXE.md](BUILD_EXE.md). Rebuild an existing EXE to apply these changes.
 
+## Telemetry workspace
+
+The app now opens in a dark telemetry workspace inspired by the supplied video.
+Existing data mapping, synchronization, engineering dashboard, dual cursors,
+comparison, calibration, plugins, presets and Excel/CSV/image exports remain
+available in their original tabs.
+
+![Telemetry workspace — illustrative sample](docs/images/telemetry.png)
+
+- **Open simulation ZIP / CSV** loads a reference directly into telemetry.
+- **Load bench data** opens the existing input/channel mapping tools. Render
+  Dashboard aligns the recording, prepares the engineering dashboard and opens
+  its mapped tracks in Telemetry.
+- Choose stacked normalized tracks, thermal, drum, water/valves or controller.
+  Normalization applies only to the stacked plot; readouts retain original
+  numbers and units. Subsystem plots keep each signal's own numeric axis.
+- Hover or click to inspect a time. Play/pause, seek, change playback speed,
+  use the wheel to zoom, and double-click the chart to restore its full range.
+  The chart scrollbar keeps tracks readable in smaller windows.
+- Recorded state/code channels generate the phase strip using observed values.
+  No named washing phases are invented for a recording without that information.
+- **Preview sample** is an explicitly illustrative 186-minute cycle. Its phase
+  names and synthetic values are not measured data and never populate the
+  engineering or comparison results. Telemetry images of the sample are labelled
+  as illustrative in their metadata.
+- **Save telemetry image** exports the visible chart as PNG/PDF. Ctrl+S uses
+  image export in Telemetry and the existing Excel export in the analysis tabs.
+
+### Download the Windows app
+
+The [Build Windows application workflow](https://github.com/swarajsuman321-dev/Analizer/actions/workflows/windows-build.yml)
+starts on pushes to `main` and can also be run manually from GitHub Actions.
+After a successful run, download **ApplianceSignalStudio-Windows** from that
+run's Artifacts section and extract it. It contains the single-file EXE and a
+portable ZIP. Extract the portable ZIP completely before opening its EXE.
+Build logs and self-test reports are retained in a separate diagnostics artifact.
+Artifacts are kept for 30 days. GitHub may require you to sign in to download them.
+Native Windows builds run the regression suite, including GUI checks, and verify
+both packaged executables before upload. See [BUILD_EXE.md](BUILD_EXE.md) for
+local Windows builds.
+
 ## New PD/RD synchronization option
 
 In **Data Ingestion & Signal Studio → Sync Strategy**, select
@@ -150,7 +191,10 @@ confirmed before percentage colours imply verified numeric comparison.
 
 ## Verification
 
-All **54 regression tests** pass. They cover drum-start alignment, feedback
+The original **54 regression tests** are retained, with **7 additional telemetry tests**.
+The complete 61-test suite passed under a Linux virtual display; without a display,
+the three GUI tests are explicitly skipped. Native Windows packaging is validated
+by the Windows workflow when it runs. They cover drum-start alignment, feedback
 selection, noisy readings, brief spikes, unknown states, gaps, missing events,
 source-clock differences, command fallback warnings, plugin option refresh,
 integer actuator states, raw 128

@@ -14,6 +14,7 @@ from PIL import Image, ImageTk
 
 from app_data import DataEngine, DataReadError, smart_read_file, extract_datetime_series, find_power_column, find_energy_column, find_column_by_keywords, infer_pressure_units, classify_signal_kind, normalize_control_series, normalize_program_stage_series, get_column_unit, convert_signal_units, BUILTIN_SYNC_STRATEGIES
 from app_plotter import DashboardPlotter
+from app_telemetry import TelemetryWorkspace, install_dark_theme, signals_from_aligned, UI_FONT
 from app_zoom import ZoomInteractionManager
 from app_patches import PatchManager, STORAGE_DIR
 from app_comparator import ComparisonEngine
@@ -534,6 +535,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.title("Appliance Signal Studio - Industrial Test Bench Workstation")
         self.geometry("1680x980")
         self.minsize(1200, 750)
+        install_dark_theme(self)
 
         ico_file = resource_path("app_icon.ico")
         png_file = resource_path("app_logo.png")
@@ -633,6 +635,9 @@ class ApplianceSignalStudioPro(tk.Tk):
         setattr(self, name, None)
 
     def _save_active_report(self, _event=None):
+        if self.tabs.select() == str(self.tab_telemetry):
+            self.telemetry.export_image()
+            return 'break'
         if self.tabs.select() == str(self.tab_comparator):
             self.export_comp_excel()
         else:
@@ -643,15 +648,20 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.tabs = ttk.Notebook(self)
         self.tabs.pack(fill=tk.BOTH, expand=True)
 
+        self.tab_telemetry = ttk.Frame(self.tabs)
+        self.tabs.add(self.tab_telemetry, text="Telemetry")
+        self.telemetry = TelemetryWorkspace(self.tab_telemetry, self)
+        self.telemetry.pack(fill=tk.BOTH, expand=True)
+
         self.tab_config = ttk.Frame(self.tabs)
         self.tab_dashboard = ttk.Frame(self.tabs)
         self.tab_comparator = ttk.Frame(self.tabs)
         self.tab_patches = ttk.Frame(self.tabs)
 
-        self.tabs.add(self.tab_config, text=" 📁 1. Data Ingestion & Signal Studio ")
-        self.tabs.add(self.tab_dashboard, text=" 📈 2. Test Bench Dashboard ")
-        self.tabs.add(self.tab_comparator, text=" ⚖️ 3. Simulation vs. Benchmark Validation ")
-        self.tabs.add(self.tab_patches, text=" 🧩 4. Plugin & Patch Manager ")
+        self.tabs.add(self.tab_config, text="Data & Signal Mapping")
+        self.tabs.add(self.tab_dashboard, text="Engineering Dashboard")
+        self.tabs.add(self.tab_comparator, text="Simulation vs. Bench")
+        self.tabs.add(self.tab_patches, text="Plugins & Patches")
 
         self._setup_config_tab()
         self._setup_dashboard_tab()
@@ -704,7 +714,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.txt_title.grid(row=0, column=5, padx=5, pady=4)
 
         ttk.Label(s_frame, text='Drum-start sync uses first rotation, not final high-speed spin. Review detected events under Data Quality.',
-                  foreground='#344054').grid(row=2, column=0, columnspan=6, sticky=tk.W, padx=5, pady=3)
+                  foreground='#b2bac7').grid(row=2, column=0, columnspan=6, sticky=tk.W, padx=5, pady=3)
 
         opt_frame = ttk.Frame(s_frame)
         opt_frame.grid(row=1, column=0, columnspan=6, sticky=tk.W, pady=4)
@@ -726,9 +736,9 @@ class ApplianceSignalStudioPro(tk.Tk):
         sel_bar.pack(fill=tk.X, pady=2)
         ttk.Button(sel_bar, text="☑ Select All", command=self.select_all_signals).pack(side=tk.LEFT, padx=4)
         ttk.Button(sel_bar, text="☐ Deselect All", command=self.deselect_all_signals).pack(side=tk.LEFT, padx=4)
-        ttk.Label(sel_bar, text="💡 Each signal has its own colored Y scale. Right Y-Axis? chooses its side; blank Y-Min/Max auto-fit.", foreground="#444").pack(side=tk.LEFT, padx=15)
+        ttk.Label(sel_bar, text="💡 Each signal has its own colored Y scale. Right Y-Axis? chooses its side; blank Y-Min/Max auto-fit.", foreground="#969da9").pack(side=tk.LEFT, padx=15)
 
-        self.canvas_grid = tk.Canvas(grid_frame)
+        self.canvas_grid = tk.Canvas(grid_frame, bg="#111214", highlightthickness=0)
         scrollbar = ttk.Scrollbar(grid_frame, orient=tk.VERTICAL, command=self.canvas_grid.yview)
         self.scroll_frame = ttk.Frame(self.canvas_grid)
 
@@ -776,10 +786,10 @@ class ApplianceSignalStudioPro(tk.Tk):
             except Exception: pass
 
         self.lbl_test_title = ttk.Label(
-            title_box, text="Program: Cycle Analysis", font=("Segoe UI", 11, "bold"), foreground="#003366"
+            title_box, text="Program: Cycle Analysis", font=(UI_FONT, 11, "bold"), foreground="#96cdf1"
         )
         self.lbl_test_title.pack(side=tk.LEFT, padx=2)
-        self.lbl_data_notice = ttk.Label(self.tab_dashboard, foreground='#475467', wraplength=1300)
+        self.lbl_data_notice = ttk.Label(self.tab_dashboard, foreground='#a4aebb', wraplength=1300)
         self.lbl_data_notice.pack(side=tk.TOP, fill=tk.X, padx=12)
 
         top_tools = ttk.Frame(self.tab_dashboard, padding=(8, 2))
@@ -806,7 +816,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         ttk.Checkbutton(overlay_strip, text="Grid", variable=self.var_grid_toggle, command=self._on_grid_toggle).pack(side=tk.LEFT, padx=3)
         ttk.Checkbutton(overlay_strip, text="Inlet / Drain Overlap", variable=self.var_valve_overlap, command=self._quick_replot).pack(side=tk.LEFT, padx=3)
         ttk.Checkbutton(overlay_strip, text="Peak Motor", variable=self.var_annotate_peak, command=self._quick_replot).pack(side=tk.LEFT, padx=3)
-        ttk.Label(overlay_strip, text="Signal colors identify each trace and scale", foreground="#555555", font=("Segoe UI", 8, "italic")).pack(side=tk.LEFT, padx=(4, 2))
+        ttk.Label(overlay_strip, text="Signal colors identify each trace and scale", foreground="#969da9", font=(UI_FONT, 8, "italic")).pack(side=tk.LEFT, padx=(4, 2))
 
         nav_strip = ttk.LabelFrame(top_tools, text="Interaction Tool", padding=(6, 3))
         nav_strip.pack(side=tk.LEFT, padx=4)
@@ -837,27 +847,27 @@ class ApplianceSignalStudioPro(tk.Tk):
         bot_bar = ttk.Frame(self.tab_dashboard, padding=(8, 4), relief="groove")
         bot_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.lbl_c1_info = ttk.Label(bot_bar, text="🔴 C1: 0.00 min", font=("Segoe UI", 9, "bold"), foreground="#D32F2F")
+        self.lbl_c1_info = ttk.Label(bot_bar, text="🔴 C1: 0.00 min", font=(UI_FONT, 9, "bold"), foreground="#ff9393")
         self.lbl_c1_info.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_c2_info = ttk.Label(bot_bar, text="🔵 C2: Off", font=("Segoe UI", 9, "bold"), foreground="#1976D2")
+        self.lbl_c2_info = ttk.Label(bot_bar, text="🔵 C2: Off", font=(UI_FONT, 9, "bold"), foreground="#96cdf1")
         self.lbl_c2_info.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_diff_info = ttk.Label(bot_bar, text="⏱ Δt: —", font=("Segoe UI", 9, "bold"), foreground="#006600")
+        self.lbl_diff_info = ttk.Label(bot_bar, text="⏱ Δt: —", font=(UI_FONT, 9, "bold"), foreground="#b8e67f")
         self.lbl_diff_info.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_live_p = ttk.Label(bot_bar, text="⚡ P: — W", font=("Segoe UI", 9, "bold"), foreground="#003366")
+        self.lbl_live_p = ttk.Label(bot_bar, text="⚡ P: — W", font=(UI_FONT, 9, "bold"), foreground="#96cdf1")
         self.lbl_live_p.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_live_e = ttk.Label(bot_bar, text="🔋 E: — Wh", font=("Segoe UI", 9, "bold"), foreground="#B85D00")
+        self.lbl_live_e = ttk.Label(bot_bar, text="🔋 E: — Wh", font=(UI_FONT, 9, "bold"), foreground="#B85D00")
         self.lbl_live_e.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_hover_info = ttk.Label(bot_bar, text="🖱 Mouse: —", font=("Segoe UI", 9), foreground="#555555")
+        self.lbl_hover_info = ttk.Label(bot_bar, text="🖱 Mouse: —", font=(UI_FONT, 9), foreground="#969da9")
         self.lbl_hover_info.pack(side=tk.LEFT, padx=8)
 
         ttk.Button(bot_bar, text="📏 Toggle Dual Cursor (Δt)", command=self._toggle_dual_cursor_btn).pack(side=tk.LEFT, padx=8)
 
-        lbl_target = ttk.Label(bot_bar, text="Click Moves:", font=("Segoe UI", 9, "bold"), foreground="#333")
+        lbl_target = ttk.Label(bot_bar, text="Click Moves:", font=(UI_FONT, 9, "bold"), foreground="#c2c7d0")
         lbl_target.pack(side=tk.LEFT, padx=(4, 2))
 
         self.var_cursor_target = tk.StringVar(value="C1")
@@ -886,9 +896,9 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.dashboard_sidebar_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.btn_sidebar_toggle = tk.Button(
             left_sidebar, text="◀", width=2, command=self._toggle_dashboard_sidebar,
-            bg="#DCE7F2", fg="#174A73", activebackground="#C5D8EA",
+            bg="#25272b", fg="#c4ff84", activebackground="#34383d",
             activeforeground="#123A5A", relief=tk.FLAT, bd=0,
-            font=("Segoe UI", 11, "bold"), cursor="hand2"
+            font=(UI_FONT, 11, "bold"), cursor="hand2"
         )
         self.btn_sidebar_toggle.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -900,18 +910,18 @@ class ApplianceSignalStudioPro(tk.Tk):
 
         row_c_frame = ttk.Frame(caliper_card)
         row_c_frame.pack(fill=tk.X)
-        self.lbl_caliper_c1 = ttk.Label(row_c_frame, text="🔴 C1: 0.00 min", font=("Segoe UI", 9, "bold"), foreground="#D32F2F")
+        self.lbl_caliper_c1 = ttk.Label(row_c_frame, text="🔴 C1: 0.00 min", font=(UI_FONT, 9, "bold"), foreground="#ff9393")
         self.lbl_caliper_c1.pack(side=tk.LEFT, padx=4)
 
-        self.lbl_caliper_c2 = ttk.Label(row_c_frame, text="🔵 C2: Off", font=("Segoe UI", 9, "bold"), foreground="#1976D2")
+        self.lbl_caliper_c2 = ttk.Label(row_c_frame, text="🔵 C2: Off", font=(UI_FONT, 9, "bold"), foreground="#96cdf1")
         self.lbl_caliper_c2.pack(side=tk.LEFT, padx=8)
 
         row_delta_frame = ttk.Frame(caliper_card)
         row_delta_frame.pack(fill=tk.X, pady=(2, 0))
-        self.lbl_caliper_dt = ttk.Label(row_delta_frame, text="⏱ Δt: —", font=("Segoe UI", 9, "bold"), foreground="#006600")
+        self.lbl_caliper_dt = ttk.Label(row_delta_frame, text="⏱ Δt: —", font=(UI_FONT, 9, "bold"), foreground="#b8e67f")
         self.lbl_caliper_dt.pack(side=tk.LEFT, padx=4)
 
-        self.lbl_caliper_pe = ttk.Label(row_delta_frame, text="⚡ P: — W  |  🔋 E: — Wh", font=("Segoe UI", 9, "bold"), foreground="#003366")
+        self.lbl_caliper_pe = ttk.Label(row_delta_frame, text="⚡ P: — W  |  🔋 E: — Wh", font=(UI_FONT, 9, "bold"), foreground="#96cdf1")
         self.lbl_caliper_pe.pack(side=tk.RIGHT, padx=4)
 
         lbl_frame_sig = ttk.LabelFrame(live_values_group, text="Analog & Discrete Signals (C1, C2 & Δ)", padding=5)
@@ -1081,6 +1091,8 @@ class ApplianceSignalStudioPro(tk.Tk):
             )
             self._restore_dashboard_cursors(cursor_state)
             self._on_cursor_updated()
+            self.telemetry.set_signals(signals_from_aligned(self.aligned_df, self.dashboard_grid_widgets),
+                                       'Aligned bench recording · ' + self.txt_title.get())
 
         except Exception as e:
             self.logger.exception('Dashboard replot failed')
@@ -1146,16 +1158,16 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.lbl_comp_badge = ttk.Label(
             self.card_verdict,
             text="⚪ Pending Validation — Load Bench Data & Sim CSV to Begin",
-            font=("Segoe UI", 10, "bold"),
-            foreground="#333333"
+            font=(UI_FONT, 10, "bold"),
+            foreground="#c2c7d0"
         )
         self.lbl_comp_badge.pack(anchor=tk.W, pady=2)
 
         self.lbl_comp_subsummary = ttk.Label(
             self.card_verdict,
             text="Key Metrics: Peak Speed, Total Duration, Wash Temp, Heating Profile & Actuators",
-            font=("Segoe UI", 8),
-            foreground="#555555",
+            font=(UI_FONT, 8),
+            foreground="#969da9",
             wraplength=490,
             justify=tk.LEFT
         )
@@ -1175,13 +1187,13 @@ class ApplianceSignalStudioPro(tk.Tk):
         signal_header = ttk.Frame(self.comp_signal_box)
         signal_header.pack(fill=tk.X, padx=(3, 13))
         ttk.Label(signal_header, text="", width=2, anchor=tk.CENTER,
-                  font=("Segoe UI", 8, "bold")).grid(row=0, column=0)
+                  font=(UI_FONT, 8, "bold")).grid(row=0, column=0)
         ttk.Label(signal_header, text="Legend / value block", width=36, anchor=tk.W,
-                  font=("Segoe UI", 8, "bold")).grid(row=0, column=1, sticky=tk.W)
+                  font=(UI_FONT, 8, "bold")).grid(row=0, column=1, sticky=tk.W)
         ttk.Label(signal_header, text="Sim", width=6, anchor=tk.CENTER,
-                  font=("Segoe UI", 8, "bold")).grid(row=0, column=2)
+                  font=(UI_FONT, 8, "bold")).grid(row=0, column=2)
         ttk.Label(signal_header, text="Bench", width=7, anchor=tk.CENTER,
-                  font=("Segoe UI", 8, "bold")).grid(row=0, column=3)
+                  font=(UI_FONT, 8, "bold")).grid(row=0, column=3)
 
         signal_scroll_frame = ttk.Frame(self.comp_signal_box)
         signal_scroll_frame.pack(fill=tk.X, expand=False)
@@ -1221,7 +1233,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         cursor_frame = ttk.LabelFrame(left_comp, text='Comparison Cursor · Same Time', padding=4)
         cursor_frame.pack(fill=tk.X, padx=4, pady=3)
         self.lbl_comp_cursor = ttk.Label(cursor_frame, text='Click a graph in Cursor mode to inspect values.',
-                                         foreground='#344054')
+                                         foreground='#b2bac7')
         self.lbl_comp_cursor.pack(anchor=tk.W)
         cursor_table = ttk.Frame(cursor_frame)
         cursor_table.pack(fill=tk.X)
@@ -1266,9 +1278,9 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.tree_comp.tag_configure('GREEN', foreground='#007E33', background='#E8F5E9')
         self.tree_comp.tag_configure('YELLOW', foreground='#725300', background='#FFF3B0')
         self.tree_comp.tag_configure('RED', foreground='#B42318', background='#FDE8E7')
-        self.tree_comp.tag_configure('VALUE', foreground='#344054')
-        self.tree_comp.tag_configure("REVIEW", foreground="#475467")
-        self.tree_comp.tag_configure("MISSING", foreground="#667085")
+        self.tree_comp.tag_configure('VALUE', foreground='#b2bac7')
+        self.tree_comp.tag_configure("REVIEW", foreground="#a4aebb")
+        self.tree_comp.tag_configure("MISSING", foreground="#a4aebb")
 
         t_scroll_y = ttk.Scrollbar(tbl_frame, orient=tk.VERTICAL, command=self.tree_comp.yview)
         t_scroll_x = ttk.Scrollbar(tbl_frame, orient=tk.HORIZONTAL, command=self.tree_comp.xview)
@@ -1308,7 +1320,7 @@ class ApplianceSignalStudioPro(tk.Tk):
                 self.comp_sim_img_path = image_path
                 base = os.path.basename(image_path)
                 self.lbl_comp_sim.config(
-                    text=base[:24] + '..' if len(base) > 26 else base, foreground='black'
+                    text=base[:24] + '..' if len(base) > 26 else base, foreground='#e8e9ed'
                 )
         if image_path is None:
             messagebox.showwarning(
@@ -1354,7 +1366,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         ).grid(row=0, column=2, sticky=tk.W)
         ttk.Label(
             time_box, text='Leave the confirmation off when the duration is only an estimate.',
-            foreground='#667085'
+            foreground='#a4aebb'
         ).grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
 
         geometry_box = ttk.LabelFrame(window, text='Image Coordinates', padding=8)
@@ -1377,7 +1389,7 @@ class ApplianceSignalStudioPro(tk.Tk):
             plot_bound_entries.append(entry)
         ttk.Label(
             geometry_box, text='Leave all four bounds blank for automatic plot-frame detection.',
-            foreground='#667085'
+            foreground='#a4aebb'
         ).grid(row=3, column=2, columnspan=4, sticky=tk.W, pady=(4, 0))
 
         axis_box = ttk.LabelFrame(
@@ -1403,7 +1415,7 @@ class ApplianceSignalStudioPro(tk.Tk):
             lambda event: axis_canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
         )
         for column, title in enumerate(('Signal', 'Tick 1 px', 'Value', 'Tick 2 px', 'Value', 'Verified')):
-            ttk.Label(axis_rows, text=title, font=('Segoe UI', 9, 'bold')).grid(
+            ttk.Label(axis_rows, text=title, font=(UI_FONT, 9, 'bold')).grid(
                 row=0, column=column, padx=5, pady=4, sticky=tk.W
             )
 
@@ -1436,7 +1448,7 @@ class ApplianceSignalStudioPro(tk.Tk):
             window,
             text=('Clear all four values in a row to use that signal’s built-in profile calibration. '
                   'Confirm a Y axis only after checking its tick marks.'),
-            foreground='#667085', padding=(10, 3), wraplength=1000
+            foreground='#a4aebb', padding=(10, 3), wraplength=1000
         ).pack(fill=tk.X)
         button_row = ttk.Frame(window, padding=(10, 6))
         button_row.pack(fill=tk.X)
@@ -1489,7 +1501,7 @@ class ApplianceSignalStudioPro(tk.Tk):
                 self.comp_image_analyzer = None
                 self._clear_comparison_results()
                 self.lbl_comp_badge.config(
-                    text='⚪ Calibration changed — run validation again.', foreground='#333333'
+                    text='⚪ Calibration changed — run validation again.', foreground='#c2c7d0'
                 )
                 window.destroy()
             except (OSError, TypeError, ValueError) as exc:
@@ -1513,7 +1525,7 @@ class ApplianceSignalStudioPro(tk.Tk):
                 f'{totals["RED"]} red · {totals["VALUE"]} values/counts')
         if totals['REVIEW'] or totals['MISSING']:
             text += f' · {totals["REVIEW"] + totals["MISSING"]} incomplete/unverified'
-        self.lbl_comp_badge.config(text=text, foreground='#344054')
+        self.lbl_comp_badge.config(text=text, foreground='#b2bac7')
 
     def _set_comp_visibility(self, source, enabled):
         for key, state in self.comp_signal_visibility.items():
@@ -1561,7 +1573,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         display = f"{prefix}: {os.path.basename(active_path)}"
         if len(display) > 25:
             display = display[:22] + ".."
-        self.lbl_comp_raw.config(text=display, foreground="black")
+        self.lbl_comp_raw.config(text=display, foreground="#e8e9ed")
 
     def _clear_comparison_results(self):
         self.comp_csv_adapter = None
@@ -1596,7 +1608,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         if hasattr(self, 'lbl_comp_badge'):
             self.lbl_comp_badge.config(
                 text="⚪ Pending Validation — Load Bench Data & Simulation Reference to Begin",
-                foreground="#333333"
+                foreground="#c2c7d0"
             )
         if hasattr(self, 'lbl_comp_subsummary'):
             self.lbl_comp_subsummary.config(
@@ -1650,8 +1662,8 @@ class ApplianceSignalStudioPro(tk.Tk):
                 if pulse_columns:
                     signal_text += "  ·  pulse (µs) excluded; no confirmed pressure match"
             color_key = tk.Canvas(row, width=22, height=12, highlightthickness=0, borderwidth=0)
-            color_key.create_rectangle(1, 1, 10, 11, fill=spec['color'], outline='#667085')
-            color_key.create_rectangle(11, 1, 20, 11, fill=spec['bench_color'], outline='#667085')
+            color_key.create_rectangle(1, 1, 10, 11, fill=spec['color'], outline='#a4aebb')
+            color_key.create_rectangle(11, 1, 20, 11, fill=spec['bench_color'], outline='#a4aebb')
             color_key.grid(row=0, column=0, padx=(4, 5), pady=2)
             ttk.Label(
                 row, text=signal_text, width=36,
@@ -1711,7 +1723,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         if error_message:
             ttk.Label(
                 self.comp_plot_frame, text=error_message, foreground="#666666",
-                font=("Segoe UI", 11)
+                font=(UI_FONT, 11)
             ).pack(expand=True)
             self.comp_axes = []
             self.comp_twin_axes = []
@@ -1786,7 +1798,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         self.comp_csv_adapter = None
         prefix = ('ZIP: ' if path.lower().endswith('.zip') else 'CSV: ') if self.comp_sim_csv_path else 'Image: '
         base = os.path.basename(path)
-        self.lbl_comp_sim.config(text=prefix + (base[:20] + '..' if len(base) > 22 else base), foreground='black')
+        self.lbl_comp_sim.config(text=prefix + (base[:20] + '..' if len(base) > 22 else base), foreground='#e8e9ed')
 
     def configure_reference_units(self):
         if not self.comp_sim_csv_path:
@@ -1872,7 +1884,7 @@ class ApplianceSignalStudioPro(tk.Tk):
                 self.comp_sim_img_path = candidate
                 self.comp_image_calibration = {}
                 base = os.path.basename(candidate)
-                self.lbl_comp_sim.config(text=base[:24] + ".." if len(base) > 26 else base, foreground="black")
+                self.lbl_comp_sim.config(text=base[:24] + ".." if len(base) > 26 else base, foreground="#e8e9ed")
             else:
                 messagebox.showwarning(
                     "Missing Reference Plot", "Select a simulation reference image before analyzing it."
@@ -1891,7 +1903,7 @@ class ApplianceSignalStudioPro(tk.Tk):
             window.minsize(1100, 720)
             status = ttk.Label(
                 window, text=analyzer.report_text(), padding=(8, 4),
-                foreground="#344054", wraplength=1320
+                foreground="#b2bac7", wraplength=1320
             )
             status.pack(side=tk.BOTTOM, fill=tk.X)
             canvas = FigureCanvasTkAgg(fig, master=window)
@@ -2104,6 +2116,10 @@ class ApplianceSignalStudioPro(tk.Tk):
         for item in self.sig_tree.get_children(): self.sig_tree.delete(item)
         for item in self.kpi_tree.get_children(): self.kpi_tree.delete(item)
         self.grid_widgets.clear()
+        if self.telemetry._adapter:
+            self.telemetry._adapter.close()
+            self.telemetry._adapter = None
+        self.telemetry.set_signals([], 'No recording loaded')
         self._refresh_comp_raw_label()
         self._clear_comparison_results()
         messagebox.showinfo("Reset", "Workspace reset successfully.")
@@ -2121,10 +2137,10 @@ class ApplianceSignalStudioPro(tk.Tk):
             self.dashboard_inputs_changed = True
             self.lbl_data_notice.config(text='Inputs changed. Render the dashboard to apply them; the displayed graph still uses its previous data.')
             base = os.path.basename(p)
-            self.lbl_pd.config(text=base, foreground="black")
+            self.lbl_pd.config(text=base, foreground="#e8e9ed")
             if hasattr(self, 'lbl_pd_quick'):
                 short_name = (base[:15] + "..") if len(base) > 17 else base
-                self.lbl_pd_quick.config(text=short_name, foreground="black")
+                self.lbl_pd_quick.config(text=short_name, foreground="#e8e9ed")
             if not getattr(self, 'comp_raw_path', None) and not getattr(self, 'rd_path', None):
                 self._refresh_comp_raw_label()
                 self._clear_comparison_results()
@@ -2143,10 +2159,10 @@ class ApplianceSignalStudioPro(tk.Tk):
             self.dashboard_inputs_changed = True
             self.lbl_data_notice.config(text='Inputs changed. Render the dashboard to apply them; the displayed graph still uses its previous data.')
             base = os.path.basename(p)
-            self.lbl_rd.config(text=base, foreground="black")
+            self.lbl_rd.config(text=base, foreground="#e8e9ed")
             if hasattr(self, 'lbl_rd_quick'):
                 short_name = (base[:15] + "..") if len(base) > 17 else base
-                self.lbl_rd_quick.config(text=short_name, foreground="black")
+                self.lbl_rd_quick.config(text=short_name, foreground="#e8e9ed")
             if not getattr(self, 'comp_raw_path', None):
                 self._refresh_comp_raw_label()
                 self._clear_comparison_results()
@@ -2167,7 +2183,7 @@ class ApplianceSignalStudioPro(tk.Tk):
 
         headers = ["Plot?", "Original Column", "Display Label", "Subplot Panel", "Right Y-Axis?", "Style", "Width", "Color", "Y-Min", "Y-Max"]
         for col_idx, h in enumerate(headers):
-            ttk.Label(self.scroll_frame, text=h, font=("Segoe UI", 9, "bold")).grid(row=0, column=col_idx, padx=6, pady=4, sticky=tk.W)
+            ttk.Label(self.scroll_frame, text=h, font=(UI_FONT, 9, "bold")).grid(row=0, column=col_idx, padx=6, pady=4, sticky=tk.W)
 
         signals = []
         pd_pressure_units = infer_pressure_units(raw_pd)
@@ -2348,7 +2364,9 @@ class ApplianceSignalStudioPro(tk.Tk):
             self._update_kpi_table()
             self._on_cursor_updated()
 
-            self.tabs.select(self.tab_dashboard)
+            self.telemetry.set_signals(signals_from_aligned(merged, self.dashboard_grid_widgets),
+                                       "Aligned bench recording · " + self.txt_title.get())
+            self.tabs.select(self.tab_telemetry)
 
         except Exception as e:
             self.logger.exception('Dashboard processing failed')
@@ -2543,7 +2561,7 @@ class ApplianceSignalStudioPro(tk.Tk):
         notes = self.aligned_df.attrs.get('data_warnings', [])
         report = self.aligned_df.attrs.get('sync_report', {})
         ttk.Label(window, text='\n'.join(map(str, notes)) or 'No data warnings were reported.',
-                  foreground='#344054', wraplength=800, padding=10).pack(fill=tk.X)
+                  foreground='#b2bac7', wraplength=800, padding=10).pack(fill=tk.X)
         ttk.Label(window, text=json.dumps(report, ensure_ascii=False, default=str),
                   wraplength=800, padding=(10, 0)).pack(fill=tk.X)
         body = ttk.Frame(window, padding=10)

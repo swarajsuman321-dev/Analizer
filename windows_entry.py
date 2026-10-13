@@ -106,8 +106,25 @@ def self_test():
                 raise RuntimeError('Excel export/readback did not retain all rows.')
         finally:
             adapter.close()
+    telemetry_gui_checked = False
+    if sys.platform == 'win32':
+        app = main.ApplianceSignalStudioPro()
+        try:
+            app.telemetry.load_demo()
+            app.update()
+            if len(app.telemetry.signals) != 10 or len(app.tabs.tabs()) != 5:
+                raise RuntimeError('Bundled telemetry workspace or original workspaces are missing.')
+            app.telemetry.view.current(2)
+            app.telemetry.draw()
+            app.telemetry.seek(99.6)
+            app.update()
+            if len(app.telemetry.axes) != 1 or app.telemetry.when != 99.6:
+                raise RuntimeError('Bundled telemetry subsystem selector or cursor failed.')
+            telemetry_gui_checked = True
+        finally:
+            app._close_application()
     return {'ok':True, 'frozen':bool(getattr(sys,'frozen',False)),
-            'python':sys.version.split()[0], 'tcl':tcl_version, 'windows_gui_checked':gui_checked,
+            'python':sys.version.split()[0], 'tcl':tcl_version, 'windows_gui_checked':gui_checked, 'telemetry_gui_checked':telemetry_gui_checked,
             'pandas':pd.__version__, 'numpy':np.__version__, 'matplotlib':matplotlib.__version__,
             'openpyxl':openpyxl.__version__, 'xlrd':xlrd.__version__,
             'checks':['Tkinter','icons','ZIP/CSV import','original pressure numbers with Pa labels','actual remaining time',

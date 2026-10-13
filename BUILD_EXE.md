@@ -52,7 +52,7 @@ See README.md for thresholds, limitations and the checked 9 kg recording.
 
 ## Checks performed by the build
 
-The builder runs all 54 analyzer tests before building. It then builds the
+The builder runs all 61 analyzer tests before building, including telemetry GUI checks on Windows. It then builds the
 folder version first and starts that compiled EXE in self-test mode. Only after
 that check passes does it build and check the single-file EXE. Each compiled
 self-test verifies native Tcl/Tk, bundled icons, simulation ZIP/CSV loading,
@@ -104,3 +104,15 @@ Build references:
 - https://pyinstaller.org/en/stable/operating-mode.html
 - https://pyinstaller.org/en/stable/spec-files.html
 - https://pypi.org/project/pyinstaller/6.22.3/
+
+## Automated GitHub build
+
+Pushes to `main` trigger `.github/workflows/windows-build.yml` on a native
+Windows runner with Python 3.12. You can also start **Build Windows application**
+from the Actions tab. The workflow uses the same pinned requirements and
+`build_exe.py`, runs tests, builds both formats and checks each executable.
+A successful run uploads **ApplianceSignalStudio-Windows** containing the
+single-file EXE and portable ZIP. Download and extract the artifact to use it.
+The separate diagnostics artifact contains the build log and self-test reports.
+This configuration alone does not prove that a hosted Windows build succeeded;
+check the workflow's result before distributing its outputs.
