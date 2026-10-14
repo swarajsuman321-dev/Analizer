@@ -1,7 +1,5 @@
 """Qt data workbench: shared state, commands, asynchronous processing, and views."""
-import base64
 import json
-import subprocess
 import sys
 from pathlib import Path
 import numpy as np
@@ -12,8 +10,9 @@ from app_channel_portal import ChannelPortal
 from app_ingestion import ingest
 from app_plot_workspace import PlotWorkspace,LAYOUTS
 from app_signal_processing import formula,transform,UNIT_DEFINITIONS
-from app_workspace_io import save_workspace,load_workspace,export_processed,render_report
+from app_workspace_io import save_workspace,load_workspace
 from app_qt_style import ThemeController
+from app_presentation import CURSOR_COLORS,match_color
 
 OPERATIONS=['Moving average','Savitzky–Golay','Butterworth low-pass','Offset and scale','Time shift','Resampling',
             'Differentiation','Cumulative integration','Descriptive statistics','Histogram','FFT','Welch PSD','Peak and valley detection']
@@ -37,37 +36,41 @@ class FrameModel(QtCore.QAbstractTableModel):
     def rowCount(self,parent=QtCore.QModelIndex()):return 0 if parent.isValid() else len(self.frame)
     def columnCount(self,parent=QtCore.QModelIndex()):return 0 if parent.isValid() else len(self.frame.columns)
     def data(self,index,role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if role==QtCore.Qt.ItemDataRole.DisplayRole:return str(self.frame.iat[index.row(),index.column()])
-        if role==QtCore.Qt.ItemDataRole.BackgroundRole and 'status' in self.frame:
-            colors={'GREEN':'#c2e6ca','YELLOW':'#fff0ad','RED':'#f8c0c0','MISSING':'#e3e5e8','REVIEW':'#e3e5e8'}
-            color=colors.get(self.frame.iloc[index.row()]['status'])
+        if role==QtCore.Qt.ItemDataRole.DisplayRole:
+            value=self.frame.iat[index.row(),index.column()]
+            if self.frame.columns[index.column()]=='match_percent':return f'{value:.1f}%' if pd.notna(value) else '—'
+            return str(value)
+        if role==QtCore.Qt.ItemDataRole.BackgroundRole and 'match_percent' in self.frame:
+            color=match_color(self.frame.iloc[index.row()]['match_percent'])
             if color:return QtGui.QColor(color)
-        if role==QtCore.Qt.ItemDataRole.ForegroundRole and 'status' in self.frame:return QtGui.QColor('#182033')
+        if role==QtCore.Qt.ItemDataRole.ForegroundRole and 'match_percent' in self.frame:return QtGui.QColor('#101828')
     def headerData(self,section,orientation,role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role!=QtCore.Qt.ItemDataRole.DisplayRole:return None
-        return str(self.frame.columns[section]) if orientation==QtCore.Qt.Orientation.Horizontal else str(section+1)
+        return str(self.frame.columns[section]).replace('_',' ').title() if orientation==QtCore.Qt.Orientation.Horizontal else str(section+1)
 
 
 class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__();self.setWindowTitle('Appliance Signal Studio · Data Workbench');self.setMinimumSize(1024,680)
-        self.store=ChannelStore();self.generation=0;self.busy=False;self.preview=None;self.workers=set();self._reading=False
+        self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set()
         self.pool=QtCore.QThreadPool.globalInstance();self.pool.setMaxThreadCount(2)
-        self.theme=ThemeController(QtWidgets.QApplication.instance())
+        self.theme=ThemeController(QtWidgets.QApplication.instance(),self)
         self.tabs=QtWidgets.QTabWidget();self.setCentralWidget(self.tabs)
-        self.dashboard=PlotWorkspace(self.store);self.comparison=PlotWorkspace(self.store);self.telemetry=PlotWorkspace(self.store)
-        self.tabs.addTab(self.dashboard,'Engineering Dashboard');self.tabs.addTab(self.comparison,'Comparison');self.tabs.addTab(self.telemetry,'Telemetry')
+        self.dashboard=PlotWorkspace(self.store);self.comparison=PlotWorkspace(self.store)
+        self.tabs.addTab(self.dashboard,'Analysis');self.tabs.addTab(self.comparison,'Comparison')
         for workspace in self.workspaces:
             workspace.measurementsChanged.connect(self.readouts)
-            workspace.activeChanged.connect(lambda _:self.readouts())
+            workspace.activeChanged.connect(self.workspace_changed)
             workspace.setAcceptDrops(True);workspace.installEventFilter(self)
-        self.tabs.currentChanged.connect(lambda _:self.readouts())
+        self.tabs.currentChanged.connect(self.workspace_changed)
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
         self.store.observe(self.store_changed)
-        self.statusBar().showMessage('Open a recording or choose Preview sample. Source data is retained unchanged.')
+        self.statusBar().showMessage('Open a recording to begin. Check channels to show them; drag A and B to inspect an interval.')
         self.readout_timer=QtCore.QTimer(self);self.readout_timer.setSingleShot(True);self.readout_timer.timeout.connect(self._readouts)
         self.resizeDocks([self.docks['Data Portal'],self.docks['Properties']],[260,280],QtCore.Qt.Orientation.Horizontal)
         self.resizeDocks([self.docks['Readout']],[180],QtCore.Qt.Orientation.Vertical)
+        for name in ('Properties','Channel Math','Engineering Controls','Channel Table','Interval Measurements'):self.docks[name].hide()
+        self.docks['Data Portal'].raise_();self.docks['Readout'].raise_()
         self._readouts();self.theme.themeChanged.connect(self.plot_theme);self.theme.apply(self.theme.mode)
 
     def plot_theme(self,dark):
@@ -75,12 +78,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for workspace in self.workspaces:
             for pane in workspace.panes:
                 pane.dark=dark;pane.setBackground(background)
-                for name in ('bottom','left'):pane.getAxis(name).setTextPen(color)
-                pane.cursor_lines[0].setPen(color)
-        self.preview_plot.setBackground(background)
+                pane.getAxis('bottom').setTextPen(color)
+                pane.bind(pane.ids,pane.bindings,fit=False)
 
     @property
-    def workspaces(self):return [self.dashboard,self.comparison,self.telemetry]
+    def workspaces(self):return [self.dashboard,self.comparison]
     @property
     def active_workspace(self):return self.workspaces[self.tabs.currentIndex()]
 
@@ -101,6 +103,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def _build_portal(self):
         self.portal=ChannelPortal(self.store);self.portal.plotRequested.connect(lambda ids:self.guard(lambda:self.active_workspace.assign(ids)))
+        self.portal.visibilityRequested.connect(lambda ids,visible:self.guard(lambda:self.set_channel_visibility(ids,visible)))
         self.portal.selectionChanged.connect(self.selection);self.portal.organizeRequested.connect(self.organize)
         self.dock('Data Portal',self.portal,QtCore.Qt.DockWidgetArea.LeftDockWidgetArea)
 
@@ -115,11 +118,35 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.dock('Properties',self.properties,QtCore.Qt.DockWidgetArea.RightDockWidgetArea)
 
     def _build_readouts(self):
-        self.readout=QtWidgets.QTableWidget(0,5);self.readout.setHorizontalHeaderLabels(['Channel','Unit','Cursor A','Cursor B','Status'])
+        widget=QtWidgets.QWidget();layout=QtWidgets.QVBoxLayout(widget)
+        self.cursor_caption=QtWidgets.QLabel();layout.addWidget(self.cursor_caption)
+        body=QtWidgets.QHBoxLayout();layout.addLayout(body)
+        self.readout=QtWidgets.QTableWidget(0,5);self.readout.setHorizontalHeaderLabels(['Channel','Unit','A','B','Match'])
+        self.readout.horizontalHeader().setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.readout.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.readout.verticalHeader().hide();self.readout.verticalHeader().setDefaultSectionSize(26)
+        self.readout.setMinimumHeight(110)
+        for column in (1,2,3,4):self.readout.setColumnWidth(column,90)
+        body.addWidget(self.readout,1)
+        self.interval_card=QtWidgets.QLabel('Select a plotted channel to inspect its interval.');self.interval_card.setWordWrap(True)
+        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(64);self.interval_card.setFixedWidth(300);body.addWidget(self.interval_card)
+        self.readout.itemSelectionChanged.connect(self.update_interval_card)
         self.intervals=QtWidgets.QTableWidget(0,11);self.intervals.setHorizontalHeaderLabels(['Channel','ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage'])
-        self.dock('Readout',self.readout,QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
+        self.intervals.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.dock('Readout',widget,QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
         self.dock('Interval Measurements',self.intervals,QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
-        self.tabifyDockWidget(self.docks['Readout'],self.docks['Interval Measurements']);self.docks['Readout'].raise_()
+        self.tabifyDockWidget(self.docks['Readout'],self.docks['Interval Measurements'])
+
+    def update_interval_card(self):
+        import html
+        pane=self.active_workspace.active
+        measurements=pane.measurements()
+        keys=list(measurements);row=self.readout.currentRow()
+        if not keys:
+            self.interval_card.setText('No channels selected');return
+        channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=measurements[channel_id]
+        def number(key):return f"{stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
+        self.interval_card.setText(f"<b>{html.escape(c.name)}</b> &nbsp; ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; ΔY {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}")
 
     def _build_math(self):
         widget=QtWidgets.QWidget();form=QtWidgets.QFormLayout(widget);form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
@@ -138,10 +165,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         form.addRow(self.parameter_widget);self.operation.currentTextChanged.connect(self.show_parameters);self.show_parameters()
 
         self.parameter_help=QtWidgets.QLabel('window/order · cutoff (Hz) · scale/offset · shift/step (coordinate units) · bins · prominence');self.parameter_help.setWordWrap(True);form.addRow(self.parameter_help)
-        row=QtWidgets.QHBoxLayout();preview=QtWidgets.QPushButton('Preview');self.apply_button=QtWidgets.QPushButton('Apply');self.apply_button.setEnabled(False)
-        preview.clicked.connect(lambda:self.guard(self.preview_transform));self.apply_button.clicked.connect(lambda:self.guard(self.apply_preview));row.addWidget(preview);row.addWidget(self.apply_button);form.addRow(row)
-        self.preview_plot=__import__('pyqtgraph').PlotWidget();self.preview_plot.setMinimumHeight(120);form.addRow(self.preview_plot)
-        self.preview_message=QtWidgets.QLabel('Select one channel, preview an operation, then Apply.');self.preview_message.setWordWrap(True);form.addRow(self.preview_message)
+        self.apply_button=QtWidgets.QPushButton('Apply to workspace');self.apply_button.clicked.connect(lambda:self.guard(self.apply_transform));form.addRow(self.apply_button)
         define=QtWidgets.QPushButton('Define local unit');define.clicked.connect(lambda:self.guard(self.define_unit));form.addRow(define)
         self.dock('Channel Math',widget,QtCore.Qt.DockWidgetArea.RightDockWidgetArea)
         self.tabifyDockWidget(self.docks['Properties'],self.docks['Channel Math']);self.docks['Properties'].raise_()
@@ -167,31 +191,32 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         button=QtWidgets.QPushButton('Compare original recordings');button.clicked.connect(lambda:self.guard(self.compare));form.addRow(button)
         self.engineering_notes=QtWidgets.QPlainTextEdit();self.engineering_notes.setReadOnly(True);self.engineering_notes.setMaximumHeight(110);form.addRow(self.engineering_notes)
         self.scorecard=QtWidgets.QTableView();self.scorecard.setMinimumHeight(100);form.addRow(self.scorecard)
-        button=QtWidgets.QPushButton('Open legacy calibration / plugins');button.clicked.connect(self.open_legacy);form.addRow(button)
         self.dock('Engineering Controls',widget,QtCore.Qt.DockWidgetArea.LeftDockWidgetArea)
         self.tabifyDockWidget(self.docks['Data Portal'],self.docks['Engineering Controls']);self.docks['Data Portal'].raise_()
 
     def _build_toolbar(self):
-        toolbar=self.addToolBar('Workbench');toolbar.setObjectName('Workbench');self.commands={}
+        toolbar=self.addToolBar('Workbench');toolbar.setObjectName('Workbench');toolbar.setMovable(False)
         def action(text,fn,shortcut=None,tip=None):
             item=QtGui.QAction(text,self);item.triggered.connect(lambda:self.guard(fn));item.setToolTip(tip or text)
             if shortcut:item.setShortcut(shortcut)
-            toolbar.addAction(item);self.commands[text]=item;return item
+            toolbar.addAction(item);return item
         action('Open',self.open_data,'Ctrl+O','Import CSV, Excel, ZIP, Parquet or JSON recording')
-        action('Preview sample',self.demo)
         action('Save workspace',self.save,'Ctrl+S');action('Restore',self.restore)
-        action('Export data',self.export_data);action('Presentation',self.report,'Ctrl+P')
-        action('Math',lambda:self.docks['Channel Math'].raise_(),'Ctrl+M')
-        action('Commands',self.command_palette,'Ctrl+K')
+        self.export_button=QtWidgets.QPushButton('Export Report');self.export_button.setObjectName('exportReport')
+        self.export_button.setStyleSheet('QPushButton {background:#216eb5; color:white; font-weight:600; padding:7px 16px; border-radius:5px;}')
+        self.export_button.clicked.connect(lambda:self.guard(self.report));toolbar.addWidget(self.export_button)
+        self.export_button.setToolTip('Save a PDF summary, interval CSV/Excel, or high-resolution PNG')
+        report_action=QtGui.QAction(self);report_action.setShortcut('Ctrl+P');report_action.triggered.connect(lambda:self.guard(self.report));self.addAction(report_action)
+        action('Analyze',lambda:self.show_dock('Channel Math'),'Ctrl+M')
         self.layout_combo=QtWidgets.QComboBox();self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
         self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.active_workspace.set_layout(text)))
         self.cursor_combo=QtWidgets.QComboBox();self.cursor_combo.addItems(['dual','point','off']);toolbar.addWidget(self.cursor_combo)
         self.cursor_combo.currentTextChanged.connect(lambda mode:[p.set_cursor_mode(mode) for p in self.active_workspace.visible_panes()])
-        snap=QtWidgets.QCheckBox('Snap');snap.setChecked(True);toolbar.addWidget(snap);snap.toggled.connect(lambda value:[setattr(p,'snap',value) for p in self.active_workspace.visible_panes()])
+        self.snap_checkbox=QtWidgets.QCheckBox('Snap');self.snap_checkbox.setChecked(True);toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
         view=self.menuBar().addMenu('View')
         for dock in self.docks.values():view.addAction(dock.toggleViewAction())
         channel=self.menuBar().addMenu('Channel')
-        for text in ['Plot','Hide','Show all','Hide all','Rename','Duplicate','Delete','Move / group','Move to dataset','Merge groups','Move up','Move down','Assign axis','Mask interval','Clear masks','Marker','Threshold','ROI']:
+        for text in ['Rename','Duplicate','Delete','Assign axis','Mask interval','Clear masks','Marker','ROI']:
             item=channel.addAction(text);item.triggered.connect(lambda checked=False,t=text:self.organize(t.lower()))
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
         kind=view.addAction('Show channel kind');kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show))
@@ -211,7 +236,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         def complete(result,error):
             self.workers.discard(worker)
             if generation!=self.generation or store is not self.store:return
-            self.busy=False
+            self.busy=False;self.apply_button.setEnabled(True)
             if error:self.guard(lambda:(_ for _ in ()).throw(ValueError(error)))
             else:self.guard(lambda:callback(result))
             self.statusBar().showMessage('Ready' if not error else error)
@@ -224,22 +249,20 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def open_data(self):
         self.mutate();paths,_=QtWidgets.QFileDialog.getOpenFileNames(self,'Open recordings','','Data (*.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)')
         if not paths:return
-        clock,ok=QtWidgets.QInputDialog.getText(self,'Coordinates','Time column (blank = detect or sample index):')
-        if not ok:return
-        unit,ok=QtWidgets.QInputDialog.getItem(self,'Coordinates','Numeric coordinate unit',['Auto','s','min','h','sample'],0,False)
-        if not ok:return
         def load():
             store=ChannelStore()
-            for path in paths:ingest(store,path,clock or None,None if unit=='Auto' else unit)
+            for path in paths:ingest(store,path)
             return store
-        self.background(load,self.merge_store)
+        workspace=self.active_workspace
+        self.background(load,lambda other:self.merge_store(other,workspace))
 
-    def merge_store(self,other):
+    def merge_store(self,other,workspace=None):
         with self.store.batch():
             self.store.datasets.update(other.datasets)
             for c in other.channels.values():self.store.add(c)
         ids=list(other.channels)
-        if ids:self.telemetry.assign(ids[:8]);self.tabs.setCurrentIndex(2)
+        if ids:(workspace or self.active_workspace).assign(ids)
+        self.sync_visibility()
 
     def store_changed(self,ids):
         self.portal.rebuild()
@@ -250,7 +273,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.source_selector.blockSignals(False);self.show_source();self.readouts()
 
     def selection(self,ids):
-        self.preview=None;self.apply_button.setEnabled(False)
+        self.apply_button.setEnabled(True)
         if ids:
             c=self.store.channels[ids[0]];self.prop_name.setText(c.name);self.prop_unit.setText(c.unit);self.prop_group.setText(c.group);self.prop_kind.setCurrentText(c.kind)
             self.prop_attrs.setPlainText(json.dumps(c.attributes,indent=2))
@@ -347,28 +370,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for key,field in self.parameter_fields.items():
             field.setVisible(key in relevant);self.parameter_form.labelForField(field).setVisible(key in relevant)
 
-    def preview_transform(self):
+    def apply_transform(self):
         ids=self.portal.selected()
         if len(ids)!=1:raise ValueError('Select one source channel')
-        c=self.store.channels[ids[0]];operation=self.operation.currentText();params={key:field.value() for key,field in self.parameter_fields.items()}
-        if not isinstance(params,dict):raise ValueError('Parameters must be a JSON object')
-        self.preview=None
+        c=self.store.channels[ids[0]];workspace=self.active_workspace
+        operation=self.operation.currentText();params={key:field.value() for key,field in self.parameter_fields.items()}
         def complete(result):
             if self.store.channels.get(c.id) is not c:return
-            self.preview=(c.id,c.revision,result);self.apply_button.setEnabled(True);self.preview_plot.clear()
-            self.preview_plot.setLabel('bottom',result.coordinate_kind,units=result.coordinate_unit);self.preview_plot.setLabel('left',result.unit)
-            from app_fast_plot import EnvelopeCache
-            if len(result.x):
-                x,y=EnvelopeCache(result.x,result.y).visible(result.x[0],result.x[-1],2000);self.preview_plot.plot(x,y,pen='#58b6ff',connect='finite')
-            self.preview_message.setText(f'{result.name}: {len(result.x):,} points. Apply creates a derived channel.')
+            self.store.add(result);workspace.assign([result.id]);self.sync_visibility()
         self.background(lambda:transform(c,operation,**params),complete)
-
-    def apply_preview(self):
-        self.mutate()
-        if self.preview is None:raise ValueError('Preview an operation first')
-        id,revision,c=self.preview
-        if id not in self.store.channels or self.store.channels[id].revision!=revision:raise ValueError('Source changed; preview again')
-        self.store.add(c);self.active_workspace.assign([c.id]);self.preview=None;self.apply_button.setEnabled(False)
 
     def define_unit(self):
         text,ok=QtWidgets.QInputDialog.getText(self,'Unit definition','symbol, existing reference unit, scale (for example mW,W,0.001)')
@@ -384,20 +394,23 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def _readouts(self):
         if not self.active_workspace.active:return
         pane=self.active_workspace.active
+        self.sync_visibility()
+        a,b=[line.value() for line in pane.cursor_lines]
+        self.cursor_caption.setText(f'<span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
         try:measurements=pane.measurements()
         except KeyError:return
         self.readout.setRowCount(len(measurements));self.intervals.setRowCount(len(measurements))
+        self.readout.setColumnHidden(4,not any(match_color(self.store.channels[id].attributes.get('match_percent')) for id in measurements))
         def display(value):return f'{value:.6g}' if np.isfinite(value) else 'Unknown'
         for row,(id,stats) in enumerate(measurements.items()):
-            c=self.store.channels[id];value=stats['A'];status='Unconfigured';attrs=c.attributes
-            if not np.isfinite(value):status='Unknown'
-            elif any(k in attrs for k in ('warning_min','warning_max','fault_min','fault_max')):
-                status='Nominal'
-                if value<attrs.get('warning_min',-np.inf) or value>attrs.get('warning_max',np.inf):status='Warning'
-                if value<attrs.get('fault_min',-np.inf) or value>attrs.get('fault_max',np.inf):status='Fault'
-            for col,text in enumerate([c.name,c.unit,display(stats['A']),display(stats['B']),status]):
+            c=self.store.channels[id]
+            for col,text in enumerate([c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—']):
                 item=QtWidgets.QTableWidgetItem(text);item.setToolTip(f'{c.name}: {text}')
-                if col==4 and status in ('Warning','Fault'):item.setForeground(QtGui.QColor('#ffb454' if status=='Warning' else '#ff8096'))
+                if col in (2,3):
+                    item.setForeground(QtGui.QColor(CURSOR_COLORS[col-2]));item.setBackground(QtGui.QColor('#182033'))
+                if col==4:
+                    color=match_color(c.attributes.get('match_percent'))
+                    if color:item.setBackground(QtGui.QColor(color));item.setForeground(QtGui.QColor('#101828'))
                 self.readout.setItem(row,col,item)
             labels=['ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage']
             measure_unit='s' if c.coordinate_kind=='time' else c.coordinate_unit
@@ -405,12 +418,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(c.name))
             for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(stats[label])+' '+unit))
 
-    def demo(self):
-        self.mutate();ds=Dataset('Illustrative sample',pd.DataFrame(),source='synthetic');self.store.datasets[ds.id]=ds
-        x=np.linspace(0,600,10001)
-        with self.store.batch():
-            for i in range(6):self.store.add(Channel(f'Sample {i+1}',x,20+i*5+np.sin(x/(15+i*3))*5,unit='°C' if i<3 else 'W',dataset_id=ds.id,attributes={'illustrative':True}))
-        self.telemetry.assign([id for id,c in self.store.channels.items() if c.dataset_id==ds.id]);self.tabs.setCurrentIndex(2)
+        self.update_interval_card()
 
     def align(self):
         power,machine,strategy,offset=self.power_path.text(),self.machine_path.text(),self.sync.currentText(),self.offset.value()
@@ -429,7 +437,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 if col==coordinate:continue
                 from app_data import get_column_unit,classify_signal_kind
                 other.add(Channel(str(col),x,frame[col].to_numpy(float),unit=get_column_unit(frame,col) or '',kind='discrete' if classify_signal_kind(col) in ('control','door_lock','state','code','stage') else 'analog',coordinate_unit='min' if coordinate else 'sample',coordinate_kind='time' if coordinate else 'sample',dataset_id=ds.id,group='Aligned'))
-            self.merge_store(other);self.dashboard.assign([c.id for c in other.channels.values() if c.dataset_id==ds.id][:10]);self.tabs.setCurrentIndex(0)
+            self.merge_store(other,self.dashboard);self.dashboard.assign([c.id for c in other.channels.values() if c.dataset_id==ds.id][:10]);self.tabs.setCurrentIndex(0)
         self.background(calculate,complete)
 
     def compare(self):
@@ -439,18 +447,16 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             from app_analysis_service import compare_recordings
             return compare_recordings(machine,simulation)
         def complete(result):
-            other,score=result;self.scorecard.setModel(FrameModel(score));self.scorecard_data=score
-            self.merge_store(other);self.comparison.assign(list(other.channels));self.tabs.setCurrentIndex(1)
+            other,score=result
+            from app_reporting import match_scorecard
+            self.scorecard_data=match_scorecard(score);self.scorecard.setModel(FrameModel(self.scorecard_data))
+            self.merge_store(other,self.comparison);self.tabs.setCurrentIndex(1);self.show_dock('Engineering Controls')
         self.background(calculate,complete)
-
-    def open_legacy(self):
-        entry=Path(__file__).with_name('main.py')
-        if getattr(sys,'frozen',False):subprocess.Popen([sys.executable,'--legacy'])
-        else:subprocess.Popen([sys.executable,str(entry),'--legacy'],cwd=entry.parent)
 
     def ui_state(self):
         return {'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
                 'tab':self.tabs.currentIndex(),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
+                'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentText(),'offset':self.offset.value()}}
 
     def save(self):
@@ -463,37 +469,68 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def restore_path(self,path):
         store,views,ui=load_workspace(path)
-        self.generation+=1;self.busy=False;self.preview=None;self.apply_button.setEnabled(False);self.store=store;self.portal.store=store
+        if len(views)==3:
+            views=[views[2] if ui.get('tab')==2 else views[0],views[1]]
+            if ui.get('tab')==2:ui['tab']=0
+        self.generation+=1;self.busy=False;self.apply_button.setEnabled(True);self.store=store;self.portal.store=store
         for workspace,state in zip(self.workspaces,views):workspace.store=store;workspace.restore(state)
         self.store.observe(self.store_changed);self.store_changed(set())
         for encoded,method in [(ui.get('geometry'),self.restoreGeometry),(ui.get('docks'),self.restoreState)]:
             if encoded:method(QtCore.QByteArray.fromBase64(encoded.encode()))
-        self.tabs.setCurrentIndex(ui.get('tab',0));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))
+        self.tabs.setCurrentIndex(min(ui.get('tab',0),len(self.workspaces)-1));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))
         selected=set(ui.get('selection',[]))
         iterator=QtWidgets.QTreeWidgetItemIterator(self.portal.tree)
         while iterator.value():
             item=iterator.value();item.setSelected(item.data(0,QtCore.Qt.ItemDataRole.UserRole) in selected);iterator+=1
+        from io import StringIO
+        self.scorecard_data=pd.read_json(StringIO(ui['scorecard']),orient='split') if ui.get('scorecard') else None
+        self.scorecard.setModel(FrameModel(self.scorecard_data))
         UNIT_DEFINITIONS.update(ui.get('units',{}))
         engineering=ui.get('engineering',{})
         for key,field in [('power',self.power_path),('machine',self.machine_path),('simulation',self.simulation_path)]:field.setText(engineering.get(key,''))
         self.sync.setCurrentText(engineering.get('strategy',self.sync.currentText()));self.offset.setValue(engineering.get('offset',0));self.readouts()
 
-    def export_data(self):
-        ids=self.portal.selected()
-        if not ids:raise ValueError('Select channels to export')
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Export processed channels','','CSV (*.csv);;Excel (*.xlsx)')
-        if path:export_processed(path,[self.store.channels[id] for id in ids])
-
     def report(self):
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Presentation export','','PNG (*.png);;SVG (*.svg);;PDF (*.pdf);;HTML (*.html);;Markdown (*.md)')
-        if path:render_report(path,self.store,self.active_workspace.state())
+        from app_reporting import export_report
+        if not any(p.ids for p in self.active_workspace.visible_panes()):raise ValueError('Check at least one channel before exporting')
+        filters='PDF summary (*.pdf);;Excel interval (*.xlsx);;CSV interval (*.csv);;High-resolution PNG (*.png)'
+        path,selected=QtWidgets.QFileDialog.getSaveFileName(self,'Export Report','Signal report.pdf',filters)
+        if path:
+            extensions={'PDF':'.pdf','Excel':'.xlsx','CSV':'.csv','High-resolution':'.png'}
+            suffix=next((v for k,v in extensions.items() if selected.startswith(k)),'.pdf')
+            if not Path(path).suffix:path+=suffix
+            if Path(path).suffix.lower() not in ('.pdf','.xlsx','.csv','.png'):raise ValueError('Choose PDF, Excel, CSV or PNG')
+            export_report(path,self.store,self.active_workspace.state(),getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None)
+            self.statusBar().showMessage(f'Report saved: {path}')
 
-    def command_palette(self):
-        command,ok=QtWidgets.QInputDialog.getItem(self,'Command palette','Command',list(self.commands),0,False)
-        if ok:self.commands[command].trigger()
+    def set_snap(self,value):
+        for pane in self.active_workspace.visible_panes():
+            pane.snap=value;pane._cursor_changed()
+        self.readouts()
+
+    def workspace_changed(self,*args):
+        if hasattr(self,'layout_combo'):
+            pane=self.active_workspace.active
+            for widget,value in ((self.layout_combo,self.active_workspace.layout_name),(self.cursor_combo,pane.cursor_mode)):
+                blocker=QtCore.QSignalBlocker(widget);widget.setCurrentText(value);del blocker
+            blocker=QtCore.QSignalBlocker(self.snap_checkbox);self.snap_checkbox.setChecked(pane.snap);del blocker
+        self.sync_visibility();self.readouts()
+
+    def show_dock(self,name):
+        self.docks[name].show();self.docks[name].raise_()
+
+    def sync_visibility(self):
+        if hasattr(self,'portal'):self.portal.set_visible([id for p in self.active_workspace.visible_panes() for id in p.ids])
+
+    def set_channel_visibility(self,ids,visible):
+        self.mutate()
+        try:self.active_workspace.set_visible(ids,visible)
+        finally:self.sync_visibility()
+        self._readouts()
 
     def closeEvent(self,event):
         self.generation+=1
+        self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
         if self.busy:
             self.statusBar().showMessage('Waiting for current processing to finish…');self.pool.waitForDone()
         event.accept()

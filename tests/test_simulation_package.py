@@ -127,40 +127,15 @@ class PackageTests(unittest.TestCase):
         with self.assertRaisesRegex(DataReadError,'external entities'):
             load_simulation_reference(self.path)
 
-    def test_controller_zip_and_package_export(self):
-        import logging
-        from types import SimpleNamespace
-        from unittest.mock import patch
-        import main
+    def test_service_zip_comparison_preserves_sources(self):
+        from app_analysis_service import compare_recordings
         self.package()
-        obj=SimpleNamespace(comp_sim_csv_path=str(self.path),comp_sim_img_path=None,
-                            comp_csv_settings={'time_unit':'min','pressure_unit':'unknown','pressure_display_unit':'Pa'},
-                            comp_tolerances={},comp_signal_visibility={},comp_signal_bench_columns={},
-                            lbl_comp_subsummary=SimpleNamespace(config=lambda **kwargs:None),
-                            logger=logging.getLogger('package-test'))
         csv=Path(self.temp.name)/'bench.csv';fixture().to_csv(csv,index=False)
-        obj._clear_comparison_results=lambda:None
-        obj._get_comparison_raw_path=lambda:str(csv)
-        obj._build_comp_signal_controls=lambda:None
-        obj._display_comp_scorecard=lambda:None
-        obj._render_comparison_plot=lambda:None
-        obj._data_quality_frame=lambda df:pd.DataFrame({'rows':[len(df)]})
-        obj._metadata_frame=lambda values:pd.DataFrame({'key':list(values),'value':[str(v) for v in values.values()]})
-        target=Path(self.temp.name)/'report.xlsx'
-        with patch.object(main.messagebox,'showerror') as error:
-            main.ApplianceSignalStudioPro.execute_comparison(obj)
-            error.assert_not_called()
-        try:
-            self.assertEqual(obj.comp_sim_curves['pressure'].attrs['unit'],'Pa')
-            with patch.object(main.filedialog,'asksaveasfilename',return_value=str(target)), \
-                 patch.object(main.messagebox,'showinfo'),patch.object(main.messagebox,'showerror') as error:
-                main.ApplianceSignalStudioPro.export_comp_excel(obj)
-                error.assert_not_called()
-            with pd.ExcelFile(target) as workbook:
-                self.assertIn('Package_Files',workbook.sheet_names)
-                self.assertIn('Package_Metadata',workbook.sheet_names)
-                self.assertEqual(len(pd.read_excel(workbook,sheet_name='CSV_Trace_Quality')),10)
-        finally: obj.comp_csv_adapter.close()
+        store,score=compare_recordings(str(csv),str(self.path))
+        self.assertEqual(len(store.datasets),2)
+        self.assertGreater(len(store.channels),10)
+        self.assertTrue(all(len(ds.frame)==6 for ds in store.datasets.values()))
+        self.assertEqual(score.set_index('parameter').loc['Peak Water Pressure','sim_val'],'500.00 Pa')
 
 
 if __name__ == '__main__': unittest.main()

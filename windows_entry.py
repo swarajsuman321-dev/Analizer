@@ -10,7 +10,6 @@ import zipfile
 
 
 def self_test():
-    import tkinter as tk
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -19,23 +18,12 @@ def self_test():
     from PIL import Image
     import openpyxl
     import xlrd
-    import main
     from app_comparator import ComparisonEngine
     from app_data import DataEngine, DRUM_SYNC_STRATEGY
     from app_inspection import comparison_traces, sample_trace, format_comparison_samples
     from app_simulation import load_simulation_reference, specs_for_curves
     from app_support import write_excel_frame
 
-    tcl_version = tk.Tcl().eval('info patchlevel')
-    gui_checked = False
-    if sys.platform == 'win32':
-        root = tk.Tk()
-        try:
-            root.withdraw()
-            root.update_idletasks()
-            gui_checked = True
-        finally:
-            root.destroy()
     assets = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
     for filename in ('app_icon.ico', 'app_logo.png'):
         with Image.open(assets / filename) as asset:
@@ -106,30 +94,13 @@ def self_test():
                 raise RuntimeError('Excel export/readback did not retain all rows.')
         finally:
             adapter.close()
-    telemetry_gui_checked = False
-    if sys.platform == 'win32':
-        app = main.ApplianceSignalStudioPro()
-        try:
-            app.telemetry.load_demo()
-            app.update()
-            if len(app.telemetry.signals) != 10 or len(app.tabs.tabs()) != 5:
-                raise RuntimeError('Bundled telemetry workspace or original workspaces are missing.')
-            app.telemetry.view.current(2)
-            app.telemetry.draw()
-            app.telemetry.seek(99.6)
-            app.update()
-            if len(app.telemetry.axes) != 1 or app.telemetry.when != 99.6:
-                raise RuntimeError('Bundled telemetry subsystem selector or cursor failed.')
-            telemetry_gui_checked = True
-        finally:
-            app._close_application()
     from app_workbench_selftest import self_test as qt_self_test
     modern = qt_self_test()
     return {'ok':True, 'modern':modern, 'frozen':bool(getattr(sys,'frozen',False)),
-            'python':sys.version.split()[0], 'tcl':tcl_version, 'windows_gui_checked':gui_checked, 'telemetry_gui_checked':telemetry_gui_checked,
+            'python':sys.version.split()[0],
             'pandas':pd.__version__, 'numpy':np.__version__, 'matplotlib':matplotlib.__version__,
             'openpyxl':openpyxl.__version__, 'xlrd':xlrd.__version__,
-            'checks':['Tkinter','icons','ZIP/CSV import','original pressure numbers with Pa labels','actual remaining time',
+            'checks':['icons','ZIP/CSV import','original pressure numbers with Pa labels','actual remaining time',
                       'RPM feedback','first drum / first power-rise synchronization','128 heater ON time','difference colours',
                       'heater watts/ON-OFF cursor','plot rendering','Excel export/readback']}
 
@@ -153,7 +124,6 @@ def startup_error(details):
 def entry_main():
     parser = argparse.ArgumentParser(description='Appliance Signal Studio')
     parser.add_argument('--self-test',action='store_true')
-    parser.add_argument('--legacy',action='store_true')
     parser.add_argument('--report',type=Path)
     args = parser.parse_args()
     report = args.report.resolve() if args.report else None
@@ -170,7 +140,7 @@ def entry_main():
         return 0 if result['ok'] else 1
     try:
         from main import run
-        return run(legacy=args.legacy)
+        return run()
     except Exception:
         startup_error(traceback.format_exc())
         return 1

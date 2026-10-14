@@ -28,7 +28,6 @@ if not errorlevel 1 (
 echo.
 echo Python was not found, or it is not a supported 64-bit version.
 echo Install 64-bit Python 3.12 from https://www.python.org/downloads/windows/
-echo Include Tcl/Tk and the Python launcher in the installation.
 echo Then double-click this file again.
 pause
 exit /b 1

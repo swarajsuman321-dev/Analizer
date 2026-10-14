@@ -203,58 +203,14 @@ class CsvTests(unittest.TestCase):
         self.assertEqual(card.iloc[0]['status'],'REVIEW')
         self.assertIn('image pixels',card.attrs['assumptions'][0])
 
-    def test_controller_csv_branch_and_excel_export(self):
-        # Exercise the real controller and exporter, substituting only UI surfaces.
-        import main
-        labels=SimpleNamespace(config=lambda **kwargs: None)
-        obj=SimpleNamespace(comp_sim_csv_path=str(self.path),comp_sim_img_path=None,
-                            comp_csv_settings={'time_unit':'min','pressure_unit':'Pa','remaining_time_unit':'min',
-                                               'pressure_display_unit':'mbar','preserve_pressure_numbers':False},
-                            comp_tolerances={}, comp_signal_visibility={}, comp_signal_bench_columns={},
-                            lbl_comp_subsummary=labels, logger=logging.getLogger('test'))
-        obj._clear_comparison_results=lambda: None
-        obj._get_comparison_raw_path=lambda: str(self.path)
-        obj._build_comp_signal_controls=lambda: None
-        obj._display_comp_scorecard=lambda: None
-        obj._render_comparison_plot=lambda: None
-        obj._data_quality_frame=lambda df: pd.DataFrame({'rows':[len(df)]})
-        obj._metadata_frame=lambda values: pd.DataFrame({'key':list(values),'value':[str(v) for v in values.values()]})
-        target=str(Path(self.temp.name)/'comparison.xlsx')
-        with patch.object(main.messagebox,'showerror') as err, patch.object(main.messagebox,'showwarning') as warn:
-            main.ApplianceSignalStudioPro.execute_comparison(obj)
-            err.assert_not_called(); warn.assert_not_called()
-        self.assertEqual(len(obj.comp_raw_df),6)
-        # The ordinary bench logger path still parses explicit elapsed units.
-        bench = fixture()[['time','drum_speed','water_pressure','water_temp','heater_power',
-                           'pre_wash_valve_open','main_wash_valve_open','drain_open']].copy()
-        bench['water_pressure'] /= 100
-        bench = bench.rename(columns={'time':'time [min]', 'drum_speed':'drum speed [RPM]',
-                          'water_pressure':'water pressure [mbar]', 'water_temp':'water temperature [°C]',
-                          'heater_power':'heater power [W]'})
-        bench_path = Path(self.temp.name)/'bench.csv'
-        bench.to_csv(bench_path,index=False)
-        obj._get_comparison_raw_path=lambda: str(bench_path)
-        with patch.object(main.messagebox,'showerror') as err, patch.object(main.messagebox,'showwarning') as warn:
-            main.ApplianceSignalStudioPro.execute_comparison(obj)
-            err.assert_not_called(); warn.assert_not_called()
-        self.assertEqual(obj.comp_scorecard_df.attrs['benchmark_duration'],3)
-        pressure = obj.comp_scorecard_df.set_index('parameter').loc['Peak Water Pressure']
+    def test_service_csv_preserves_original_rows(self):
+        from app_analysis_service import compare_recordings
+        store,score=compare_recordings(str(self.path),str(self.path))
+        self.assertEqual(len(store.datasets),2)
+        self.assertTrue(all(len(ds.frame)==6 for ds in store.datasets.values()))
+        pressure=score.set_index('parameter').loc['Peak Water Pressure']
         self.assertEqual(pressure['sim_val'],'500.00 Pa')
-        self.assertEqual(pressure['raw_val'],'5.00 Pa')
-        self.assertIn('dt',obj.comp_raw_df)
-        self.assertEqual(len(obj.comp_raw_df),6)
-        with patch.object(main.filedialog,'asksaveasfilename',return_value=target), patch.object(main.messagebox,'showinfo'), patch.object(main.messagebox,'showerror') as err:
-            main.ApplianceSignalStudioPro.export_comp_excel(obj)
-            err.assert_not_called()
-        with pd.ExcelFile(target) as workbook:
-            sheets = workbook.sheet_names
-        self.assertIn('Simulation_CSV',sheets); self.assertIn('CSV_Units',sheets)
-        self.assertNotIn('Image_Calibration',sheets)
-        self.assertEqual(len(pd.read_excel(target,sheet_name='Simulation_CSV')),6)
-        units = pd.read_excel(target,sheet_name='CSV_Trace_Quality')
-        self.assertEqual(len(units),10)
-        self.assertIn('Actual Remaining Time',units['signal'].tolist())
-        self.assertNotIn('Display Remaining Time',units['signal'].tolist())
+        self.assertEqual(pressure['raw_val'],'500.00 Pa')
 
 
 if __name__ == '__main__':

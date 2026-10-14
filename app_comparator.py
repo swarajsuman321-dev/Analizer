@@ -8,12 +8,11 @@ from app_data import (
     classify_signal_kind, get_column_unit, convert_signal_units,
 )
 from app_layout import SignalFigureLayout, set_signal_time_bounds
-from app_plotter import enable_draggable_legend
-from app_image_analysis import SIMULATION_LEGEND_SPECS, SimulationImageAnalyzer
+from app_figure_interaction import enable_draggable_legend
+from app_signal_specs import SIMULATION_LEGEND_SPECS
 
 from app_simulation import CSV_LEGEND_SPECS, specs_for_curves, display_samples, is_csv_reference, actual_remaining_values
 
-SimulationImageDigitizer = SimulationImageAnalyzer
 
 
 class ComparisonEngine:

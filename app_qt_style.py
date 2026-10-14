@@ -4,8 +4,8 @@ from PySide6 import QtCore,QtGui,QtWidgets
 
 class ThemeController(QtCore.QObject):
     themeChanged=QtCore.Signal(bool)
-    def __init__(self,app):
-        super().__init__(app);self.app=app;self.mode='System';self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True)
+    def __init__(self,app,parent=None):
+        super().__init__(parent or app);self.app=app;self.mode='System';self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.show_tip);self.target=None
         app.installEventFilter(self);app.styleHints().colorSchemeChanged.connect(lambda _:self.apply(self.mode))
         self.apply('System')
@@ -24,7 +24,20 @@ class ThemeController(QtCore.QObject):
                 QtGui.QPalette.ColorRole.Highlight:'#216eb5',QtGui.QPalette.ColorRole.HighlightedText:'#ffffff',
                 QtGui.QPalette.ColorRole.ToolTipBase:'#fff6d5',QtGui.QPalette.ColorRole.ToolTipText:'#182033'}
         for role,color in values.items():palette.setColor(role,QtGui.QColor(color))
-        self.app.setPalette(palette);self.themeChanged.emit(dark)
+        self.app.setPalette(palette)
+        self.app.setStyleSheet("""
+            QMainWindow { font-family: 'Segoe UI', sans-serif; font-size: 10pt; }
+            QToolBar { spacing: 6px; padding: 6px; border: none; }
+            QToolButton { padding: 5px 8px; }
+            QPushButton { padding: 5px 9px; }
+            QLineEdit, QComboBox, QDoubleSpinBox { padding: 4px; }
+            QDockWidget::title { padding: 7px; font-weight: 600; }
+            QTreeView::item { min-height: 27px; }
+            QHeaderView::section { padding: 6px; border: none; }
+            QTabBar::tab { padding: 8px 18px; }
+            QTableView { gridline-color: #8293a940; }
+        """)
+        self.themeChanged.emit(dark)
 
     def eventFilter(self,obj,event):
         if isinstance(obj,QtWidgets.QWidget):

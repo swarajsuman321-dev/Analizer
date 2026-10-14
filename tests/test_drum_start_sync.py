@@ -124,17 +124,6 @@ class DrumStartSyncTests(unittest.TestCase):
         self.assertEqual(len(engine.get_data()),6)
         self.assertNotIn('event_alignment',engine.sync_report)
 
-    def test_plugin_refresh_keeps_the_new_option_and_selection(self):
-        import main
-        selector = Mock()
-        selector.get.return_value = DRUM_SYNC_STRATEGY
-        app = SimpleNamespace(sync_mode=selector,patch_manager=SimpleNamespace(custom_sync_hooks={'Custom sync':None}))
-        main.ApplianceSignalStudioPro._refresh_sync_options(app)
-        choices = selector.configure.call_args.kwargs['values']
-        self.assertIn(DRUM_SYNC_STRATEGY,choices)
-        self.assertIn('Custom sync',choices)
-        self.assertEqual(choices[:4],list(BUILTIN_SYNC_STRATEGIES))
-        selector.set.assert_not_called()
 
 
 if __name__=='__main__':

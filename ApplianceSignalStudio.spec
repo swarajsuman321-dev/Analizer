@@ -13,17 +13,20 @@ analysis = Analysis(
     binaries=[],
     datas=assets,
     hiddenimports=['app_simulation_package', 'app_inspection', 'app_symbols',
-                   'openpyxl', 'xlrd', 'matplotlib.backends.backend_tkagg',
+                   'openpyxl', 'xlrd',
                    'matplotlib.backends.backend_agg',
                    'matplotlib.backends.backend_svg', 'matplotlib.backends.backend_pdf',
-                   'app_workbench', 'app_legacy',
+                   'app_workbench',
                    'scipy.signal', 'PySide6.QtSvg', 'pyqtgraph'],
     hookspath=[],
-    hooksconfig={'matplotlib': {'backends': ['TkAgg', 'Agg', 'svg', 'pdf']}},
+    hooksconfig={'matplotlib': {'backends': ['Agg', 'svg', 'pdf']}},
     runtime_hooks=[],
-    excludes=['PyQt5', 'PyQt6', 'PySide2', 'IPython', 'jupyter', 'pytest'],
+    excludes=['tkinter', '_tkinter', 'app_legacy', 'app_telemetry', 'app_patches', 'app_zoom', 'PyQt5', 'PyQt6', 'PySide2', 'IPython', 'jupyter', 'pytest'],
     noarchive=False,
 )
+for module_name, *_ in analysis.pure:
+    if module_name.split('.')[0] in {'tkinter', 'app_legacy', 'app_telemetry', 'app_patches', 'app_zoom', 'app_plotter', 'app_image_analysis'}:
+        raise RuntimeError(f'Obsolete frontend module found in bundle: {module_name}')
 pyz = PYZ(analysis.pure)
 options = dict(name='ApplianceSignalStudio', debug=False,
                bootloader_ignore_signals=False, strip=False, upx=False,

@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from app_data import DataReadError, smart_read_file, get_column_unit, convert_signal_units, normalize_control_series
-from app_image_analysis import SIMULATION_LEGEND_SPECS
+from app_signal_specs import SIMULATION_LEGEND_SPECS
 
 
 # Exactly the ten signals requested in the reference legend. Simulation-specific

@@ -3,6 +3,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from app_fast_plot import EnvelopeCache
+from app_presentation import CURSOR_COLORS,cursor_sample
 from app_signal_processing import IntervalSummary
 
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
@@ -34,7 +35,8 @@ class PlotPane(pg.PlotWidget):
         super().__init__()
         self.store=store;self.ids=[];self.bindings={};self.axes={};self.curves={};self.cache={};self.summaries={}
         self.dark=True;self.display_budget=12000
-        self.coordinate=None;self.snap=True;self.cursor_mode='dual';self._restoring=False
+        self._normalizing=False;self._synchronizing=False
+        self.coordinate=None;self.snap=True;self.cursor_mode='dual'
         self.annotations=[];self.annotation_items=[]
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.showGrid(x=True,y=True,alpha=.2)
@@ -42,13 +44,42 @@ class PlotPane(pg.PlotWidget):
         self.getViewBox().sigResized.connect(self._resize)
         self.getViewBox().sigXRangeChanged.connect(self._schedule)
         self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(self._render)
-        self.cursor_lines=[pg.InfiniteLine(pos=0,angle=90,movable=True,pen=pg.mkPen(color,width=1.5)) for color in ('#ffffff','#ffce69')]
+        self.cursor_lines=[pg.InfiniteLine(pos=0,angle=90,movable=True,pen=pg.mkPen(color,width=2),hoverPen=pg.mkPen(color,width=3),label=name,labelOpts={'color':color,'position':.95}) for color,name in zip(CURSOR_COLORS,('A','B'))]
+        self.empty_label=QtWidgets.QLabel('No channels selected',self)
+        self.empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.empty_label.setStyleSheet('font-size:16px; color:#8293a9; background:transparent;')
         for line in self.cursor_lines:
+            line.addMarker('v',position=.98,size=9)
             self.addItem(line,ignoreBounds=True);line.sigPositionChanged.connect(self._cursor_changed)
         self.scene().sigMouseClicked.connect(self._click)
 
     def _cursor_changed(self):
+        if self._normalizing:return
+        if not self._synchronizing:
+            self._normalizing=True
+            try:
+                channels=[self.store.channels[id] for id in self.ids if id in self.store.channels and len(self.store.channels[id].x)]
+                if channels:
+                    left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
+                    vl,vr=self.getViewBox().viewRange()[0]
+                    low,high=max(left,vl),min(right,vr)
+                    if low>high:low,high=left,right
+                    reference=channels[0].values()[0]
+                    begin,end=np.searchsorted(reference,[low,high],side='left');end=np.searchsorted(reference,high,side='right')
+                    candidates=reference[begin:end]
+                    for line in self.cursor_lines:
+                        value=float(np.clip(line.value(),low,high))
+                        if self.snap and len(candidates):
+                            i=min(len(candidates)-1,int(np.searchsorted(candidates,value)));j=max(0,i-1)
+                            value=float(candidates[i] if abs(candidates[i]-value)<abs(candidates[j]-value) else candidates[j])
+                        line.setValue(value)
+            finally:self._normalizing=False
         self.cursorsChanged.emit()
+
+    def resizeEvent(self,event):
+        super().resizeEvent(event)
+        if hasattr(self,'empty_label'):self.empty_label.setGeometry(self.rect().adjusted(60,40,-60,-40))
 
     def _click(self,event):
         if event.button()!=QtCore.Qt.MouseButton.LeftButton or not self.sceneBoundingRect().contains(event.scenePos()):
@@ -65,7 +96,7 @@ class PlotPane(pg.PlotWidget):
     def set_cursor_mode(self,mode):
         self.cursor_mode=mode
         for i,line in enumerate(self.cursor_lines):
-            line.setVisible(mode!='off' and (i==0 or mode=='dual'))
+            line.setVisible(bool(self.ids) and mode!='off' and (i==0 or mode=='dual'))
 
     def keyPressEvent(self,event):
         if event.key()==QtCore.Qt.Key.Key_R:
@@ -77,6 +108,8 @@ class PlotPane(pg.PlotWidget):
         super().keyPressEvent(event)
 
     def bind(self, ids, assignments=None, fit=True):
+        coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
+        if len(coordinates)>1:raise ValueError('Different coordinate systems require separate viewports')
         saved=self.state()
         for vb,item in self.annotation_items:vb.removeItem(item)
         self.annotation_items=[]
@@ -101,16 +134,16 @@ class PlotPane(pg.PlotWidget):
             if not self.dark:color=color.darker(170)
             color=color.name()
             if i==0:
-                axis=self.getAxis('left');axis.setLabel(unit or 'Value',color=color);axis.setPen(color)
+                axis=self.getAxis('left');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
                 vb=primary
             else:
-                axis=pg.AxisItem('right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color)
+                axis=pg.AxisItem('right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
                 vb=pg.ViewBox();self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
                 self.getPlotItem().layout.addItem(axis,2,2+i)
                 self.axes[unit]=(axis,vb)
             for j,id in enumerate(id for id in self.ids if self.bindings[id]==unit):
                 c=self.store.channels[id];x,y=c.values()
-                color=QtGui.QColor(COLORS[self.ids.index(id)%len(COLORS)])
+                color=QtGui.QColor(COLORS[i%len(COLORS)])
                 if not self.dark:color=color.darker(170)
                 curve=PreparedCurve(x,y,color)
                 vb.addItem(curve);self.curves[id]=(vb,curve)
@@ -120,6 +153,8 @@ class PlotPane(pg.PlotWidget):
                     self.cache[key]=EnvelopeCache(x,y)
                     self.summaries[id]=(c.revision,IntervalSummary(c))
         self.setLabel('bottom',self.coordinate[0] if self.coordinate else 'Coordinate',units=self.coordinate[1] if self.coordinate else '')
+        self.empty_label.setVisible(not self.ids);self.empty_label.setGeometry(self.rect().adjusted(60,40,-60,-40))
+        self.getAxis('left').setVisible(bool(self.ids));self.set_cursor_mode(self.cursor_mode)
         self._resize()
         if fit:
             self.fit()
@@ -133,6 +168,7 @@ class PlotPane(pg.PlotWidget):
             vb.setGeometry(self.getViewBox().sceneBoundingRect());vb.linkedViewChanged(self.getViewBox(),vb.XAxis)
 
     def _schedule(self,*args):
+        if self.ids:self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
 
@@ -174,7 +210,8 @@ class PlotPane(pg.PlotWidget):
             revision,summary=self.summaries[id]
             if revision!=c.revision:
                 summary=IntervalSummary(c);self.summaries[id]=(c.revision,summary)
-            result[id]={'A':c.sample(a),'B':c.sample(b),**summary.query(a,b)}
+            va,vb=cursor_sample(c,a,self.snap),cursor_sample(c,b,self.snap)
+            result[id]={**summary.query(a,b),'A':va,'B':vb,'ΔY':vb-va}
         return result
 
     def annotate(self,kind,start,end=None,text='',axis=None):
@@ -205,6 +242,7 @@ class PlotPane(pg.PlotWidget):
         for line,pos in zip(self.cursor_lines,state.get('cursors',[])):line.setValue(pos)
 
     def restore(self,state):
+        self.snap=state.get('snap',True)
         self.bind(state['ids'],state.get('bindings'),fit=False);self.restore_ranges(state)
         self.snap=state.get('snap',True);self.set_cursor_mode(state.get('cursor_mode','dual'))
         for vb,item in self.annotation_items:vb.removeItem(item)
@@ -222,7 +260,6 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.set_layout('Single')
 
     def set_layout(self,name):
-        states=[p.state() for p in self.panes]
         rows,cols=LAYOUTS[name];required=rows*cols
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
@@ -231,6 +268,8 @@ class PlotWorkspace(QtWidgets.QWidget):
             self.panes.append(pane)
         for i,pane in enumerate(self.panes):
             pane.dark=self.panes[0].dark;pane.setBackground(self.panes[0].backgroundBrush())
+            pane.snap=self.active.snap if self.active else True
+            pane.set_cursor_mode(self.active.cursor_mode if self.active else 'dual')
             pane.setVisible(i<required);pane.display_budget=12000/required
             if i<required:self.grid.addWidget(pane,i//cols,i%cols)
         self.layout_name=name;self.active=self.panes[0];self.activeChanged.emit(self.active)
@@ -260,7 +299,10 @@ class PlotWorkspace(QtWidgets.QWidget):
         try:
             for target in self.visible_panes():
                 if target is not pane and target.coordinate==pane.coordinate:
-                    for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())
+                    target._synchronizing=True
+                    try:
+                        for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())
+                    finally:target._synchronizing=False
             self.measurementsChanged.emit()
         finally:self._syncing=False
 
@@ -279,10 +321,21 @@ class PlotWorkspace(QtWidgets.QWidget):
                 if target is None:raise ValueError('All viewports have incompatible coordinates; clear a viewport first')
             new=channels if replace else list(dict.fromkeys(target.ids+channels))
             target.bind(new,target.bindings,fit=True)
+        self.activeChanged.emit(self.active)
         self.link();self.measurementsChanged.emit()
 
+    def set_visible(self,ids,visible):
+        if visible:
+            saved=[(pane,pane.state()) for pane in self.visible_panes() if pane.ids]
+            self.assign(ids)
+            for pane,state in saved:pane.restore_ranges(state)
+            self.measurementsChanged.emit()
+        else:
+            for pane in self.panes:pane.bind([id for id in pane.ids if id not in ids],pane.bindings,fit=False)
+            self.link();self.measurementsChanged.emit()
+
     def refresh(self):
-        for pane in self.visible_panes():
+        for pane in self.panes:
             pane.bind(pane.ids,pane.bindings,fit=False)
         self.link()
 
@@ -298,4 +351,5 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.set_layout(state['layout'])
         for pane,saved in zip(self.panes,state['panes']):pane.restore(saved)
         self.active=self.panes[min(state.get('active',0),len(self.visible_panes())-1)]
+        self.activeChanged.emit(self.active)
         self.link();self.measurementsChanged.emit()

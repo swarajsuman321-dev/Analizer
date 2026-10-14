@@ -93,49 +93,79 @@ def export_processed(path,channels):
     return data
 
 
-def render_report(path,store,workspace,title='Signal workbench'):
-    """Render plots from domain/view state rather than screenshotting widgets."""
+def render_report(path,store,workspace,title='Signal analysis report',scorecard=None):
+    """Render the visible axes, cursor positions and interval summary from view state."""
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from app_plot_workspace import COLORS,LAYOUTS
+    from app_presentation import CURSOR_COLORS,match_color
+    from app_reporting import interval_tables
     path=Path(path);rows,cols=LAYOUTS[workspace['layout']]
-    fig=Figure(figsize=(12, max(5,rows*3)),layout='constrained');FigureCanvasAgg(fig)
-    fig.suptitle(title);statistics=[]
+    _,summary=interval_tables(store,workspace)
+    statistics=summary.to_dict('records')
+    table_height=max(1.5,.27*(len(summary)+2))
+    score_height=max(1.2,.27*(len(scorecard)+2)) if scorecard is not None and len(scorecard) else 0
+    fig=Figure(figsize=(14,max(5,rows*3)+table_height+score_height),layout='constrained');FigureCanvasAgg(fig)
+    grid=fig.add_gridspec(rows+1+bool(score_height),cols,height_ratios=[3]*rows+[table_height]+([score_height] if score_height else []))
+    fig.suptitle(title);fig.set_facecolor('white')
     for index,view in enumerate(workspace['panes'][:rows*cols]):
-        axis=fig.add_subplot(rows,cols,index+1);axes={};ranges=view.get('range')
-        for number,id in enumerate(view['ids']):
-            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit)
+        axis=fig.add_subplot(grid[index//cols,index%cols]);axes={};ranges=view.get('range')
+        units=list(dict.fromkeys(view.get('bindings',{}).get(id,store.channels[id].unit) for id in view['ids']))
+        for id in view['ids']:
+            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit);color=COLORS[units.index(key)%len(COLORS)]
             if key not in axes:
                 current=axis if not axes else axis.twinx()
-                if axes:current.spines['right'].set_position(('outward',40*(len(axes)-1)))
-                current.set_ylabel(key or 'Value');axes[key]=current
+                if axes:current.spines['right'].set_position(('outward',48*(len(axes)-1)))
+                current.set_ylabel(key or 'Value',color=color);current.tick_params(axis='y',colors=color);axes[key]=current
                 bounds=view.get('axes',{}).get(key)
                 if bounds:current.set_ylim(*bounds)
                 elif current is axis and ranges:current.set_ylim(*ranges[1])
-            x,y=c.values();left,right=ranges[0] if ranges else (x[0],x[-1])
-            dx,dy=EnvelopeCache(x,y).visible(left,right,4000)
-            axes[key].plot(dx,dy,label=c.name,color=COLORS[number%len(COLORS)],linewidth=.8)
+            x,y=c.values();left,right=ranges[0] if ranges else ((x[0],x[-1]) if len(x) else (0,1))
+            dx,dy=EnvelopeCache(x,y).visible(left,right,8000)
+            axes[key].plot(dx,dy,label=c.name,color=color,linewidth=.8)
             axis.set_xlabel(f'{c.coordinate_kind} ({c.coordinate_unit})');axis.set_xlim(left,right)
-            if len(view.get('cursors',[]))==2:
-                a,b=view['cursors'];stats=IntervalSummary(c).query(a,b)
-                statistics.append({'channel':c.name,'unit':c.unit,'coordinate_unit':c.coordinate_unit,**stats})
-        for position in view.get('cursors',[]):axis.axvline(position,color='gray',linestyle='--',linewidth=.7)
+        if not view['ids']:axis.text(.5,.5,'No channels selected',ha='center',va='center',transform=axis.transAxes)
+        for name,position,color in zip(('A','B'),view.get('cursors',[]),CURSOR_COLORS):
+            axis.axvline(position,color=color,linestyle='--',linewidth=1.4)
+            axis.text(position,.98,f'{name} {position:.6g}',color=color,backgroundcolor='#182033',transform=axis.get_xaxis_transform(),va='top',fontsize=8)
         for annotation in view.get('annotations',[]):
             if annotation['kind']=='ROI':axis.axvspan(annotation['start'],annotation['end'],alpha=.15)
             elif annotation['kind']=='Threshold':axes.get(annotation.get('axis'),axis).axhline(annotation['start'],color='purple',linestyle=':')
             else:axis.axvline(annotation['start'],color='purple',linestyle=':')
-        for current in axes.values():current.legend(fontsize=6,loc='upper left')
-        axis.grid(alpha=.2)
+        handles=[];labels=[]
+        for current in axes.values():
+            h,l=current.get_legend_handles_labels();handles.extend(h);labels.extend(l)
+        if handles:axis.legend(handles,labels,fontsize=7,loc='upper left')
+        axis.grid(alpha=.15)
+    def draw_table(target,frame,columns):
+        target.axis('off')
+        def display(value):
+            if isinstance(value,(float,np.floating)):return f'{value:.5g}' if np.isfinite(value) else '—'
+            return str(value)
+        values=[[display(row[c]) for c in columns] for _,row in frame.iterrows()]
+        table=target.table(cellText=values,colLabels=[c.replace('_',' ') for c in columns],loc='center',cellLoc='left')
+        table.auto_set_font_size(False);table.set_fontsize(7);table.scale(1,1.3)
+        for (row,col),cell in table.get_celld().items():
+            cell.set_edgecolor('#dde3eb')
+            if row==0:cell.set_facecolor('#edf1f7')
+            if columns[col] in ('A','B'):
+                cell.set_facecolor('#182033');cell.get_text().set_color(CURSOR_COLORS[columns[col]=='B'])
+            if row and columns[col]=='match_percent':
+                color=match_color(frame.iloc[row-1]['match_percent'])
+                if color:cell.set_facecolor(color)
+    draw_table(fig.add_subplot(grid[rows,:]),summary,['channel','unit','A','B','ΔX','ΔY','Min','Max','Mean','match_percent'])
+    if score_height:
+        columns=[c for c in ('parameter','sim_val','raw_val','diff','percent','match_percent') if c in scorecard]
+        draw_table(fig.add_subplot(grid[rows+1,:]),scorecard,columns)
     if path.suffix.lower() in ('.html','.md'):
-        image=path.with_suffix('.png');fig.savefig(image,dpi=140)
-        table=pd.DataFrame(statistics)
+        image=path.with_suffix('.png');fig.savefig(image,dpi=160)
         if path.suffix.lower()=='.html':
             import html
-            content=f'<meta charset="utf-8"><h1>{html.escape(title)}</h1><img src="{html.escape(image.name)}" alt="Signal plots">'+table.to_html(index=False)
-        else:
-            content=f'# {title}\n\n![Signal plots]({image.name})\n\n'+table.to_csv(index=False)
+            content=f'<meta charset="utf-8"><h1>{html.escape(title)}</h1><img src="{html.escape(image.name)}" alt="Signal plots">'+summary.to_html(index=False)
+        else:content=f'# {title}\n\n![Signal plots]({image.name})\n\n'+summary.to_csv(index=False)
         path.write_text(content,encoding='utf-8')
-    else:fig.savefig(path,dpi=160)
+    else:fig.savefig(path,dpi=300)
+    fig.clear()
     return statistics
