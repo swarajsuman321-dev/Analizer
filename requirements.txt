@@ -4,3 +4,9 @@ matplotlib
 Pillow
 openpyxl
 xlrd
+
+scipy==1.17.1
+PySide6==6.10.2
+pyqtgraph==0.14.0
+polars==1.38.1
+pyarrow==23.0.1

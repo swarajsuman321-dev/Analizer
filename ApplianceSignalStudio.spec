@@ -14,11 +14,12 @@ analysis = Analysis(
     datas=assets,
     hiddenimports=['app_simulation_package', 'app_inspection', 'app_symbols',
                    'openpyxl', 'xlrd', 'matplotlib.backends.backend_tkagg',
-                   'matplotlib.backends.backend_agg'],
+                   'matplotlib.backends.backend_agg', 'app_workbench', 'app_legacy',
+                   'scipy.signal', 'PySide6.QtSvg', 'pyqtgraph'],
     hookspath=[],
     hooksconfig={'matplotlib': {'backends': ['TkAgg', 'Agg']}},
     runtime_hooks=[],
-    excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'IPython', 'jupyter', 'pytest'],
+    excludes=['PyQt5', 'PyQt6', 'PySide2', 'IPython', 'jupyter', 'pytest'],
     noarchive=False,
 )
 pyz = PYZ(analysis.pure)

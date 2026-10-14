@@ -123,7 +123,9 @@ def self_test():
             telemetry_gui_checked = True
         finally:
             app._close_application()
-    return {'ok':True, 'frozen':bool(getattr(sys,'frozen',False)),
+    from app_workbench_selftest import self_test as qt_self_test
+    modern = qt_self_test()
+    return {'ok':True, 'modern':modern, 'frozen':bool(getattr(sys,'frozen',False)),
             'python':sys.version.split()[0], 'tcl':tcl_version, 'windows_gui_checked':gui_checked, 'telemetry_gui_checked':telemetry_gui_checked,
             'pandas':pd.__version__, 'numpy':np.__version__, 'matplotlib':matplotlib.__version__,
             'openpyxl':openpyxl.__version__, 'xlrd':xlrd.__version__,
@@ -151,6 +153,7 @@ def startup_error(details):
 def entry_main():
     parser = argparse.ArgumentParser(description='Appliance Signal Studio')
     parser.add_argument('--self-test',action='store_true')
+    parser.add_argument('--legacy',action='store_true')
     parser.add_argument('--report',type=Path)
     args = parser.parse_args()
     report = args.report.resolve() if args.report else None
@@ -166,12 +169,8 @@ def entry_main():
             print(json.dumps(result,indent=2))
         return 0 if result['ok'] else 1
     try:
-        import matplotlib
-        matplotlib.use('TkAgg')
-        from main import ApplianceSignalStudioPro
-        app = ApplianceSignalStudioPro()
-        app.mainloop()
-        return 0
+        from main import run
+        return run(legacy=args.legacy)
     except Exception:
         startup_error(traceback.format_exc())
         return 1

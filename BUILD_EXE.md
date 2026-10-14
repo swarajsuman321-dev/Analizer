@@ -116,3 +116,14 @@ single-file EXE and portable ZIP. Download and extract the artifact to use it.
 The separate diagnostics artifact contains the build log and self-test reports.
 This configuration alone does not prove that a hosted Windows build succeeded;
 check the workflow's result before distributing its outputs.
+
+
+## Modern frontend reconstruction
+
+The launcher and Windows entry now default to the Qt workbench. Pass `--legacy`
+to open the retained Tk app. Build requirements include PySide6, PyQtGraph, SciPy,
+Polars and PyArrow; the spec includes Qt SVG and both frontend implementations.
+The source/bundle self-test exercises Qt startup, FFT coordinate separation,
+portable snapshots and SVG export as well as retained engineering checks.
+Native Windows EXE builds and graphics-driver behavior require a Windows run;
+Linux source validation does not certify the packaged Windows executable.

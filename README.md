@@ -1,4 +1,68 @@
-# Appliance Signal Studio — Confirmed Bench Comparison
+# Appliance Signal Studio — Qt Data Workbench
+
+The default app is a PySide6/PyQtGraph workbench. The original Tk application is
+retained intact in `app_legacy.py`, including calibration, plugins, presets and
+legacy exports. Existing imports through `main` continue to work.
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --only-binary=:all: -r requirements-build.txt
+.venv/bin/python main.py           # Modern workbench
+.venv/bin/python main.py --legacy  # Original Tk application
+```
+
+The modern window opens maximized and supports compact windows down to 1024×680.
+Engineering Dashboard is tab 0, Comparison tab 1, and Telemetry tab 2. Use View to
+show or hide dock panels. Double-click channels or drag selected channels from
+Data Portal onto a workspace to plot them. Different units have independent axes;
+Channel → Assign axis also permits separate axes for channels with the same unit.
+
+- Import CSV/text, Excel, ZIP-contained CSV, Parquet and JSON tables. Choose the
+  coordinate column and numeric clock unit during import. Automatic detection uses
+  seconds unless the column explicitly names minutes. Original source tables are
+  separate from sorted numerical projections; duplicate timestamps remain intact.
+- Filter channels by text or regex, edit metadata, duplicate/delete, move between
+  groups/datasets, merge groups, reorder, and control bulk visibility in the active
+  workspace. Select an original dataset in Channel Table to inspect source cells.
+- Choose Single, Horizontal split, Vertical split, 2×2 or Stacked plotting layouts.
+  Hidden panes retain their bindings when layouts shrink. Compatible coordinates
+  link pan/zoom and cursors; temporal and frequency panes remain separate.
+- Click to position cursor A, Shift-click for B. Choose snapped or free positions,
+  point or dual mode. Readout and Interval Measurements show original-sample values
+  and covered-span Mean/RMS, coverage, extrema, slope and integral.
+- Ctrl+M opens Channel Math. Use formulas such as `Ch("Power") * 0.001`,
+  `Ch("T_out") - Ch("T_in")` or `convert(Ch("Power"), "kW")`. Ambiguous names
+  require the channel's stable ID. Combining channels requires identical clocks;
+  conversions check physical dimensions.
+- Preview and Apply moving average, Savitzky–Golay, Butterworth low-pass, scale/offset,
+  time shift, resampling, calculus, descriptive statistics, histogram, FFT, Welch
+  PSD, and peak/valley detection. Applied results are ordinary derived channels
+  with parent IDs and recorded recipes. Define local unit scales in Channel Math.
+- Channel → Marker, Threshold or ROI annotates the active pane. Thresholds use
+  the selected plotted channel's axis. Mask interval uses the dual cursors; masks
+  affect numerical projections, processing, readouts and processed exports.
+- Properties contains explicit warning/fault bounds. Without configured bounds,
+  badges say Unconfigured; limits never invent acceptance criteria. OS theme changes
+  follow System mode. Toolbar/badge tooltips wait 2.5 seconds.
+- Save workspace writes a JSON manifest and a generation-named adjacent NPZ. Keep
+  both together. Restoration keeps channel arrays, original tables, view bindings,
+  ranges, cursors, annotations, selected channels, source selector, local units and
+  dock state. Ctrl+P exports independent raster/vector presentations. Export data
+  writes selected processed channels to CSV or Excel, including statistic labels
+  and per-metric units.
+- Engineering Controls reuses the established alignment/comparison pipeline.
+  Original-recording scorecards retain their legacy source interpretation; generic
+  channel masks do not alter them. Legacy calibration/plugins open the retained app.
+- Ctrl+K opens commands. With a plot focused, Space enables pan, R fits, and C
+  toggles cursors. Preview sample is explicitly synthetic.
+
+See [VALIDATION.md](VALIDATION.md) for newly measured results and limitations and
+[FRONTEND_FEATURE_REVIEW.md](FRONTEND_FEATURE_REVIEW.md) for the reconstruction map.
+Native Windows packaging remains subject to validation on Windows.
+
+## Retained legacy workflow
+
+## Confirmed Bench Comparison
 
 Extract the entire folder. For Python, install `requirements.txt` and run
 `python main.py`. To create a Windows EXE, double-click **build_windows.bat**;
