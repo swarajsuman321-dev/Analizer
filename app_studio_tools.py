@@ -42,17 +42,30 @@ class StudioTools(QtCore.QObject):
     def build_menu(self):
         w=self.window;menu=w.menuBar().addMenu('Tools');self.menu=menu
         groups={'Data': [('Open simulation reference…',self.open_reference),('Import with coordinate settings…',self.import_settings),('Save channel preset…',self.save_preset),('Load channel preset…',self.load_preset),('Reset workspace',self.reset)],
-                'Plot': [('Channel mapping & appearance…',self.channel_settings),('Display options…',self.display_options),('Playback & recorded phases…',self.playback),('Subsystem view…',self.subsystem),('Normalized stacked tracks',self.toggle_normalized),('Back',lambda:self.pane.navigate_history(-1)),('Forward',lambda:self.pane.navigate_history(1)),('Fit',lambda:self.pane.fit()),('Pan',lambda:self.navigation('pan')),('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Move cursors…',self.cursor_positions),('Copy cursor readout',self.copy_readout)],
+                'Plot': [('Channel mapping & appearance…',self.channel_settings),('Display options…',self.display_options),('Playback & recorded phases…',self.playback),('Subsystem view…',self.subsystem),('Normalized stacked tracks',self.toggle_normalized),('Back',lambda:self.pane.navigate_history(-1)),('Forward',lambda:self.pane.navigate_history(1)),('Fit',lambda:self.pane.fit()),('Zoom in',lambda:self.zoom(.8)),('Zoom out',lambda:self.zoom(1.25)),('Pan',lambda:self.navigation('pan')),('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Lock cursors to channel…',self.cursor_lock_dialog),('Move cursors…',self.cursor_positions),('Copy cursor readout',self.copy_readout)],
                 'Processing': [('Channel math & filters',lambda:w.show_dock('Channel Math')),('Preview selected operation…',self.preview_processing)],
                 'Engineering': [('Recording controls',lambda:w.show_dock('Engineering Controls')),('KPIs & data quality…',self.diagnostics),('Comparison signal mapping…',self.comparison_mapping),('Reference units…',self.reference_units),('Image reference calibration…',self.image_calibration),('Reference details…',self.reference_details)],
                 'Export': [('Full diagnostic workbook…',self.export_workbook),('Full synchronized CSV…',self.export_aligned_csv),('Complete processed channels…',self.export_channels),('SVG / HTML / Markdown…',self.export_presentation)],
                 'Extensions': [('Manage plugins…',self.extensions_dialog),('Run plot extensions…',self.plugin_plots)],
                 'Examples': [('Load illustrative cycle into workspace',self.illustrative)]}
+        self.submenus={}
         for name,items in groups.items():
-            submenu=menu.addMenu(name)
+            submenu=menu.addMenu(name);self.submenus[name]=submenu
             for text,fn in items:
-                action=submenu.addAction(text);action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
+                action=submenu.addAction(text)
+                shortcut={'Back':'Alt+Left','Forward':'Alt+Right','Zoom in':'Ctrl+=','Zoom out':'Ctrl+-','Fit':'Ctrl+0','Pan':'Ctrl+4','Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Lock cursors to channel…':'Ctrl+L'}.get(text)
+                if shortcut:action.setShortcut(shortcut)
+                action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
 
+        w.addToolBarBreak()
+        toolbar=w.addToolBar('Plot navigation');toolbar.setObjectName('plotNavigation');toolbar.setMovable(False)
+        for title,fn in [('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Pan',lambda:self.navigation('pan')),('Reset zoom',lambda:self.pane.fit()),('Lock cursors…',self.cursor_lock_dialog)]:
+            action=toolbar.addAction(title)
+            hint={'Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Pan':'Ctrl+4 or Escape','Reset zoom':'Ctrl+0 or R','Lock cursors…':'Ctrl+L'}[title]
+            action.setToolTip(title+' ('+hint+')')
+            action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
+        help_action=menu.addAction('Keyboard shortcuts…');help_action.setShortcut('F1')
+        help_action.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Keyboard shortcuts','Ctrl+1 / 2 / 3: Zoom X / Y / XY\nCtrl+4 or Escape: Pan\nCtrl+= / Ctrl+-: Zoom in / out\nCtrl+0 or R on plot: Reset zoom / fit\nAlt+Left / Right: Previous / next view\nCtrl+L: Lock cursors to channel\nLeft / Right on plot: Step cursor A\nShift+Left / Right: Step cursor B\nCtrl+P: Export Report'))
         from app_version import VERSION
         about=menu.addAction(f'About version {VERSION}')
         about.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Appliance Signal Studio',f'Version {VERSION}\nAnalysis and Comparison workspaces\nAdvanced capabilities are under Tools.'))
@@ -290,11 +303,29 @@ class StudioTools(QtCore.QObject):
         for record in pane.annotations:
             if record.get('text')=='Inlet / drain overlap':pane._annotation(record)
 
+    def zoom(self,factor):
+        self.pane.remember_view();self.pane.getViewBox().scaleBy((factor,factor));self.pane.remember_view()
+
     def navigation(self,mode):
         import pyqtgraph as pg
         for pane in self.window.active_workspace.visible_panes():
             view=pane.getViewBox();view.setMouseMode(pg.ViewBox.PanMode if mode=='pan' else pg.ViewBox.RectMode)
             view.setMouseEnabled(x=mode!='y',y=mode!='x')
+
+    def cursor_lock_dialog(self):
+        pane=self.pane;dialog,layout=self.dialog('Lock cursors to channel');form=QtWidgets.QFormLayout();layout.addLayout(form);fields=[]
+        layout.addWidget(QtWidgets.QLabel('Locked cursors stay on real samples while panning. Drag to scrub; ←/→ steps A, Shift+←/→ steps B. Other channels update at the same time.'))
+        for index,name in enumerate(('A','B')):
+            field=QtWidgets.QComboBox();field.addItem('Unlocked',None)
+            for id in pane.ids:field.addItem(self.window.store.channels[id].name,id)
+            lock=pane.cursor_locks[index]
+            if lock:field.setCurrentIndex(max(0,field.findData(lock['channel'])))
+            form.addRow('Cursor '+name,field);fields.append(field)
+        apply=QtWidgets.QPushButton('Apply');layout.addWidget(apply)
+        def save():
+            for index,field in enumerate(fields):pane.lock_cursor(index,field.currentData())
+            dialog.accept()
+        apply.clicked.connect(lambda:self.window.guard(save));dialog.show();return dialog
 
     def cursor_positions(self):
         dialog,layout=self.dialog('Move cursors');form=QtWidgets.QFormLayout();layout.addLayout(form);fields=[]

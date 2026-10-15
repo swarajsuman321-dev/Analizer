@@ -259,16 +259,31 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         workspace=self.active_workspace
         self.background(load,lambda other:self.merge_store(other,workspace))
 
-    def merge_store(self,other,workspace=None):
+    def merge_store(self,other,workspace=None,deduplicate_alignment=False):
         from app_time_units import normalize_minutes
         normalize_minutes(other)
-        with self.store.batch():
-            self.store.datasets.update(other.datasets)
-            for c in other.channels.values():self.store.add(c)
-        ids=list(other.channels)
+        if deduplicate_alignment:
+            from app_alignment_merge import merge_alignment
+            before=[(pane,pane.state()) for workspace_item in self.workspaces for pane in workspace_item.panes]
+            ids,updated,remap=merge_alignment(self.store,other)
+            for pane,state in before:
+                if any(id in remap for id in state['ids']):
+                    state['ids']=list(dict.fromkeys(remap.get(id,id) for id in state['ids']))
+                    state['bindings']={remap.get(id,id):unit for id,unit in state['bindings'].items()}
+                    for lock in state.get('cursor_locks',[]):
+                        if lock:lock['channel']=remap.get(lock['channel'],lock['channel'])
+                    pane.bind(state['ids'],state['bindings'],fit=False);pane.restore_ranges(state)
+            self.statusBar().showMessage(f'Alignment refreshed: {len(ids)} new channels, {updated} updated; existing samples are not duplicated.')
+        else:
+            with self.store.batch():
+                self.store.datasets.update(other.datasets)
+                for c in other.channels.values():self.store.add(c)
+            ids=list(other.channels)
         if ids:
             target=workspace or self.active_workspace;was_empty=not any(p.ids for p in target.panes)
+            previous=[(p,p.state()) for p in target.visible_panes() if p.ids] if deduplicate_alignment else []
             target.assign(ids)
+            for pane,state in previous:pane.restore_ranges(state)
             if was_empty and not self.studio.pending_preset:target.arrange_readable()
         self.sync_visibility()
         if hasattr(self,'studio') and self.studio.pending_preset:self.studio.apply_preset(self.studio.pending_preset)
@@ -439,7 +454,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         def complete(result):
             other,frame=result;self.aligned_frame=frame
             self.engineering_notes.setPlainText(json.dumps(frame.attrs.get('sync_report',{}),default=str,indent=2))
-            self.merge_store(other,self.dashboard);self.tabs.setCurrentIndex(0);self.studio.apply_display()
+            self.merge_store(other,self.dashboard,deduplicate_alignment=True);self.tabs.setCurrentIndex(0);self.studio.apply_display()
         self.background(calculate,complete)
 
     def compare(self):

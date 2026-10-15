@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from app_channel_store import ChannelStore,Channel,Dataset
+from app_unit_detection import detect_unit
 from app_data import (DataEngine,smart_read_file,extract_datetime_series,get_column_unit,
                       classify_signal_kind,normalize_control_series)
 
@@ -60,7 +61,7 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
         state=kind in ('control','door_lock','state','code','stage')
         source_column=str(column)[:-4] if str(column).endswith('_ops') and str(column)[:-4] in machine_columns else str(column)
         source_path=machine if str(column).endswith('_ops') or column not in power_columns else power
-        store.add(Channel(str(column),x,values.to_numpy(float),source=source_path or '',unit=get_column_unit(frame,column) or ('state' if state else ''),
+        store.add(Channel(str(column),x,values.to_numpy(float),source=source_path or '',unit=detect_unit(frame,column)[0] or ('state' if state else ''),
                           kind='discrete' if state else 'analog',coordinate_unit='min',dataset_id=aligned.id,group='Aligned',
                           attributes={'source_column':source_column,'data_column':str(column),'signal_kind':kind}))
     rows=engineering_metrics(frame)
@@ -72,6 +73,10 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
     add_table(store,'Engineering KPIs',pd.DataFrame(rows,columns=['Parameter','Value']),sheet='Summary_KPIs')
     add_table(store,'Data quality',quality_frame(frame),sheet='Data_Quality')
     add_table(store,'Synchronization details',metadata_frame({'Sources':[power,machine],'Offset seconds':offset_seconds,'Warnings':engine.warnings,'Assumed time':engine.used_synthetic_time,'Synchronization':frame.attrs.get('sync_report',{})}),sheet='Report_Info')
+    import os
+    alignment_key='|'.join(os.path.normcase(str(Path(path).resolve())) if path else '' for path in (power,machine))
+    for channel in store.channels.values():channel.attributes['alignment_key']=alignment_key
+    for dataset in store.datasets.values():dataset.frame.attrs['alignment_key']=alignment_key
     return store,frame
 
 

@@ -69,3 +69,11 @@ Time display policy: all recognized time clocks and time-valued channels use min
 Old session view ranges, cursors, masks and time annotations are converted together.
 Interval slope and integral presentation use per-minute / value·minute units. Source
 tables remain unchanged, and frequency-domain calculations retain Hz.
+
+## 2.1.1 follow-up
+
+Unit detection now includes dedicated unit rows and recognized suffixes in normal
+imports. The navigation toolbar and F1 reference expose zoom, pan and reset
+shortcuts. Cursor A/B can independently lock to a channel sample and retain that
+anchor during panning, shifts and session restore. Repeated recording alignment
+updates existing source/column identities rather than adding duplicate traces.

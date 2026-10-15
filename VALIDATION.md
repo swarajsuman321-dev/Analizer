@@ -1,3 +1,18 @@
+# Studio 2.1.1 validation
+
+The update adds conservative unit detection, visible zoom/reset controls and
+shortcuts, persistent per-channel cursor locks, and idempotent alignment refresh.
+New regressions cover unit rows/suffixes, chosen sample clocks, linked panning,
+channel shifts, anchor deletion/hiding, persistence, keyboard stepping and repeat
+alignment with unchanged data, appended samples, new columns and old sessions.
+The full Linux suite passes: **139 tests, no skips**
+(`/tmp/analizer-v211-complete-tests.log`). The additional existing-duplicate UI
+refresh check passes (`/tmp/analizer-v211-repeat-ui.log`). Dependency and whitespace
+checks pass. The Windows pipeline runs the complete suite and self-tests both
+portable and single-file executables before uploading **v2.1.1** downloads.
+
+The following section preserves the earlier 2.1.0 validation record.
+
 # Studio 2.1.0 validation — 15 October 2026
 
 The earlier-feature audit is recorded in [FEATURE_PARITY.md](FEATURE_PARITY.md).

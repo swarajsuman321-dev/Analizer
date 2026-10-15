@@ -31,6 +31,8 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
         for name, frame in read_tables(path):
             ds = Dataset(name, frame.copy(deep=True), str(path))
             store.datasets[ds.id] = ds
+            from app_unit_detection import detect_unit,projection_frame
+            frame = projection_frame(frame)
             candidates = [c for c in frame.columns if re.search(r'time|timestamp|elapsed|date', str(c), re.I)]
             clock = None if force_sample else time_column or (candidates[0] if candidates else None)
             unit = coordinate_unit or ('s' if clock else 'sample')
@@ -40,6 +42,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                 if numeric.notna().sum() >= max(1, len(frame)*.8):
                     x = numeric.to_numpy(dtype=float)
                     if not coordinate_unit:
+                        declared=frame.attrs.get('column_units',{}).get(clock)
                         label=str(clock).lower()
                         if re.search(r'min',label):unit='min'
                         elif re.search(r'millisecond|(?:^|[^a-z])ms(?:$|[^a-z])',label):unit='ms'
@@ -52,6 +55,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                                 from app_time_units import MINUTE_FACTORS
                                 first=str(frame[clock].iloc[0]).strip().lower()
                                 if first in MINUTE_FACTORS:unit=first
+                        if declared:unit=declared
                 else:
                     parsed = pd.to_datetime(frame[clock], errors='coerce')
                     valid = parsed.dropna()
@@ -72,11 +76,11 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                 y = pd.to_numeric(frame[col], errors='coerce').to_numpy(dtype=float)
                 if not np.isfinite(y).any():
                     continue
-                match = re.search(r'[\[(]([^\])]+)[\])]', str(col))
+                detected_unit,unit_source=detect_unit(frame,col)
                 state = bool(re.search(r'valve|state|code|stage|switch|bool', str(col), re.I))
-                channel = Channel(str(col), x[order], y[order], unit=match.group(1) if match else '',
+                channel = Channel(str(col), x[order], y[order], unit=detected_unit,
                                   kind='discrete' if state else 'analog', coordinate_unit=unit,
                                   coordinate_kind=kind, dataset_id=ds.id, source=str(path),
-                                  attributes={'original_coordinate_unit':source_unit,'source_column':str(col), 'source_rows':len(frame), 'projection_rows':len(order)})
+                                  attributes={'unit_detection':unit_source,'original_coordinate_unit':source_unit,'source_column':str(col), 'source_rows':len(frame), 'projection_rows':len(order)})
                 ids.append(store.add(channel).id)
     return ids

@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.0
+# Appliance Signal Studio 2.1.1
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -80,3 +80,27 @@ Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
 `QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.0**. The Windows build artifact
 is **ApplianceSignalStudio-Windows-v2.1.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
+
+## Navigation and locked cursors (2.1.1)
+
+The navigation toolbar exposes Zoom X/Y/XY, Pan, Reset zoom and Lock cursors.
+**F1** lists shortcuts: Ctrl+1/2/3 selects X/Y/XY rectangle zoom, Ctrl+4 pans,
+Ctrl+= / Ctrl+- zooms in/out, Ctrl+0 resets the active plot to its full data range,
+and Alt+Left/Right navigates view history. R and Escape work with plot focus.
+
+**Ctrl+L** opens cursor locking. Choose a channel separately for A and B. Each
+locked cursor snaps to that channel's real sample clock, keeps its sample index
+when panning or shifting the channel, and updates all compatible selected plots
+and readouts. Left/Right steps A; Shift+Left/Right steps B. Stepping beyond the
+visible range pans the view to the sample. Hiding the anchor channel releases its
+lock. Locks persist with the workspace; they can be released in the same dialog.
+
+Normal imports detect bracketed units, bracketed/plain dedicated unit rows,
+recognized unit suffixes and known simulator channel names. Explicit units take
+priority; unknown units stay blank and can be set under channel appearance.
+Original source tables are preserved. Time projections continue to use minutes.
+
+Repeated **Align recordings** refreshes channels by source recording and column.
+Unchanged results keep their IDs and do not create duplicates. Appended samples
+update existing traces; newly available columns add channels. Channel names,
+styles, visibility and cursor anchors remain attached to their existing IDs.

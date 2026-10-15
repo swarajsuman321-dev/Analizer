@@ -37,7 +37,7 @@ class PlotPane(pg.PlotWidget):
         self.dark=True;self.display_budget=12000
         self._normalizing=False;self._synchronizing=False;self.normalized=False;self.normalization_bindings={};self._normalization={}
         self.show_legends=False;self.show_grid=True;self.history=[];self.history_index=-1;self._history_restoring=False
-        self.coordinate=None;self.snap=True;self.cursor_mode='dual'
+        self.coordinate=None;self.snap=True;self.cursor_mode='dual';self.cursor_locks=[None,None]
         self.annotations=[];self.annotation_items=[]
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.showGrid(x=True,y=True,alpha=.2)
@@ -71,7 +71,18 @@ class PlotPane(pg.PlotWidget):
                     reference=channels[0].values()[0]
                     begin,end=np.searchsorted(reference,[low,high],side='left');end=np.searchsorted(reference,high,side='right')
                     candidates=reference[begin:end]
-                    for line in self.cursor_lines:
+                    sender=self.sender()
+                    for index,line in enumerate(self.cursor_lines):
+                        lock=self.cursor_locks[index]
+                        if lock and lock['channel'] in self.store.channels:
+                            x=self.store.channels[lock['channel']].values()[0]
+                            if len(x):
+                                if sender is line:
+                                    i=int(np.searchsorted(x,line.value()));i=min(len(x)-1,i);j=max(0,i-1)
+                                    lock['index']=i if abs(x[i]-line.value())<abs(x[j]-line.value()) else j
+                                lock['index']=int(np.clip(lock['index'],0,len(x)-1))
+                                line.setValue(float(x[lock['index']]))
+                                continue
                         value=float(np.clip(line.value(),low,high))
                         if self.snap and len(candidates):
                             i=min(len(candidates)-1,int(np.searchsorted(candidates,value)));j=max(0,i-1)
@@ -79,6 +90,33 @@ class PlotPane(pg.PlotWidget):
                         line.setValue(value)
             finally:self._normalizing=False
         self.cursorsChanged.emit()
+
+    def lock_cursor(self,index,channel_id):
+        if channel_id is None:
+            self.cursor_locks[index]=None
+        else:
+            if channel_id not in self.ids:raise ValueError('Choose a visible channel in this plot')
+            x=self.store.channels[channel_id].values()[0]
+            if not len(x):raise ValueError('This channel has no samples')
+            point=self.cursor_lines[index].value();i=min(len(x)-1,int(np.searchsorted(x,point)));j=max(0,i-1)
+            self.cursor_locks[index]={'channel':channel_id,'index':i if abs(x[i]-point)<abs(x[j]-point) else j}
+        lock=self.cursor_locks[index];name=('A','B')[index]
+        self.cursor_lines[index].label.setFormat(name+(' · '+self.store.channels[channel_id].name if lock else ''))
+        self._cursor_changed()
+
+    def step_cursor(self,index,direction):
+        lock=self.cursor_locks[index]
+        channel_id=lock['channel'] if lock else next((id for id in self.ids if len(self.store.channels[id].x)),None)
+        if channel_id not in self.store.channels:return
+        x=self.store.channels[channel_id].values()[0]
+        if not len(x):return
+        current=lock['index'] if lock else min(len(x)-1,int(np.searchsorted(x,self.cursor_lines[index].value())))
+        target=int(np.clip(current+direction,0,len(x)-1))
+        if lock:lock['index']=target
+        low,high=self.getViewBox().viewRange()[0]
+        if x[target]<low or x[target]>high:
+            width=high-low;self.setXRange(float(x[target]-width/2),float(x[target]+width/2),padding=0)
+        self.cursor_lines[index].setValue(float(x[target]));self._cursor_changed()
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
@@ -88,11 +126,6 @@ class PlotPane(pg.PlotWidget):
         if event.button()!=QtCore.Qt.MouseButton.LeftButton or not self.sceneBoundingRect().contains(event.scenePos()):
             return
         point=self.getViewBox().mapSceneToView(event.scenePos()).x()
-        if self.snap and self.ids:
-            c=self.store.channels[self.ids[0]];x=c.x+c.shift
-            if len(x):
-                i=min(len(x)-1,np.searchsorted(x,point));j=max(0,i-1)
-                point=float(x[i] if abs(x[i]-point)<abs(x[j]-point) else x[j])
         index=1 if event.modifiers()&QtCore.Qt.KeyboardModifier.ShiftModifier and self.cursor_mode=='dual' else 0
         self.cursor_lines[index].setValue(point)
 
@@ -102,6 +135,8 @@ class PlotPane(pg.PlotWidget):
             line.setVisible(bool(self.ids) and mode!='off' and (i==0 or mode=='dual'))
 
     def keyPressEvent(self,event):
+        if event.key() in (QtCore.Qt.Key.Key_Left,QtCore.Qt.Key.Key_Right):
+            self.step_cursor(1 if event.modifiers()&QtCore.Qt.KeyboardModifier.ShiftModifier else 0,1 if event.key()==QtCore.Qt.Key.Key_Right else -1);return
         if event.key()==QtCore.Qt.Key.Key_Escape:
             self.getViewBox().setMouseMode(pg.ViewBox.PanMode);self.getViewBox().setMouseEnabled(x=True,y=True);return
         if event.key()==QtCore.Qt.Key.Key_R:
@@ -126,6 +161,8 @@ class PlotPane(pg.PlotWidget):
             self.getPlotItem().layout.removeItem(axis);self.scene().removeItem(axis);self.scene().removeItem(vb)
         self.axes={}
         self.ids=[id for id in ids if id in self.store.channels]
+        for index,lock in enumerate(self.cursor_locks):
+            if lock and lock['channel'] not in self.store.channels:self.cursor_locks[index]=None;self.cursor_lines[index].label.setFormat(('A','B')[index])
         self.cache={k:v for k,v in self.cache.items() if k[0] in self.ids}
         self.summaries={k:v for k,v in self.summaries.items() if k in self.ids}
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in self.ids}
@@ -300,14 +337,22 @@ class PlotPane(pg.PlotWidget):
         return {'ids':list(self.ids),'bindings':dict(self.bindings),'range':self.getViewBox().viewRange(),
                 'axes':{unit:vb.viewRange()[1] for unit,(axis,vb) in self.axes.items()},
                 'cursors':[l.value() for l in self.cursor_lines],'cursor_mode':self.cursor_mode,
-                'snap':self.snap,'annotations':list(self.annotations),'normalized':self.normalized,'normalization_bindings':self.normalization_bindings,'show_grid':self.show_grid,'show_legends':self.show_legends}
+                'cursor_locks':[dict(lock) if lock else None for lock in self.cursor_locks],'snap':self.snap,'annotations':list(self.annotations),'normalized':self.normalized,'normalization_bindings':self.normalization_bindings,'show_grid':self.show_grid,'show_legends':self.show_legends}
 
     def restore_ranges(self,state):
+        if 'cursor_locks' in state:
+            self.cursor_locks=[dict(lock) if lock and lock.get('channel') in self.store.channels else None for lock in state['cursor_locks']]
         if 'range' in state:
             self.setXRange(*state['range'][0],padding=0);self.setYRange(*state['range'][1],padding=0)
         for unit,bounds in state.get('axes',{}).items():
             if unit in self.axes:self.axes[unit][1].setYRange(*bounds,padding=0)
-        for line,pos in zip(self.cursor_lines,state.get('cursors',[])):line.setValue(pos)
+        for index,(line,pos) in enumerate(zip(self.cursor_lines,state.get('cursors',[]))):
+            lock=self.cursor_locks[index]
+            if lock and lock['channel'] in self.store.channels:
+                x=self.store.channels[lock['channel']].values()[0]
+                if len(x):pos=float(x[int(np.clip(lock['index'],0,len(x)-1))])
+            line.setValue(pos)
+            line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name if lock else ''))
 
     def restore(self,state):
         self.snap=state.get('snap',True);self.normalized=state.get('normalized',False);self.normalization_bindings=state.get('normalization_bindings',{})
@@ -374,6 +419,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         try:
             for target in self.visible_panes():
                 if target is not pane and target.coordinate==pane.coordinate:
+                    target.cursor_locks=[dict(lock) if lock and lock['channel'] in self.store.channels else None for lock in pane.cursor_locks]
+                    for index,lock in enumerate(target.cursor_locks):
+                        target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name if lock else ''))
                     target._synchronizing=True
                     try:
                         for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())
@@ -424,6 +472,9 @@ class PlotWorkspace(QtWidgets.QWidget):
             for pane,state in saved:pane.restore_ranges(state)
             self.measurementsChanged.emit()
         else:
+            for pane in self.panes:
+                for index,lock in enumerate(pane.cursor_locks):
+                    if lock and lock['channel'] in ids:pane.cursor_locks[index]=None;pane.cursor_lines[index].label.setFormat(('A','B')[index])
             for pane in self.panes:pane.bind([id for id in pane.ids if id not in ids],pane.bindings,fit=False)
             self.link();self.measurementsChanged.emit()
 
