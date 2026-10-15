@@ -109,7 +109,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
     score_height=max(1.2,.27*(len(scorecard)+2)) if scorecard is not None and len(scorecard) else 0
     fig=Figure(figsize=(14,max(5,rows*3)+table_height+score_height),layout='constrained');FigureCanvasAgg(fig)
     grid=fig.add_gridspec(rows+1+bool(score_height),cols,height_ratios=[3]*rows+[table_height]+([score_height] if score_height else []))
-    fig.suptitle(title);fig.set_facecolor('white')
+    fig.suptitle(title+('\nMin / Max / Average: whole recording · A / B and Δ: cursor interval' if workspace.get('statistics_scope')=='Whole recording' else ''));fig.set_facecolor('white')
     for index,view in enumerate(workspace['panes'][:rows*cols]):
         axis=fig.add_subplot(grid[index//cols,index%cols]);axes={};ranges=view.get('range')
         units=list(dict.fromkeys(view.get('bindings',{}).get(id,store.channels[id].unit) for id in view['ids']))
@@ -133,6 +133,13 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
                 finite=y[np.isfinite(y)];low,high=(float(finite.min()),float(finite.max())) if len(finite) else (0.,1.)
                 dy=np.where(np.isfinite(dy),(dy-low)/(high-low) if high>low else .5,np.nan)+view['ids'].index(id)
             axes[key].plot(dx,dy,label=c.name,color=color,linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
+            for cursor_index,lock in enumerate(view.get('cursor_locks',[])):
+                if not lock or lock.get('channel')!=id or not len(x) or view.get('cursor_mode')=='off':continue
+                if cursor_index==1 and view.get('cursor_mode','dual')!='dual':continue
+                sample=int(np.clip(lock['index'],0,len(x)-1));value=y[sample]
+                if not np.isfinite(value):continue
+                if view.get('normalized'):value=((value-low)/(high-low) if high>low else .5)+view['ids'].index(id)
+                axes[key].scatter([x[sample]],[value],s=45,c=[CURSOR_COLORS[cursor_index]],edgecolors='#182033',zorder=6)
             axis.set_xlabel(f'{c.coordinate_kind} ({c.coordinate_unit})');axis.set_xlim(left,right)
         if not view['ids']:axis.text(.5,.5,'No channels selected',ha='center',va='center',transform=axis.transAxes)
         for name,position,color in zip(('A','B'),view.get('cursors',[]),CURSOR_COLORS):
@@ -141,7 +148,9 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
         for annotation in view.get('annotations',[]):
             if annotation['kind']=='ROI':axis.axvspan(annotation['start'],annotation['end'],alpha=.15)
             elif annotation['kind']=='Threshold':axes.get(annotation.get('axis'),axis).axhline(annotation['start'],color='purple',linestyle=':')
-            else:axis.axvline(annotation['start'],color='purple',linestyle=':')
+            else:
+                axis.axvline(annotation['start'],color='purple',linestyle=':')
+                if annotation.get('text'):axis.text(annotation['start'],.88,annotation['text'],transform=axis.get_xaxis_transform(),color='purple',fontsize=8,va='top',bbox={'facecolor':'white','edgecolor':'none','alpha':.85})
         handles=[];labels=[]
         for current in axes.values():
             h,l=current.get_legend_handles_labels();handles.extend(h);labels.extend(l)

@@ -1,4 +1,4 @@
-# Standalone Windows build — 2.1.1
+# Standalone Windows build — 2.1.2
 
 Use 64-bit CPython 3.12 on Windows. Extract the repository and double-click
 `build_windows.bat`; dependencies are installed in `.venv-exe` from the pinned
@@ -32,6 +32,6 @@ startup diagnosis. Unhandled startup details go to
 `%LOCALAPPDATA%/ApplianceSignalStudio/startup-error.log`.
 
 Pushes to `main` trigger [Build Windows application](https://github.com/swarajsuman321-dev/Analizer/actions/workflows/windows-build.yml).
-A successful run uploads **ApplianceSignalStudio-Windows-v2.1.1** (EXE and portable ZIP)
+A successful run uploads **ApplianceSignalStudio-Windows-v2.1.2** (EXE and portable ZIP)
 and separate build diagnostics. Native Windows binaries must be built and tested
 on Windows; a Linux bundle or source test does not certify a Windows executable.

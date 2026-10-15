@@ -86,6 +86,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         scene=pane.getViewBox().mapViewToScene(QtCore.QPointF(before,10));start=pane.mapFromScene(scene)
         end=start+QtCore.QPoint(100,0)
         QtTest.QTest.mouseMove(pane.viewport(),start)
+        QtTest.QTest.qWait(40)  # Let the scene process hover before the drag starts.
         QtTest.QTest.mousePress(pane.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=start)
         QtTest.QTest.mouseMove(pane.viewport(),start+QtCore.QPoint(30,0),delay=30)
         QtTest.QTest.mouseMove(pane.viewport(),end,delay=30)

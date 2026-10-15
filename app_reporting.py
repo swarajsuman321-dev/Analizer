@@ -31,6 +31,11 @@ def interval_tables(store,workspace):
             va=cursor_sample(c,a,view.get('snap',True));vb=cursor_sample(c,b,view.get('snap',True))
             metadata={'pane':pane_number,'channel_id':c.id,'channel':c.name,'unit':c.unit,'coordinate_unit':c.coordinate_unit,
                       'cursor_A_X':a,'cursor_B_X':b,'A':va,'B':vb,**presentation_statistics(c,IntervalSummary(c).query(a,b))}
+            if workspace.get('statistics_scope')=='Whole recording' and len(x):
+                whole=IntervalSummary(c).query(float(x[0]),float(x[-1]))
+                metadata.update({key:whole[key] for key in ('Min','Max','Mean')});metadata['min_max_mean_scope']='Whole recording'
+            for index,lock in enumerate(view.get('cursor_locks',[])):
+                if lock and lock.get('channel') in store.channels:metadata[f'cursor_{("A","B")[index]}_locked_channel']=store.channels[lock['channel']].name
             metadata['ΔY']=vb-va
             metadata['match_percent']=c.attributes.get('match_percent',np.nan) if match_color(c.attributes.get('match_percent')) else np.nan
             summary.append(metadata)

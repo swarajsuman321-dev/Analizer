@@ -122,17 +122,19 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def _build_readouts(self):
         widget=QtWidgets.QWidget();layout=QtWidgets.QVBoxLayout(widget)
-        self.cursor_caption=QtWidgets.QLabel();layout.addWidget(self.cursor_caption)
+        self.cursor_caption=QtWidgets.QLabel();top=QtWidgets.QHBoxLayout();layout.addLayout(top);top.addWidget(self.cursor_caption,1)
+        self.stats_scope=QtWidgets.QComboBox();self.stats_scope.addItems(['Cursor interval','Whole recording']);self.stats_scope.setToolTip('Scope for Min, Max and Average; A, B and Δ value always follow the cursors');top.addWidget(self.stats_scope);self.stats_scope.currentIndexChanged.connect(self.readouts)
         body=QtWidgets.QHBoxLayout();layout.addLayout(body)
-        self.readout=QtWidgets.QTableWidget(0,5);self.readout.setHorizontalHeaderLabels(['Channel','Unit','A','B','Match'])
-        self.readout.horizontalHeader().setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.readout=QtWidgets.QTableWidget(0,9);self.readout.setHorizontalHeaderLabels(['Channel','Unit','A','B','Match','Δ value','Min','Max','Average'])
+        header=self.readout.horizontalHeader();header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch);header.setMinimumSectionSize(65)
+        header.setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Interactive);self.readout.setColumnWidth(0,260)
+        header.setSectionResizeMode(1,QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.readout.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.readout.verticalHeader().hide();self.readout.verticalHeader().setDefaultSectionSize(26)
         self.readout.setMinimumHeight(110)
-        for column in (1,2,3,4):self.readout.setColumnWidth(column,90)
         body.addWidget(self.readout,1)
         self.interval_card=QtWidgets.QLabel('Select a plotted channel to inspect its interval.');self.interval_card.setWordWrap(True)
-        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(64);self.interval_card.setFixedWidth(300);body.addWidget(self.interval_card)
+        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(110);self.interval_card.setFixedWidth(340);body.addWidget(self.interval_card)
         self.readout.itemSelectionChanged.connect(self.update_interval_card)
         self.intervals=QtWidgets.QTableWidget(0,11);self.intervals.setHorizontalHeaderLabels(['Channel','ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage'])
         self.intervals.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -147,9 +149,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         keys=list(measurements);row=self.readout.currentRow()
         if not keys:
             self.interval_card.setText('No channels selected');return
-        channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=measurements[channel_id]
+        channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurements[channel_id])
         def number(key):return f"{stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
-        self.interval_card.setText(f"<b>{html.escape(c.name)}</b> &nbsp; ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; ΔY {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}")
+        anchors=self.locked_cursor_texts(pane)
+        summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; ΔY {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}"
+        self.interval_card.setText(('<br>'.join(anchors)+'<br><br>' if anchors else '')+summary)
 
     def _build_math(self):
         widget=QtWidgets.QWidget();form=QtWidgets.QFormLayout(widget);form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
@@ -413,7 +417,27 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         UNIT_DEFINITIONS[symbol]=(dimension,factor*scale)
 
     def readouts(self):
+        if hasattr(self,'stats_scope'):
+            for workspace in self.workspaces:workspace.statistics_scope=self.stats_scope.currentText()
         if hasattr(self,'readout_timer') and not self.readout_timer.isActive():self.readout_timer.start(16)
+
+    def statistics_for_display(self,pane,channel_id,stats):
+        if self.stats_scope.currentIndex()==0:return stats
+        channel=self.store.channels[channel_id]
+        if not len(channel.x):return stats
+        whole=pane.summaries[channel_id][1].query(float(channel.x[0]+channel.shift),float(channel.x[-1]+channel.shift))
+        return {**stats,**{key:whole[key] for key in ('Min','Max','Mean')}}
+
+    def locked_cursor_texts(self,pane):
+        import html
+        a,b=[line.value() for line in pane.cursor_lines]
+        locked=[]
+        for index,lock in enumerate(pane.cursor_locks):
+            if not lock or lock['channel'] not in self.store.channels:continue
+            channel=self.store.channels[lock['channel']];point=(a,b)[index];value=channel.sample(point)
+            reading=f'{value:.6g} {html.escape(channel.unit)}' if np.isfinite(value) else 'No reading'
+            locked.append(f'<span style="color:{CURSOR_COLORS[index]};background:#182033;padding:4px"><b>{("A","B")[index]} locked · {html.escape(channel.name)} = {reading}</b> @ {point:.6g} {html.escape(channel.coordinate_unit)}</span>')
+        return locked
 
     def _readouts(self):
         if not self.active_workspace.active:return
@@ -421,6 +445,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.sync_visibility()
         a,b=[line.value() for line in pane.cursor_lines]
         self.cursor_caption.setText(f'<span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
+        self.cursor_caption.setWordWrap(True)
         if hasattr(self,'studio'):
             live=self.studio.live_readout(pane,a)
             if live:self.cursor_caption.setText(self.cursor_caption.text()+' &nbsp; '+live)
@@ -429,9 +454,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.readout.setRowCount(len(measurements));self.intervals.setRowCount(len(measurements))
         self.readout.setColumnHidden(4,not any(match_color(self.store.channels[id].attributes.get('match_percent')) for id in measurements))
         def display(value):return f'{value:.6g}' if np.isfinite(value) else 'Unknown'
-        for row,(id,stats) in enumerate(measurements.items()):
+        for row,(id,interval_stats) in enumerate(measurements.items()):
+            stats=self.statistics_for_display(pane,id,interval_stats)
             c=self.store.channels[id]
-            for col,text in enumerate([c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—']):
+            for col,text in enumerate([c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—',display(stats['ΔY']),display(stats['Min']),display(stats['Max']),display(stats['Mean'])]):
                 item=QtWidgets.QTableWidgetItem(text);item.setToolTip(f'{c.name}: {text}')
                 if col in (2,3):
                     item.setForeground(QtGui.QColor(CURSOR_COLORS[col-2]));item.setBackground(QtGui.QColor('#182033'))
@@ -443,7 +469,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             measure_unit=c.coordinate_unit
             units=[c.coordinate_unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit+'/'+measure_unit,c.unit+'·'+measure_unit,'fraction']
             self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(c.name))
-            for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(stats[label])+' '+unit))
+            for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(interval_stats[label])+' '+unit))
 
         self.update_interval_card()
 
@@ -473,7 +499,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def ui_state(self):
         return {'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
-                'tab':self.tabs.currentIndex(),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
+                'stats_scope':self.stats_scope.currentText(),'tab':self.tabs.currentIndex(),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
@@ -497,6 +523,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.store.observe(self.store_changed);self.store_changed(set())
         for encoded,method in [(ui.get('geometry'),self.restoreGeometry),(ui.get('docks'),self.restoreState)]:
             if encoded:method(QtCore.QByteArray.fromBase64(encoded.encode()))
+        self.stats_scope.setCurrentText(ui.get('stats_scope','Cursor interval'))
         self.tabs.setCurrentIndex(min(ui.get('tab',0),len(self.workspaces)-1));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))
         selected=set(ui.get('selection',[]))
         iterator=QtWidgets.QTreeWidgetItemIterator(self.portal.tree)

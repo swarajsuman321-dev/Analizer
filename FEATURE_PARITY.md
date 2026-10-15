@@ -77,3 +77,12 @@ imports. The navigation toolbar and F1 reference expose zoom, pan and reset
 shortcuts. Cursor A/B can independently lock to a channel sample and retain that
 anchor during panning, shifts and session restore. Repeated recording alignment
 updates existing source/column identities rather than adding duplicate traces.
+
+## 2.1.2 workflow improvements
+
+Every unit axis participates in vertical navigation without selecting a primary
+channel. Locked readings are pinned beside the main readout. That table includes
+A/B, differences and Min/Max/Average, with cursor-interval or whole-recording
+statistics. Quick event notes attach to cursor A, survive session restore and
+appear in reports. These adopt practical measurement-workbench ideas without
+reproducing the reference interface.

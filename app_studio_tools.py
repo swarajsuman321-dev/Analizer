@@ -59,10 +59,11 @@ class StudioTools(QtCore.QObject):
 
         w.addToolBarBreak()
         toolbar=w.addToolBar('Plot navigation');toolbar.setObjectName('plotNavigation');toolbar.setMovable(False)
-        for title,fn in [('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Pan',lambda:self.navigation('pan')),('Reset zoom',lambda:self.pane.fit()),('Lock cursors…',self.cursor_lock_dialog)]:
+        for title,fn in [('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Pan',lambda:self.navigation('pan')),('Reset zoom',lambda:self.pane.fit()),('Lock cursors…',self.cursor_lock_dialog),('Add note',self.add_plot_note)]:
             action=toolbar.addAction(title)
-            hint={'Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Pan':'Ctrl+4 or Escape','Reset zoom':'Ctrl+0 or R','Lock cursors…':'Ctrl+L'}[title]
+            hint={'Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Pan':'Ctrl+4 or Escape','Reset zoom':'Ctrl+0 or R','Lock cursors…':'Ctrl+L','Add note':'Ctrl+Shift+N'}[title]
             action.setToolTip(title+' ('+hint+')')
+            if title=='Add note':action.setShortcut('Ctrl+Shift+N')
             action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
         help_action=menu.addAction('Keyboard shortcuts…');help_action.setShortcut('F1')
         help_action.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Keyboard shortcuts','Ctrl+1 / 2 / 3: Zoom X / Y / XY\nCtrl+4 or Escape: Pan\nCtrl+= / Ctrl+-: Zoom in / out\nCtrl+0 or R on plot: Reset zoom / fit\nAlt+Left / Right: Previous / next view\nCtrl+L: Lock cursors to channel\nLeft / Right on plot: Step cursor A\nShift+Left / Right: Step cursor B\nCtrl+P: Export Report'))
@@ -303,8 +304,15 @@ class StudioTools(QtCore.QObject):
         for record in pane.annotations:
             if record.get('text')=='Inlet / drain overlap':pane._annotation(record)
 
+    def add_plot_note(self):
+        self.window.mutate()
+        if not self.pane.ids:raise ValueError('Select a channel before adding a note')
+        point=self.pane.cursor_lines[0].value()
+        text,ok=QtWidgets.QInputDialog.getText(self.window,'Add plot note',f'Note at cursor A ({point:.6g} {self.pane.coordinate[1]}):')
+        if ok and text.strip():self.pane.annotate('Marker',point,text=text.strip())
+
     def zoom(self,factor):
-        self.pane.remember_view();self.pane.getViewBox().scaleBy((factor,factor));self.pane.remember_view()
+        self.pane.zoom_all(factor)
 
     def navigation(self,mode):
         import pyqtgraph as pg

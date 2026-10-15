@@ -11,6 +11,24 @@ COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
 LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
 
 
+class NavigationViewBox(pg.ViewBox):
+    """Apply a plot gesture equally in screen space to every physical Y axis."""
+    owner=None
+
+    def _gesture(self,method,event,axis):
+        if self.owner is None:return method(event,axis=axis)
+        primary=self.owner.getViewBox()
+        if self is not primary:
+            return getattr(primary,'wheelEvent' if method.__name__=='wheelEvent' else 'mouseDragEvent')(event,axis=axis)
+        before={view:list(view.viewRange()[1]) for view in self.owner.y_views()}
+        method(event,axis=axis)
+        self.owner.sync_y_gesture(self,before)
+        self.owner.remember_view()
+
+    def mouseDragEvent(self,event,axis=None):self._gesture(super().mouseDragEvent,event,axis)
+    def wheelEvent(self,event,axis=None):self._gesture(super().wheelEvent,event,axis)
+
+
 class PreparedCurve(pg.GraphicsObject):
     """Paint a prepared path with stable source bounds, avoiding scene churn."""
     def __init__(self,x,y,color):
@@ -32,7 +50,7 @@ class PlotPane(pg.PlotWidget):
     cursorsChanged=QtCore.Signal()
 
     def __init__(self, store):
-        super().__init__()
+        view=NavigationViewBox();super().__init__(viewBox=view);view.owner=self
         self.store=store;self.ids=[];self.bindings={};self.axes={};self.curves={};self.cache={};self.summaries={}
         self.dark=True;self.display_budget=12000
         self._normalizing=False;self._synchronizing=False;self.normalized=False;self.normalization_bindings={};self._normalization={}
@@ -53,8 +71,10 @@ class PlotPane(pg.PlotWidget):
         for line in self.cursor_lines:
             line.addMarker('v',position=.98,size=9)
             self.addItem(line,ignoreBounds=True);line.sigPositionChanged.connect(self._cursor_changed)
+        self.cursor_markers=[pg.ScatterPlotItem(size=11,brush=color,pen=pg.mkPen('#182033',width=1.5)) for color in CURSOR_COLORS]
+        self.marker_views=[None,None]
+        for marker in self.cursor_markers:marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);marker.setZValue(1000);marker.hide()
         self.scene().sigMouseClicked.connect(self._click)
-        self.getViewBox().sigRangeChangedManually.connect(lambda *_:self.remember_view())
         self.legend=self.addLegend(offset=(12,12));self.legend.hide()
 
     def _cursor_changed(self):
@@ -89,7 +109,25 @@ class PlotPane(pg.PlotWidget):
                             value=float(candidates[i] if abs(candidates[i]-value)<abs(candidates[j]-value) else candidates[j])
                         line.setValue(value)
             finally:self._normalizing=False
+        self.update_cursor_markers()
         self.cursorsChanged.emit()
+
+    def update_cursor_markers(self):
+        if not hasattr(self,'cursor_markers'):return
+        for index,marker in enumerate(self.cursor_markers):
+            lock=self.cursor_locks[index]
+            if not lock or lock['channel'] not in self.curves or self.cursor_mode=='off':marker.hide();continue
+            channel=self.store.channels[lock['channel']];x,y=channel.values()
+            if not len(x):marker.hide();continue
+            sample=int(np.clip(lock['index'],0,len(x)-1));value=y[sample]
+            if not np.isfinite(value):marker.hide();continue
+            if lock['channel'] in self._normalization:
+                low,high,offset=self._normalization[lock['channel']];value=((value-low)/(high-low) if high>low else .5)+offset
+            view=self.curves[lock['channel']][0]
+            if self.marker_views[index] is not view:
+                if self.marker_views[index] is not None:self.marker_views[index].removeItem(marker)
+                view.addItem(marker,ignoreBounds=True);self.marker_views[index]=view
+            marker.setData([float(x[sample])],[float(value)]);marker.setVisible(index==0 or self.cursor_mode=='dual')
 
     def lock_cursor(self,index,channel_id):
         if channel_id is None:
@@ -133,6 +171,7 @@ class PlotPane(pg.PlotWidget):
         self.cursor_mode=mode
         for i,line in enumerate(self.cursor_lines):
             line.setVisible(bool(self.ids) and mode!='off' and (i==0 or mode=='dual'))
+        self.update_cursor_markers()
 
     def keyPressEvent(self,event):
         if event.key() in (QtCore.Qt.Key.Key_Left,QtCore.Qt.Key.Key_Right):
@@ -148,6 +187,8 @@ class PlotPane(pg.PlotWidget):
         super().keyPressEvent(event)
 
     def bind(self, ids, assignments=None, fit=True):
+        for index,view in enumerate(self.marker_views):
+            if view is not None:view.removeItem(self.cursor_markers[index]);self.marker_views[index]=None
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
         if len(coordinates)>1:raise ValueError('Different coordinate systems require separate viewports')
         saved=self.state()
@@ -183,7 +224,7 @@ class PlotPane(pg.PlotWidget):
             else:
                 side=self.store.channels[next(id for id in self.ids if self.bindings[id]==unit)].attributes.get('plot_style',{}).get('side','right')
                 axis=pg.AxisItem('left' if side=='left' else 'right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
-                vb=pg.ViewBox();self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
+                vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
                 self.axes[unit]=(axis,vb)
             for j,id in enumerate(id for id in self.ids if self.bindings[id]==unit):
                 c=self.store.channels[id];x,y=c.values()
@@ -230,6 +271,7 @@ class PlotPane(pg.PlotWidget):
             if not self.normalized and low not in (None,'') and high not in (None,''):
                 (self.axes[unit][1] if unit in self.axes else primary).setYRange(float(low),float(high),padding=0)
         for record in self.annotations:self._annotation(record)
+        self.update_cursor_markers()
 
     def _layout_axes(self):
         plot=self.getPlotItem();layout=plot.layout
@@ -249,6 +291,20 @@ class PlotPane(pg.PlotWidget):
         # Keep a usable drawing area even when the user explicitly overlays many axes.
         visible_axes=[record['item'] for record in plot.axes.values() if record['item'].isVisible() and record['item'].orientation in ('left','right')]+left+right
         self.setMinimumWidth(int(380+sum(max(62.,axis.width()) for axis in visible_axes)+30))
+
+    def y_views(self):
+        return [self.getViewBox(),*[vb for axis,vb in self.axes.values()]]
+
+    def sync_y_gesture(self,source,before):
+        low,high=before[source];new_low,new_high=source.viewRange()[1]
+        if high<=low or np.allclose([low,high],[new_low,new_high],rtol=0,atol=1e-12):return
+        for view,(a,b) in before.items():
+            if view is not source:
+                view.setYRange(a+(new_low-low)/(high-low)*(b-a),a+(new_high-low)/(high-low)*(b-a),padding=0)
+
+    def zoom_all(self,factor):
+        self.remember_view();before={view:list(view.viewRange()[1]) for view in self.y_views()}
+        primary=self.getViewBox();primary.scaleBy((factor,factor));self.sync_y_gesture(primary,before);self.remember_view()
 
     def _resize(self):
         for axis,vb in self.axes.values():
@@ -289,8 +345,9 @@ class PlotPane(pg.PlotWidget):
             if values:
                 low,high=min(values),max(values);vb.setYRange(low,high if high>low else low+1,padding=.08)
         if self.normalized:self.setYRange(-.2,len(self.ids)+.2,padding=0)
-        for line,fraction in zip(self.cursor_lines,(.25,.75)):
-            line.setValue(left+(right-left)*fraction)
+        for index,(line,fraction) in enumerate(zip(self.cursor_lines,(.25,.75))):
+            if not self.cursor_locks[index]:line.setValue(left+(right-left)*fraction)
+        self._cursor_changed()
         self.remember_view()
 
     def remember_view(self):
@@ -329,7 +386,7 @@ class PlotPane(pg.PlotWidget):
             item=pg.LinearRegionItem([start,record['end']],movable=False,brush=(80,170,255,35))
         else:
             item=pg.InfiniteLine(start,angle=0 if kind=='Threshold' else 90,movable=False,
-                                 pen=pg.mkPen('#cfa3ff',style=QtCore.Qt.PenStyle.DashLine),label=record['text'])
+                                 pen=pg.mkPen('#cfa3ff',style=QtCore.Qt.PenStyle.DashLine),label=record['text'].replace('{','{{').replace('}','}}'))
         unit=record.get('axis');vb=self.axes[unit][1] if unit in self.axes else self.getViewBox()
         vb.addItem(item,ignoreBounds=True);self.annotation_items.append((vb,item))
 
@@ -484,10 +541,11 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.link()
 
     def state(self):
-        return {'layout':self.layout_name,'panes':[p.state() for p in self.panes],
+        return {'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
                 'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        self.statistics_scope=state.get('statistics_scope','Cursor interval')
         # Restoring into fresh panes avoids stale channel bindings.
         for pane in self.panes:self.grid.removeWidget(pane);pane.deleteLater()
         self.panes=[]

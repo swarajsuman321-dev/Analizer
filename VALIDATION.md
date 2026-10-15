@@ -1,3 +1,14 @@
+# Studio 2.1.2 validation
+
+This update makes multi-axis vertical navigation apply equally to every visible
+unit axis, surfaces locked cursor values directly, and adds interval statistics
+to the main Readout table. Native mouse-pan, wheel zoom, button zoom, view history,
+locked readout and reset regressions are included in the full suite. The suite now contains 143 tests. Targeted native pan/wheel/button checks,
+locked-sample marker checks, and statistics-scope/note persistence/export checks
+pass. Full-suite evidence is written to `/tmp/analizer-v212-verified-tests.log`.
+Windows CI runs the complete suite and self-tests both packaged executables before
+uploading the versioned 2.1.2 download. Historical validation records follow.
+
 # Studio 2.1.1 validation
 
 The update adds conservative unit detection, visible zoom/reset controls and
