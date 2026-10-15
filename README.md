@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.2
+# Appliance Signal Studio 2.1.3
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -81,7 +81,7 @@ Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
 is **ApplianceSignalStudio-Windows-v2.1.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
-## Navigation and locked cursors (2.1.2)
+## Navigation and locked cursors (2.1.3)
 
 The navigation toolbar exposes Zoom X/Y/XY, Pan, Reset zoom and Lock cursors.
 **F1** lists shortcuts: Ctrl+1/2/3 selects X/Y/XY rectangle zoom, Ctrl+4 pans,
@@ -105,7 +105,7 @@ Unchanged results keep their IDs and do not create duplicates. Appended samples
 update existing traces; newly available columns add channels. Channel names,
 styles, visibility and cursor anchors remain attached to their existing IDs.
 
-## Equal navigation for every channel (2.1.2)
+## Equal navigation for every channel (2.1.3)
 
 Vertical pan, wheel zoom, rectangle zoom and zoom buttons move every visible
 unit axis together by the same screen proportion. Each axis keeps its own units
@@ -122,3 +122,9 @@ Choose **Cursor interval** or **Whole recording** for Min/Max/Average. Reports
 identify that scope; A/B values, differences and CSV/Excel sample exports still
 follow the active cursor interval. **Add note** (Ctrl+Shift+N) pins a short event
 note to cursor A; notes persist in sessions and appear in plot reports.
+
+## Zoom mode correction (2.1.3)
+
+Zoom X keeps every Y-axis range fixed; Zoom Y keeps the time range fixed. The
+selection band spans the disabled dimension, and wheel/zoom buttons respect the
+same setting. Zoom XY changes both dimensions.

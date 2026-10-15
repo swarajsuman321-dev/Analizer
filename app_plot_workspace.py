@@ -25,6 +25,25 @@ class NavigationViewBox(pg.ViewBox):
         self.owner.sync_y_gesture(self,before)
         self.owner.remember_view()
 
+    def constrained_rectangle(self,rectangle):
+        rectangle=QtCore.QRectF(rectangle).normalized();bounds=self.viewRect()
+        x_enabled,y_enabled=self.state['mouseEnabled']
+        if not x_enabled:rectangle.setLeft(bounds.left());rectangle.setRight(bounds.right())
+        if not y_enabled:rectangle.setTop(bounds.top());rectangle.setBottom(bounds.bottom())
+        return rectangle
+
+    def updateScaleBox(self,p1,p2):
+        rectangle=self.constrained_rectangle(self.childGroup.mapRectFromParent(QtCore.QRectF(p1,p2)))
+        self.rbScaleBox.setPos(rectangle.topLeft());self.rbScaleBox.setTransform(QtGui.QTransform.fromScale(rectangle.width(),rectangle.height()));self.rbScaleBox.show()
+
+    def showAxRect(self,rectangle,**kwargs):
+        rectangle=self.constrained_rectangle(rectangle)
+        x_enabled,y_enabled=self.state['mouseEnabled'];ranges={}
+        if x_enabled:ranges['xRange']=(rectangle.left(),rectangle.right())
+        if y_enabled:ranges['yRange']=(rectangle.top(),rectangle.bottom())
+        if ranges:self.setRange(**ranges,**kwargs)
+        self.sigRangeChangedManually.emit(self.state['mouseEnabled'])
+
     def mouseDragEvent(self,event,axis=None):self._gesture(super().mouseDragEvent,event,axis)
     def wheelEvent(self,event,axis=None):self._gesture(super().wheelEvent,event,axis)
 
@@ -304,7 +323,7 @@ class PlotPane(pg.PlotWidget):
 
     def zoom_all(self,factor):
         self.remember_view();before={view:list(view.viewRange()[1]) for view in self.y_views()}
-        primary=self.getViewBox();primary.scaleBy((factor,factor));self.sync_y_gesture(primary,before);self.remember_view()
+        primary=self.getViewBox();enabled=primary.state['mouseEnabled'];primary.scaleBy((factor if enabled[0] else 1.,factor if enabled[1] else 1.));self.sync_y_gesture(primary,before);self.remember_view()
 
     def _resize(self):
         for axis,vb in self.axes.values():

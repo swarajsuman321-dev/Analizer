@@ -1,3 +1,11 @@
+# Studio 2.1.3 validation
+
+Six zoom-mode regressions exercise real diagonal rectangle drags in X, Y and XY,
+selection-band geometry, wheel input and zoom buttons across independent Y axes.
+The full suite contains 149 tests. Evidence: `/tmp/analizer-v213-zoom-tests.log`
+and `/tmp/analizer-v213-tests.log`. Native Windows CI tests and builds the final
+commit before publishing the versioned download. Earlier records follow.
+
 # Studio 2.1.2 validation
 
 This update makes multi-axis vertical navigation apply equally to every visible
