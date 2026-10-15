@@ -101,7 +101,7 @@ class PlotPane(pg.PlotWidget):
             point=self.cursor_lines[index].value();i=min(len(x)-1,int(np.searchsorted(x,point)));j=max(0,i-1)
             self.cursor_locks[index]={'channel':channel_id,'index':i if abs(x[i]-point)<abs(x[j]-point) else j}
         lock=self.cursor_locks[index];name=('A','B')[index]
-        self.cursor_lines[index].label.setFormat(name+(' · '+self.store.channels[channel_id].name if lock else ''))
+        self.cursor_lines[index].label.setFormat(name+(' · '+self.store.channels[channel_id].name.replace('{','{{').replace('}','}}') if lock else ''))
         self._cursor_changed()
 
     def step_cursor(self,index,direction):
@@ -352,7 +352,7 @@ class PlotPane(pg.PlotWidget):
                 x=self.store.channels[lock['channel']].values()[0]
                 if len(x):pos=float(x[int(np.clip(lock['index'],0,len(x)-1))])
             line.setValue(pos)
-            line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name if lock else ''))
+            line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
 
     def restore(self,state):
         self.snap=state.get('snap',True);self.normalized=state.get('normalized',False);self.normalization_bindings=state.get('normalization_bindings',{})
@@ -421,7 +421,7 @@ class PlotWorkspace(QtWidgets.QWidget):
                 if target is not pane and target.coordinate==pane.coordinate:
                     target.cursor_locks=[dict(lock) if lock and lock['channel'] in self.store.channels else None for lock in pane.cursor_locks]
                     for index,lock in enumerate(target.cursor_locks):
-                        target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name if lock else ''))
+                        target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
                     target._synchronizing=True
                     try:
                         for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())

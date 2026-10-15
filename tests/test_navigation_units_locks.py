@@ -19,15 +19,15 @@ class UnitDetectionTests(unittest.TestCase):
             self.assertEqual([c.unit for c in store.channels.values()],['°C','kW'])
     def test_declared_suffix_and_known_names(self):
         with tempfile.TemporaryDirectory() as root:
-            path=Path(root)/'units.csv';pd.DataFrame({'time':[0,60,120],'Probe (degC)':[1,2,3],'Pressure_kPa':[1,2,3],'heater_power':[2,3,4],'unknown':[1,2,3]}).to_csv(path,index=False)
+            path=Path(root)/'units.csv';pd.DataFrame({'time':[0,60,120],'Probe (degC)':[1,2,3],'Pressure_kPa':[1,2,3],'heater_power':[2,3,4],'water_temp_ops':[20,21,22],'unknown':[1,2,3]}).to_csv(path,index=False)
             store=ChannelStore();ingest(store,path)
-            self.assertEqual([c.unit for c in store.channels.values()],['°C','kPa','W',''])
+            self.assertEqual([c.unit for c in store.channels.values()],['°C','kPa','W','°C',''])
 
 class NavigationLockTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):cls.app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     def setUp(self):
-        self.store=ChannelStore();self.a=self.store.add(Channel('Slow',np.array([0.,2,4,6,8,10]),np.arange(6.),unit='V',coordinate_unit='min'))
+        self.store=ChannelStore();self.a=self.store.add(Channel('Slow {sensor}',np.array([0.,2,4,6,8,10]),np.arange(6.),unit='V',coordinate_unit='min'))
         self.b=self.store.add(Channel('Fast',np.arange(11.),np.arange(11.)*3,unit='W',coordinate_unit='min'))
         self.workspace=PlotWorkspace(self.store);self.workspace.resize(1200,800);self.workspace.show();self.workspace.assign([self.b.id,self.a.id]);self.app.processEvents();self.pane=self.workspace.active
     def tearDown(self):self.workspace.close();self.workspace.deleteLater();self.app.processEvents()
