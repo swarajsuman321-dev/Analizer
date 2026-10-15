@@ -1,4 +1,4 @@
-# Standalone Windows build
+# Standalone Windows build — 2.1.0
 
 Use 64-bit CPython 3.12 on Windows. Extract the repository and double-click
 `build_windows.bat`; dependencies are installed in `.venv-exe` from the pinned
@@ -17,7 +17,8 @@ Use `--mode onedir`, `--mode onefile`, or `--mode debug` to select one output.
 
 Only the current Qt frontend is included. The spec excludes Tk/TkAgg and the
 removed application/plugin/zoom modules. Shared numerical, ingestion, engineering,
-plot and reporting dependencies remain. Recordings and prior software versions
+plot and reporting dependencies remain. Current Qt tools also include the restored
+image-reference analyzer and extension host; no old application UI is bundled. Recordings and prior software versions
 are not embedded. The old `--legacy` entry point has been removed.
 
 The self-test exercises Qt launch, synthetic signals, FFT coordinate separation,
@@ -31,6 +32,6 @@ startup diagnosis. Unhandled startup details go to
 `%LOCALAPPDATA%/ApplianceSignalStudio/startup-error.log`.
 
 Pushes to `main` trigger [Build Windows application](https://github.com/swarajsuman321-dev/Analizer/actions/workflows/windows-build.yml).
-A successful run uploads **ApplianceSignalStudio-Windows** (EXE and portable ZIP)
+A successful run uploads **ApplianceSignalStudio-Windows-v2.1.0** (EXE and portable ZIP)
 and separate build diagnostics. Native Windows binaries must be built and tested
 on Windows; a Linux bundle or source test does not certify a Windows executable.

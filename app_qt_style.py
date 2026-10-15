@@ -7,8 +7,11 @@ class ThemeController(QtCore.QObject):
     def __init__(self,app,parent=None):
         super().__init__(parent or app);self.app=app;self.mode='System';self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.show_tip);self.target=None
-        app.installEventFilter(self);app.styleHints().colorSchemeChanged.connect(lambda _:self.apply(self.mode))
+        app.installEventFilter(self);app.styleHints().colorSchemeChanged.connect(self.system_changed)
         self.apply('System')
+
+    def system_changed(self,*args):
+        self.apply(self.mode)
 
     def apply(self,mode):
         self.mode=mode

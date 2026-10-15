@@ -476,6 +476,10 @@ class ComparisonEngine:
                     None
                 )
             result[spec['key']] = exact
+        for key,column in raw_df.attrs.get('bench_column_overrides',{}).items():
+            if key not in result:raise ValueError(f'Unknown bench mapping: {key}')
+            if column is not None and column not in raw_df:raise ValueError(f'Mapped bench column is missing: {column}')
+            result[key]=column
         return result
 
     @staticmethod

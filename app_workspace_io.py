@@ -114,17 +114,25 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
         axis=fig.add_subplot(grid[index//cols,index%cols]);axes={};ranges=view.get('range')
         units=list(dict.fromkeys(view.get('bindings',{}).get(id,store.channels[id].unit) for id in view['ids']))
         for id in view['ids']:
-            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit);color=COLORS[units.index(key)%len(COLORS)]
+            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit);style=c.attributes.get('plot_style',{});color=style.get('color',COLORS[units.index(key)%len(COLORS)])
             if key not in axes:
                 current=axis if not axes else axis.twinx()
-                if axes:current.spines['right'].set_position(('outward',48*(len(axes)-1)))
+                if style.get('side')=='left' and axes:
+                    current.spines['right'].set_visible(False);current.spines['left'].set_visible(True);current.spines['left'].set_position(('outward',48*len(axes)))
+                    current.yaxis.tick_left();current.yaxis.set_label_position('left')
+                elif style.get('side')=='right' and current is axis:
+                    current.yaxis.tick_right();current.yaxis.set_label_position('right');current.spines['left'].set_visible(False)
+                elif axes:current.spines['right'].set_position(('outward',48*(len(axes)-1)))
                 current.set_ylabel(key or 'Value',color=color);current.tick_params(axis='y',colors=color);axes[key]=current
                 bounds=view.get('axes',{}).get(key)
                 if bounds:current.set_ylim(*bounds)
                 elif current is axis and ranges:current.set_ylim(*ranges[1])
             x,y=c.values();left,right=ranges[0] if ranges else ((x[0],x[-1]) if len(x) else (0,1))
             dx,dy=EnvelopeCache(x,y).visible(left,right,8000)
-            axes[key].plot(dx,dy,label=c.name,color=color,linewidth=.8)
+            if view.get('normalized'):
+                finite=y[np.isfinite(y)];low,high=(float(finite.min()),float(finite.max())) if len(finite) else (0.,1.)
+                dy=np.where(np.isfinite(dy),(dy-low)/(high-low) if high>low else .5,np.nan)+view['ids'].index(id)
+            axes[key].plot(dx,dy,label=c.name,color=color,linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
             axis.set_xlabel(f'{c.coordinate_kind} ({c.coordinate_unit})');axis.set_xlim(left,right)
         if not view['ids']:axis.text(.5,.5,'No channels selected',ha='center',va='center',transform=axis.transAxes)
         for name,position,color in zip(('A','B'),view.get('cursors',[]),CURSOR_COLORS):
@@ -137,8 +145,9 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
         handles=[];labels=[]
         for current in axes.values():
             h,l=current.get_legend_handles_labels();handles.extend(h);labels.extend(l)
-        if handles:axis.legend(handles,labels,fontsize=7,loc='upper left')
-        axis.grid(alpha=.15)
+        if handles and view.get('show_legends',True):axis.legend(handles,labels,fontsize=7,loc='upper left')
+        if view.get('show_grid',True):axis.grid(True,alpha=.15)
+        else:axis.grid(False)
     def draw_table(target,frame,columns):
         target.axis('off')
         def display(value):

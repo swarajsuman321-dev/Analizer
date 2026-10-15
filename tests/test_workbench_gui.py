@@ -22,7 +22,7 @@ class WorkbenchTests(unittest.TestCase):
     def tearDown(self):
         self.window.close();self.app.processEvents();self.messages.stop();self.assertEqual(self.errors,[])
     def add(self,name='Signal',unit='V',coordinate='time'):
-        c=Channel(name,np.arange(1001)/100,np.sin(np.arange(1001)/100),unit=unit,coordinate_kind=coordinate,coordinate_unit='s' if coordinate=='time' else 'Hz')
+        c=Channel(name,np.arange(1001)/100,np.sin(np.arange(1001)/100),unit=unit,coordinate_kind=coordinate,coordinate_unit='min' if coordinate=='time' else 'Hz')
         self.window.store.add(c);return c
     def select(self,id):
         iterator=QtWidgets.QTreeWidgetItemIterator(self.window.portal.tree)

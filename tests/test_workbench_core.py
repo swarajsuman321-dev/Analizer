@@ -39,7 +39,7 @@ class ChannelTests(unittest.TestCase):
             path=Path(root)/'input.csv';path.write_text('timestamp,value [W],state\n2026-10-01 01:02:03.000001,1,0\n2026-10-01 01:02:03.000001,2,1\n2026-10-01 01:02:03.000004,,0\n')
             store=ChannelStore();ids=ingest(store,path)
             c=store.channels[ids[0]]
-            self.assertEqual(len(c.x),3);self.assertAlmostEqual(c.x[-1],.000003);self.assertEqual(c.sample(0),2)
+            self.assertEqual(len(c.x),3);self.assertAlmostEqual(c.x[-1],.000003/60,places=15);self.assertEqual(c.sample(0),2)
             self.assertEqual(c.unit,'W');self.assertEqual(len(next(iter(store.datasets.values())).frame),3)
 
 

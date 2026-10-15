@@ -206,8 +206,9 @@ class CsvTests(unittest.TestCase):
     def test_service_csv_preserves_original_rows(self):
         from app_analysis_service import compare_recordings
         store,score=compare_recordings(str(self.path),str(self.path))
-        self.assertEqual(len(store.datasets),2)
-        self.assertTrue(all(len(ds.frame)==6 for ds in store.datasets.values()))
+        sources=[ds for ds in store.datasets.values() if ds.name in ('Original bench comparison','Simulation reference')]
+        self.assertEqual(len(sources),2)
+        self.assertTrue(all(len(ds.frame)==6 for ds in sources))
         pressure=score.set_index('parameter').loc['Peak Water Pressure']
         self.assertEqual(pressure['sim_val'],'500.00 Pa')
         self.assertEqual(pressure['raw_val'],'500.00 Pa')

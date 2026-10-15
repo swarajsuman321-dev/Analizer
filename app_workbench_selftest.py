@@ -11,7 +11,7 @@ def self_test():
     window=AdvancedStudioWindow();window.show()
     from app_channel_store import Channel
     x=np.linspace(0,10,1001)
-    first=window.store.add(Channel('Synthetic test signal',x,np.sin(x),unit='V',attributes={'match_percent':90}))
+    first=window.store.add(Channel('Synthetic test signal',x,np.sin(x),unit='V',coordinate_unit='min',attributes={'match_percent':90}))
     window.dashboard.assign([first.id]);app.processEvents()
     try:
         first=next(iter(window.store.channels.values()));fft=window.store.add(transform(first,'FFT'))
@@ -27,5 +27,24 @@ def self_test():
             for suffix in ('pdf','png','xlsx','csv'):
                 export_report(root/('report.'+suffix),window.store,window.dashboard.state())
                 if (root/('report.'+suffix)).stat().st_size<100:raise RuntimeError(f'{suffix} report export failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV']}
+            from app_studio_state import channel_preset,export_full_workbook
+            preset=channel_preset(window.store,window.dashboard,window.studio.options)
+            if window.studio.apply_preset(preset)!=2:raise RuntimeError('Channel preset roundtrip failed')
+            window.studio.toggle_normalized();window.studio.toggle_normalized()
+            from app_extensions import PluginManager
+            plugin=root/'smoke_plugin.py';plugin.write_text("def register_patch(manager):\n manager.custom_kpi_hooks.append(lambda frame:[('Rows',len(frame))])\n manager.custom_plot_hooks.append(lambda fig,axes,frame:axes[0].plot(frame.relative_minutes,frame.power))\n")
+            window.studio.plugins=PluginManager(root/'extensions');window.studio.plugins.install(plugin)
+            import pandas as pd
+            from app_analysis_service import add_table,load_reference
+            frame=pd.DataFrame({'relative_minutes':x,'power':np.sin(x)})
+            add_table(window.store,'Smoke data',frame,sheet='Synchronized_Series')
+            dialog=window.studio.plugin_plots();app.processEvents();dialog.close()
+            export_full_workbook(root/'complete.xlsx',window.store,window.dashboard.state())
+            if (root/'complete.xlsx').stat().st_size<100:raise RuntimeError('Complete workbook failed')
+            from PIL import Image,ImageDraw
+            image=Image.new('RGB',(800,704),'white');draw=ImageDraw.Draw(image)
+            draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
+            reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
+            if not reference.channels:raise RuntimeError('Image reference extraction failed')
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

@@ -1,4 +1,4 @@
-# Appliance Signal Studio
+# Appliance Signal Studio 2.1.0
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -18,7 +18,11 @@ On Windows use `.venv\Scripts\python.exe`, or build a portable executable with
 
 1. **Open** CSV/text, Excel, ZIP-contained CSV, Parquet or JSON recordings. Data
    loads directly into the current Analysis or Comparison workspace. Clocks are
-   detected from column names; unlabelled numeric time defaults to seconds.
+   detected from column names. Unlabelled numeric time is interpreted as seconds,
+   then converted to **minutes**, as are seconds, milliseconds, hours and timestamps.
+   Recognized simulator exports already in minutes are kept in minutes.
+   Axes, cursor intervals, playback and processed reports use minutes; original
+   source tables keep their recorded values. Data without a clock remains sample-indexed.
 2. Check a channel to plot it; uncheck it to hide its trace. The master checkbox
    selects or deselects all channels, including those hidden by the search filter.
    Checks reflect the visible panes of the current workspace. Selecting a tree
@@ -37,14 +41,18 @@ On Windows use `.venv\Scripts\python.exe`, or build a portable executable with
    fabricate a shared sampling rate. Missing or masked values stay missing.
 
 Different units use independent Y axes, with tick/label colors matching their
-traces. Compatible viewports share panning and cursor coordinates. Time and
-frequency coordinates use separate panes. R fits the active plot; C toggles
+traces. Compatible viewports share panning and cursor coordinates. Time is displayed in **min**. Time and
+frequency coordinates use separate panes; frequency analysis retains Hz. R fits the active plot; C toggles
 cursors; Space enables panning.
+
+See [FEATURE_PARITY.md](FEATURE_PARITY.md) for the earlier-feature audit and the location
+of every restored capability.
 
 **View** opens optional Engineering Controls, Properties, Channel Math, original
 Channel Table and detailed interval statistics. **Analyze** applies a formula or
-numerical operation directly as a derived channel. No sample-preview pane or
-legacy application is shipped. Save workspace writes a JSON manifest plus an
+numerical operation directly as a derived channel. The advanced capabilities live under **Tools**, including channel styling, playback,
+engineering diagnostics, image-reference calibration, presets and extension management.
+There is no permanent sample-preview pane or separate legacy application. Save workspace writes a JSON manifest plus an
 adjacent generation-named NPZ; keep both together when sharing/restoring.
 
 ## Engineering comparison
@@ -69,5 +77,6 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.0**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.1.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.

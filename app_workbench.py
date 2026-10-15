@@ -13,6 +13,7 @@ from app_signal_processing import formula,transform,UNIT_DEFINITIONS
 from app_workspace_io import save_workspace,load_workspace
 from app_qt_style import ThemeController
 from app_presentation import CURSOR_COLORS,match_color
+from app_version import VERSION
 
 OPERATIONS=['Moving average','Savitzky–Golay','Butterworth low-pass','Offset and scale','Time shift','Resampling',
             'Differentiation','Cumulative integration','Descriptive statistics','Histogram','FFT','Welch PSD','Peak and valley detection']
@@ -51,7 +52,7 @@ class FrameModel(QtCore.QAbstractTableModel):
 
 class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def __init__(self):
-        super().__init__();self.setWindowTitle('Appliance Signal Studio · Data Workbench');self.setMinimumSize(1024,680)
+        super().__init__();self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose);self.setWindowTitle(f'Appliance Signal Studio · {VERSION}');self.setMinimumSize(1024,680)
         self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set()
         self.pool=QtCore.QThreadPool.globalInstance();self.pool.setMaxThreadCount(2)
         self.theme=ThemeController(QtWidgets.QApplication.instance(),self)
@@ -64,6 +65,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             workspace.setAcceptDrops(True);workspace.installEventFilter(self)
         self.tabs.currentChanged.connect(self.workspace_changed)
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
+        from app_studio_tools import StudioTools
+        self.studio=StudioTools(self)
         self.store.observe(self.store_changed)
         self.statusBar().showMessage('Open a recording to begin. Check channels to show them; drag A and B to inspect an interval.')
         self.readout_timer=QtCore.QTimer(self);self.readout_timer.setSingleShot(True);self.readout_timer.timeout.connect(self._readouts)
@@ -181,12 +184,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def _build_engineering(self):
         widget=QtWidgets.QWidget();form=QtWidgets.QFormLayout(widget);form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
         self.power_path=QtWidgets.QLineEdit();self.machine_path=QtWidgets.QLineEdit();self.simulation_path=QtWidgets.QLineEdit()
-        for label,field in [('Power recording',self.power_path),('Machine recording',self.machine_path),('Simulation CSV / ZIP',self.simulation_path)]:
+        for label,field in [('Power recording',self.power_path),('Machine recording',self.machine_path),('Simulation CSV / ZIP / Image',self.simulation_path)]:
             row=QtWidgets.QHBoxLayout();row.addWidget(field);button=QtWidgets.QPushButton('…');button.setMaximumWidth(32);row.addWidget(button)
             button.clicked.connect(lambda checked=False,f=field:self.pick_file(f));form.addRow(label,row)
         from app_data import BUILTIN_SYNC_STRATEGIES
         self.sync=QtWidgets.QComboBox();self.sync.addItems(BUILTIN_SYNC_STRATEGIES);form.addRow('Sync strategy',self.sync)
-        self.offset=QtWidgets.QDoubleSpinBox();self.offset.setRange(-1e9,1e9);self.offset.setDecimals(3);form.addRow('Manual offset (s)',self.offset)
+        self.offset=QtWidgets.QDoubleSpinBox();self.offset.setRange(-1e9,1e9);self.offset.setDecimals(3);self.offset.setSuffix(' s');form.addRow('Manual offset (seconds)',self.offset)
         button=QtWidgets.QPushButton('Align recordings');button.clicked.connect(lambda:self.guard(self.align));form.addRow(button)
         button=QtWidgets.QPushButton('Compare original recordings');button.clicked.connect(lambda:self.guard(self.compare));form.addRow(button)
         self.engineering_notes=QtWidgets.QPlainTextEdit();self.engineering_notes.setReadOnly(True);self.engineering_notes.setMaximumHeight(110);form.addRow(self.engineering_notes)
@@ -257,12 +260,18 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.background(load,lambda other:self.merge_store(other,workspace))
 
     def merge_store(self,other,workspace=None):
+        from app_time_units import normalize_minutes
+        normalize_minutes(other)
         with self.store.batch():
             self.store.datasets.update(other.datasets)
             for c in other.channels.values():self.store.add(c)
         ids=list(other.channels)
-        if ids:(workspace or self.active_workspace).assign(ids)
+        if ids:
+            target=workspace or self.active_workspace;was_empty=not any(p.ids for p in target.panes)
+            target.assign(ids)
+            if was_empty and not self.studio.pending_preset:target.arrange_readable()
         self.sync_visibility()
+        if hasattr(self,'studio') and self.studio.pending_preset:self.studio.apply_preset(self.studio.pending_preset)
 
     def store_changed(self,ids):
         self.portal.rebuild()
@@ -397,6 +406,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.sync_visibility()
         a,b=[line.value() for line in pane.cursor_lines]
         self.cursor_caption.setText(f'<span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
+        if hasattr(self,'studio'):
+            live=self.studio.live_readout(pane,a)
+            if live:self.cursor_caption.setText(self.cursor_caption.text()+' &nbsp; '+live)
         try:measurements=pane.measurements()
         except KeyError:return
         self.readout.setRowCount(len(measurements));self.intervals.setRowCount(len(measurements))
@@ -413,7 +425,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                     if color:item.setBackground(QtGui.QColor(color));item.setForeground(QtGui.QColor('#101828'))
                 self.readout.setItem(row,col,item)
             labels=['ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage']
-            measure_unit='s' if c.coordinate_kind=='time' else c.coordinate_unit
+            measure_unit=c.coordinate_unit
             units=[c.coordinate_unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit+'/'+measure_unit,c.unit+'·'+measure_unit,'fraction']
             self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(c.name))
             for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(stats[label])+' '+unit))
@@ -421,43 +433,34 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.update_interval_card()
 
     def align(self):
-        power,machine,strategy,offset=self.power_path.text(),self.machine_path.text(),self.sync.currentText(),self.offset.value()
-        if not power or not machine:raise ValueError('Choose power and machine recordings')
-        def calculate():
-            from app_data import DataEngine
-            return DataEngine(power,machine,strategy,offset)
-        def complete(engine):
-            frame=engine.get_data();self.aligned_frame=frame;self.engineering_notes.setPlainText(json.dumps(engine.sync_report,default=str,indent=2))
-            other=ChannelStore()
-            for path in (power,machine):ingest(other,path)
-            ds=Dataset('Aligned engineering data',frame.copy(),source=f'{power}; {machine}');other.datasets[ds.id]=ds
-            coordinate=next((col for col in frame if str(col).lower() in ('time_min','relative_minutes')),None)
-            x=frame[coordinate].to_numpy(float) if coordinate else np.arange(len(frame),dtype=float)
-            for col in frame.select_dtypes(include='number'):
-                if col==coordinate:continue
-                from app_data import get_column_unit,classify_signal_kind
-                other.add(Channel(str(col),x,frame[col].to_numpy(float),unit=get_column_unit(frame,col) or '',kind='discrete' if classify_signal_kind(col) in ('control','door_lock','state','code','stage') else 'analog',coordinate_unit='min' if coordinate else 'sample',coordinate_kind='time' if coordinate else 'sample',dataset_id=ds.id,group='Aligned'))
-            self.merge_store(other,self.dashboard);self.dashboard.assign([c.id for c in other.channels.values() if c.dataset_id==ds.id][:10]);self.tabs.setCurrentIndex(0)
+        power,machine,strategy,offset=self.power_path.text(),self.machine_path.text(),self.sync.currentData() or self.sync.currentText(),self.offset.value()
+        from app_analysis_service import align_recordings
+        def calculate():return align_recordings(power,machine,strategy,offset,self.studio.plugins)
+        def complete(result):
+            other,frame=result;self.aligned_frame=frame
+            self.engineering_notes.setPlainText(json.dumps(frame.attrs.get('sync_report',{}),default=str,indent=2))
+            self.merge_store(other,self.dashboard);self.tabs.setCurrentIndex(0);self.studio.apply_display()
         self.background(calculate,complete)
 
     def compare(self):
         machine,simulation=self.machine_path.text(),self.simulation_path.text()
         if not machine or not simulation:raise ValueError('Choose machine and simulation recordings')
+        settings=dict(self.studio.reference_settings);calibration=dict(self.studio.calibration);mapping=dict(self.studio.bench_columns)
         def calculate():
             from app_analysis_service import compare_recordings
-            return compare_recordings(machine,simulation)
+            return compare_recordings(machine,simulation,reference_settings=settings,calibration=calibration,bench_columns=mapping,tolerances=dict(self.studio.tolerances),detailed=True)
         def complete(result):
-            other,score=result
+            self.comparison_result=result
             from app_reporting import match_scorecard
-            self.scorecard_data=match_scorecard(score);self.scorecard.setModel(FrameModel(self.scorecard_data))
-            self.merge_store(other,self.comparison);self.tabs.setCurrentIndex(1);self.show_dock('Engineering Controls')
+            self.scorecard_data=match_scorecard(result.score);self.scorecard.setModel(FrameModel(self.scorecard_data))
+            self.merge_store(result.store,self.comparison);self.tabs.setCurrentIndex(1);self.show_dock('Engineering Controls');self.studio.apply_display()
         self.background(calculate,complete)
 
     def ui_state(self):
         return {'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
                 'tab':self.tabs.currentIndex(),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
-                'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentText(),'offset':self.offset.value()}}
+                'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
     def save(self):
         self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace','','Workspace (*.json)')
@@ -469,6 +472,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def restore_path(self,path):
         store,views,ui=load_workspace(path)
+        from app_time_units import normalize_minutes
+        normalize_minutes(store,views)
         if len(views)==3:
             views=[views[2] if ui.get('tab')==2 else views[0],views[1]]
             if ui.get('tab')==2:ui['tab']=0
@@ -488,7 +493,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         UNIT_DEFINITIONS.update(ui.get('units',{}))
         engineering=ui.get('engineering',{})
         for key,field in [('power',self.power_path),('machine',self.machine_path),('simulation',self.simulation_path)]:field.setText(engineering.get(key,''))
-        self.sync.setCurrentText(engineering.get('strategy',self.sync.currentText()));self.offset.setValue(engineering.get('offset',0));self.readouts()
+        self.studio.select_sync(engineering.get('strategy',self.sync.currentData() or self.sync.currentText()));self.offset.setValue(engineering.get('offset',0))
+        self.studio.restore(ui.get('studio',{}));self.readouts()
 
     def report(self):
         from app_reporting import export_report
@@ -500,7 +506,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             suffix=next((v for k,v in extensions.items() if selected.startswith(k)),'.pdf')
             if not Path(path).suffix:path+=suffix
             if Path(path).suffix.lower() not in ('.pdf','.xlsx','.csv','.png'):raise ValueError('Choose PDF, Excel, CSV or PNG')
-            export_report(path,self.store,self.active_workspace.state(),getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None)
+            export_report(path,self.store,self.active_workspace.state(),getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None,title=self.studio.options['title'])
             self.statusBar().showMessage(f'Report saved: {path}')
 
     def set_snap(self,value):
@@ -530,6 +536,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self,event):
         self.generation+=1
+        if hasattr(self,'studio'):self.studio.pause()
         self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
         if self.busy:
             self.statusBar().showMessage('Waiting for current processing to finish…');self.pool.waitForDone()

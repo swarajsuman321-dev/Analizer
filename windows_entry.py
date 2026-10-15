@@ -96,7 +96,8 @@ def self_test():
             adapter.close()
     from app_workbench_selftest import self_test as qt_self_test
     modern = qt_self_test()
-    return {'ok':True, 'modern':modern, 'frozen':bool(getattr(sys,'frozen',False)),
+    from app_version import VERSION
+    return {'ok':True, 'version':VERSION, 'modern':modern, 'frozen':bool(getattr(sys,'frozen',False)),
             'python':sys.version.split()[0],
             'pandas':pd.__version__, 'numpy':np.__version__, 'matplotlib':matplotlib.__version__,
             'openpyxl':openpyxl.__version__, 'xlrd':xlrd.__version__,

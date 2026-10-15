@@ -18,6 +18,6 @@ class EngineeringTests(unittest.TestCase):
                           'stwf_number':[0,1,2,3],'water_volume':[0,5,5,0],'process_state':[0,1,2,3]}).to_csv(sim,index=False)
             store,score=compare_recordings(str(bench),str(sim))
             self.assertGreater(len(store.channels),8);self.assertGreater(len(score),5)
-            self.assertEqual(len(store.datasets),2);source=next(ds for ds in store.datasets.values() if ds.source==str(bench))
+            self.assertEqual(len([ds for ds in store.datasets.values() if ds.name in ('Original bench comparison','Simulation reference')]),2);source=next(ds for ds in store.datasets.values() if ds.source==str(bench))
             pd.testing.assert_frame_equal(source.frame,pd.read_csv(bench))
             heaters=[c for c in store.channels.values() if c.unit=='state' and c.attributes['parameter']=='heater_power'];self.assertEqual(len(heaters),1)

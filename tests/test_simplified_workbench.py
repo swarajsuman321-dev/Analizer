@@ -23,7 +23,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
     def add(self,name='Temperature',unit='°C',x=None,y=None,**kwargs):
         if x is None:x=np.arange(11,dtype=float)
         if y is None:y=np.asarray(x)*2
-        return self.window.store.add(Channel(name,x,y,unit=unit,**kwargs))
+        return self.window.store.add(Channel(name,x,y,unit=unit,coordinate_unit='min',**kwargs))
     def item(self,channel_id):
         iterator=QtWidgets.QTreeWidgetItemIterator(self.window.portal.tree)
         while iterator.value():

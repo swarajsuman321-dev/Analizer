@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from app_presentation import match_color,cursor_sample
 from app_signal_processing import IntervalSummary
+from app_time_units import presentation_statistics
 
 
 def match_scorecard(score):
@@ -29,7 +30,7 @@ def interval_tables(store,workspace):
             c=store.channels[channel_id];x,y=c.values();mask=(x>=low)&(x<=high)
             va=cursor_sample(c,a,view.get('snap',True));vb=cursor_sample(c,b,view.get('snap',True))
             metadata={'pane':pane_number,'channel_id':c.id,'channel':c.name,'unit':c.unit,'coordinate_unit':c.coordinate_unit,
-                      'cursor_A_X':a,'cursor_B_X':b,'A':va,'B':vb,**IntervalSummary(c).query(a,b)}
+                      'cursor_A_X':a,'cursor_B_X':b,'A':va,'B':vb,**presentation_statistics(c,IntervalSummary(c).query(a,b))}
             metadata['ΔY']=vb-va
             metadata['match_percent']=c.attributes.get('match_percent',np.nan) if match_color(c.attributes.get('match_percent')) else np.nan
             summary.append(metadata)
@@ -40,7 +41,7 @@ def interval_tables(store,workspace):
     return pd.concat(frames,ignore_index=True),pd.DataFrame(summary)
 
 
-def export_report(path,store,workspace,scorecard=None):
+def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis report'):
     """One save dialog, no configuration wizard; never interpolate exported samples."""
     from app_workspace_io import render_report
     path=Path(path);data,summary=interval_tables(store,workspace)
@@ -60,6 +61,6 @@ def export_report(path,store,workspace,scorecard=None):
                         cell=sheet.cell(row,column);color=match_color(cell.value)
                         if color:cell.fill=PatternFill('solid',fgColor=color.lstrip('#'));cell.number_format='0.0"%"'
     elif path.suffix.lower() in ('.pdf','.png'):
-        render_report(path,store,workspace,scorecard=scorecard)
+        render_report(path,store,workspace,title=title,scorecard=scorecard)
     else:raise ValueError('Choose PDF, Excel, CSV or PNG')
     return data,summary

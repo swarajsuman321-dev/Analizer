@@ -132,9 +132,10 @@ class PackageTests(unittest.TestCase):
         self.package()
         csv=Path(self.temp.name)/'bench.csv';fixture().to_csv(csv,index=False)
         store,score=compare_recordings(str(csv),str(self.path))
-        self.assertEqual(len(store.datasets),2)
+        sources=[ds for ds in store.datasets.values() if ds.name in ('Original bench comparison','Simulation reference')]
+        self.assertEqual(len(sources),2)
         self.assertGreater(len(store.channels),10)
-        self.assertTrue(all(len(ds.frame)==6 for ds in store.datasets.values()))
+        self.assertTrue(all(len(ds.frame)==6 for ds in sources))
         self.assertEqual(score.set_index('parameter').loc['Peak Water Pressure','sim_val'],'500.00 Pa')
 
 
