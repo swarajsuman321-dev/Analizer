@@ -47,7 +47,7 @@ class ConfirmedBenchRules(unittest.TestCase):
     def test_positive_integer_states_and_invalid_numeric_values(self):
         states = normalize_control_series(pd.Series([0,1,2,128,255,1.0,.5,-1,np.nan,'OFF','ON','true','false']),'Heat Valve')
         self.assertEqual(states.iloc[:6].tolist(),[0,1,1,1,1,1])
-        self.assertTrue(states.iloc[6:9].isna().all())
+        self.assertTrue(states.iloc[[6,8]].isna().all());self.assertEqual(states.iloc[7],1)
         self.assertEqual(states.iloc[9:].tolist(),[0,1,1,0])
 
     def test_feedback_wins_and_missing_feedback_does_not_use_command(self):

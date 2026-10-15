@@ -35,9 +35,13 @@ class Channel:
     revision: int = 0
     shift: float = 0
     masks: list = field(default_factory=list)
+    raw_y: np.ndarray | None = None
 
     def __post_init__(self):
         self.x, self.y = immutable(self.x), immutable(self.y)
+        if self.raw_y is not None:
+            self.raw_y=immutable(self.raw_y)
+            if self.raw_y.shape!=self.y.shape:raise ValueError('Original readings must match the channel samples')
         if self.coordinate_unit.lower()=='hz':self.coordinate_unit='Hz'
         if not np.isfinite(self.shift):raise ValueError('Shift must be finite')
         if any(not np.isfinite([a,b]).all() for a,b in self.masks):raise ValueError('Masks must have finite bounds')

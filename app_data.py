@@ -250,13 +250,23 @@ def classify_signal_kind(column_name):
     return 'analog'
 
 
-def normalize_control_series(series, column_name=""):
-    """Positive integer states are ON, zero is OFF; invalid states stay unknown."""
+def is_actuator_column(column_name, unit=None):
+    """Identify actuator commands, excluding physical measurements and program codes."""
+    name=re.sub(r'[^a-z0-9]+',' ',str(column_name).lower())
+    if unit and str(unit).strip().lower() not in ('state','bool','boolean','1'):return False
+    if re.search(r'\b(power|energy|current|voltage|temperature|temp|pressure|speed|rpm|flow|frequency|duration|count|retry|stage|phase|code|duty|pwm|position)\b',name):return False
+    return bool(re.search(r'\b(valv\w*|vavle|ventil\w*|door|interlock|lid|lock|heater|heating|heat|pump|pumpe|relay|relais|solenoid|actuator|contactor|fan|motor|compressor)\b',name))
+
+
+def normalize_control_series(series, column_name="", *, nonzero_integers=None):
+    """Actuator integers map nonzero to ON; missing/fractional readings stay unknown."""
     numeric = pd.to_numeric(series, errors='coerce')
     finite = numeric.notna() & np.isfinite(numeric.to_numpy(dtype=float, na_value=np.nan))
     result = pd.Series(np.nan, index=series.index, name=series.name, dtype=float)
-    valid_integer = finite & numeric.ge(0) & numeric.eq(np.floor(numeric))
-    result.loc[valid_integer] = numeric.loc[valid_integer].gt(0).astype(float)
+    if nonzero_integers is None:nonzero_integers=is_actuator_column(column_name)
+    valid_integer = finite & numeric.eq(np.floor(numeric))
+    if not nonzero_integers:valid_integer &= numeric.ge(0)
+    result.loc[valid_integer] = numeric.loc[valid_integer].ne(0).astype(float)
     text = series.astype('string').str.strip().str.upper()
 
     is_door_lock = any(k in str(column_name).lower() for k in ('door', 'lock', 'interlock', 'lid'))

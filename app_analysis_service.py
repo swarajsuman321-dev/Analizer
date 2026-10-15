@@ -56,9 +56,12 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
     for column in frame:
         if column in ('relative_minutes','datetime','dt') or str(column).endswith(('_BIN','_BIN_ops')):continue
         kind=classify_signal_kind(column)
-        values=normalize_control_series(frame[column],column) if kind in ('control','door_lock') else pd.to_numeric(frame[column],errors='coerce')
-        if not values.notna().any():continue
+        values=pd.to_numeric(frame[column],errors='coerce')
+        from app_data import is_actuator_column
+        if is_actuator_column(column,detect_unit(frame,column)[0]):values=normalize_control_series(frame[column],column)
         state=kind in ('control','door_lock','state','code','stage')
+        detected=detect_unit(frame,column)[0]
+        if detected and detected.lower() not in ('state','bool','boolean','code','1'):state=False
         source_column=str(column)[:-4] if str(column).endswith('_ops') and str(column)[:-4] in machine_columns else str(column)
         source_path=machine if str(column).endswith('_ops') or column not in power_columns else power
         store.add(Channel(str(column),x,values.to_numpy(float),source=source_path or '',unit=detect_unit(frame,column)[0] or ('state' if state else ''),
@@ -77,6 +80,11 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
     alignment_key='|'.join(os.path.normcase(str(Path(path).resolve())) if path else '' for path in (power,machine))
     for channel in store.channels.values():channel.attributes['alignment_key']=alignment_key
     for dataset in store.datasets.values():dataset.frame.attrs['alignment_key']=alignment_key
+    from app_actuators import interpret_channel
+    for id,channel in list(store.channels.items()):
+        interpreted=interpret_channel(channel,raw_series=frame[channel.attributes['data_column']])
+        if not np.isfinite(interpreted.y).any() and not interpreted.attributes.get('actuator_binary'):del store.channels[id]
+        else:store.channels[id]=interpreted
     return store,frame
 
 
@@ -133,7 +141,7 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
                 if spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital':unit='state'
                 store.add(Channel(f'{spec["label"]} · {source}',x,y,unit=unit,kind='analog' if kind=='analog' else 'discrete',coordinate_unit='min',
                                   dataset_id=reference.id if source=='sim' else bench.id,group='Comparison',
-                                  attributes={'parameter':spec['key'],'comparison_source':source,'signal_kind':kind}))
+                                  attributes={'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital'}))
             if spec['key'] in curves:add_table(store,spec['label']+' reference',curves[spec['key']],simulation,'Sim_'+spec['key'])
         from app_reporting import match_scorecard
         add_table(store,'Comparison scorecard',match_scorecard(score),sheet='Scorecard_Summary')

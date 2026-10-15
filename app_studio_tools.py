@@ -173,7 +173,12 @@ class StudioTools(QtCore.QObject):
             candidates=[value for key,value in signals.items() if (value.get('source_col',key)==source or key==c.name) and (not value.get('source_path') or not c.source or Path(value['source_path']).name==Path(c.source).name)]
             if len(candidates)!=1:continue
             entry=candidates[0];style={'color':entry.get('color','#58b6ff'),'width':float(entry.get('width',1)),'style':STYLES.get(entry.get('style'),entry.get('style','solid')),'side':'right' if entry.get('twin',False) else 'left','ymin':entry.get('ymin',''),'ymax':entry.get('ymax','')}
-            attrs={**c.attributes,'plot_style':style};changes.append((c.id,dict(name=entry.get('name',c.name),unit=entry.get('unit',c.unit),attributes=attrs)));matched+=1
+            from app_actuators import interpret_channel
+            from dataclasses import replace
+            attrs={**c.attributes,'plot_style':style}
+            if entry.get('unit',c.unit)!=c.unit:attrs['raw_unit']=entry['unit']
+            updated=interpret_channel(replace(c,attributes=attrs),entry.get('value_interpretation',c.attributes.get('value_interpretation','auto')))
+            changes.append((c.id,dict(name=entry.get('name',c.name),unit=updated.unit if updated.attributes.get('actuator_binary') else entry.get('unit',updated.unit),kind=updated.kind,y=updated.y,raw_y=updated.raw_y,attributes=updated.attributes)));matched+=1
             if entry.get('enabled',True):panels.setdefault(int(entry.get('panel','Panel 1').split()[-1])-1,[]).append(c.id)
         with w.store.batch():
             for id,change in changes:w.store.update(id,**change)

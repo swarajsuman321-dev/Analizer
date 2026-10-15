@@ -86,3 +86,11 @@ A/B, differences and Min/Max/Average, with cursor-interval or whole-recording
 statistics. Quick event notes attach to cursor A, survive session restore and
 appear in reports. These adopt practical measurement-workbench ideas without
 reproducing the reference interface.
+
+## 2.1.4 actuator interpretation and identity
+
+Actuator commands support zero/OFF and nonzero-integer/ON with preserved source
+readings, unknown-data gaps and reversible per-channel modes. Measured power and
+other physical quantities and enumerated program/fault codes remain numeric.
+Binary states have step plots, OFF/ON ticks, ON duration and duty over known time.
+The existing icon is assigned to the application, window and Windows taskbar.

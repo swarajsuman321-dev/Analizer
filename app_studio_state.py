@@ -18,6 +18,7 @@ def validate_preset(record):
     if not isinstance(signals,dict) or not isinstance(options,dict):raise ValueError('Invalid preset signals/options')
     for key,entry in signals.items():
         if not isinstance(entry,dict):raise ValueError(f'Invalid channel settings: {key}')
+        if entry.get('value_interpretation','auto') not in ('auto','numeric','actuator'):raise ValueError('Invalid value interpretation')
         width=float(entry.get('width',1))
         if not np.isfinite(width) or not 0<width<=20:raise ValueError('Line width must be finite and between 0 and 20')
         for name in ('enabled','twin'):
@@ -43,7 +44,7 @@ def channel_preset(store,workspace,options):
         source=c.attributes.get('source_column',c.name);key=source
         if key in signals:key=f'{source} [{c.source or c.dataset_id}]'
         style=c.attributes.get('plot_style',{})
-        signals[key]={'source_col':source,'source_path':c.source,'name':c.name,'unit':c.unit,'enabled':c.id in visible,
+        signals[key]={'value_interpretation':c.attributes.get('value_interpretation','auto'),'source_col':source,'source_path':c.source,'name':c.name,'unit':c.unit,'enabled':c.id in visible,
                       'panel':f'Panel {next((i+1 for i,p in enumerate(workspace.panes) if c.id in p.ids),1)}',
                       'twin':style.get('side','left')=='right','style':style.get('style','solid'),'width':style.get('width',1),
                       'color':style.get('color','#58b6ff'),'ymin':style.get('ymin',''),'ymax':style.get('ymax','')}

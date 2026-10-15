@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.3
+# Appliance Signal Studio 2.1.4
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -81,7 +81,7 @@ Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
 is **ApplianceSignalStudio-Windows-v2.1.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
-## Navigation and locked cursors (2.1.3)
+## Navigation and locked cursors (2.1.4)
 
 The navigation toolbar exposes Zoom X/Y/XY, Pan, Reset zoom and Lock cursors.
 **F1** lists shortcuts: Ctrl+1/2/3 selects X/Y/XY rectangle zoom, Ctrl+4 pans,
@@ -105,7 +105,7 @@ Unchanged results keep their IDs and do not create duplicates. Appended samples
 update existing traces; newly available columns add channels. Channel names,
 styles, visibility and cursor anchors remain attached to their existing IDs.
 
-## Equal navigation for every channel (2.1.3)
+## Equal navigation for every channel (2.1.4)
 
 Vertical pan, wheel zoom, rectangle zoom and zoom buttons move every visible
 unit axis together by the same screen proportion. Each axis keeps its own units
@@ -123,8 +123,27 @@ identify that scope; A/B values, differences and CSV/Excel sample exports still
 follow the active cursor interval. **Add note** (Ctrl+Shift+N) pins a short event
 note to cursor A; notes persist in sessions and appear in plot reports.
 
-## Zoom mode correction (2.1.3)
+## Zoom mode correction (2.1.4)
 
 Zoom X keeps every Y-axis range fixed; Zoom Y keeps the time range fixed. The
 selection band spans the disabled dimension, and wheel/zoom buttons respect the
 same setting. Zoom XY changes both dimensions.
+
+## Actuator commands and application icon (2.1.4)
+
+Auto interpretation identifies actuator commands by their names and declared
+units, rather than treating every numeric channel as a switch. For identified
+actuators, zero is OFF and any nonzero integer (including negative integers) is
+ON. Missing, infinite and fractional readings remain Unknown. Explicit ON/OFF
+and TRUE/FALSE words are also supported. Measured heater watts, valve current,
+program stages and fault codes retain numeric meaning.
+
+Properties → Value interpretation provides Auto, Numeric/original readings and
+Actuator ON/OFF for exceptions. Choices persist in workspaces and presets, and
+survive repeated alignment. Original command values are retained alongside the
+normalized states. Binary channels have step traces, OFF/ON axes, readable cursor
+states, ON duration and duty over known time. Reports and interval exports retain
+the interpretation and original numeric codes; source tables stay unchanged.
+
+The existing app icon is now assigned to the Qt application/window and the
+Windows taskbar identity, in addition to being embedded in the executable.

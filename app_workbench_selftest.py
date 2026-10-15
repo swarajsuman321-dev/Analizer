@@ -14,6 +14,7 @@ def self_test():
     first=window.store.add(Channel('Synthetic test signal',x,np.sin(x),unit='V',coordinate_unit='min',attributes={'match_percent':90}))
     window.dashboard.assign([first.id]);app.processEvents()
     try:
+        if window.windowIcon().isNull() or app.windowIcon().isNull():raise RuntimeError('Application icon was not loaded')
         first=next(iter(window.store.channels.values()));fft=window.store.add(transform(first,'FFT'))
         window.dashboard.assign([fft.id]);app.processEvents()
         if window.dashboard.layout_name!='Horizontal split':raise RuntimeError('Frequency layout separation failed')
@@ -46,5 +47,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

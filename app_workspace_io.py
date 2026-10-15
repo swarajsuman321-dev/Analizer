@@ -30,8 +30,9 @@ def decode_cell(value):
 def save_workspace(path,store,views,ui=None):
     path=Path(path).with_suffix('.json');arrays={};channels=[];datasets=[]
     for c in store.channels.values():
-        metadata=asdict(c);metadata.pop('x');metadata.pop('y');channels.append(metadata)
+        metadata=asdict(c);metadata.pop('x');metadata.pop('y');metadata.pop('raw_y');channels.append(metadata)
         arrays[c.id+'_x']=c.x;arrays[c.id+'_y']=c.y
+        if c.raw_y is not None:arrays[c.id+'_raw_y']=c.raw_y
     for ds in store.datasets.values():
         frame=ds.frame
         datasets.append({'id':ds.id,'name':ds.name,'source':ds.source,'columns':[str(c) for c in frame.columns],
@@ -62,7 +63,7 @@ def load_workspace(path):
     store=ChannelStore()
     with np.load(path.parent/companion,allow_pickle=False) as arrays:
         for metadata in record['channels']:
-            c=Channel(x=arrays[metadata['id']+'_x'],y=arrays[metadata['id']+'_y'],**metadata)
+            c=Channel(x=arrays[metadata['id']+'_x'],y=arrays[metadata['id']+'_y'],raw_y=arrays[metadata['id']+'_raw_y'] if metadata['id']+'_raw_y' in arrays else None,**metadata)
             store.add(c)
     for d in record['datasets']:
         frame=pd.DataFrame([[decode_cell(v) for v in row] for row in d['cells']],columns=d['columns'])
@@ -123,6 +124,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
                 elif style.get('side')=='right' and current is axis:
                     current.yaxis.tick_right();current.yaxis.set_label_position('right');current.spines['left'].set_visible(False)
                 elif axes:current.spines['right'].set_position(('outward',48*(len(axes)-1)))
+                if key=='Actuators':current.set_yticks([0,1],['OFF','ON'])
                 current.set_ylabel(key or 'Value',color=color);current.tick_params(axis='y',colors=color);axes[key]=current
                 bounds=view.get('axes',{}).get(key)
                 if bounds:current.set_ylim(*bounds)
@@ -132,7 +134,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
             if view.get('normalized'):
                 finite=y[np.isfinite(y)];low,high=(float(finite.min()),float(finite.max())) if len(finite) else (0.,1.)
                 dy=np.where(np.isfinite(dy),(dy-low)/(high-low) if high>low else .5,np.nan)+view['ids'].index(id)
-            axes[key].plot(dx,dy,label=c.name,color=color,linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
+            axes[key].plot(dx,dy,label=c.name,color=color,drawstyle='steps-post' if c.attributes.get('actuator_binary') else 'default',linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
             for cursor_index,lock in enumerate(view.get('cursor_locks',[])):
                 if not lock or lock.get('channel')!=id or not len(x) or view.get('cursor_mode')=='off':continue
                 if cursor_index==1 and view.get('cursor_mode','dual')!='dual':continue
@@ -162,7 +164,14 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
         def display(value):
             if isinstance(value,(float,np.floating)):return f'{value:.5g}' if np.isfinite(value) else '—'
             return str(value)
-        values=[[display(row[c]) for c in columns] for _,row in frame.iterrows()]
+        from app_actuators import state_text
+        def cell_text(row,column):
+            if row.get('value_interpretation')=='actuator':
+                if column in ('A','B','Min','Max'):return state_text(row[column])
+                if column=='Mean':return f"{100*row[column]:.4g}% ON" if np.isfinite(row[column]) else 'Unknown'
+                if column=='ΔY':return state_text(row['A'])+' → '+state_text(row['B'])
+            return display(row[column])
+        values=[[cell_text(row,c) for c in columns] for _,row in frame.iterrows()]
         table=target.table(cellText=values,colLabels=[c.replace('_',' ') for c in columns],loc='center',cellLoc='left')
         table.auto_set_font_size(False);table.set_fontsize(7);table.scale(1,1.3)
         for (row,col),cell in table.get_celld().items():

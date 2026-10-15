@@ -229,7 +229,7 @@ class PlotPane(pg.PlotWidget):
         if len(coordinates)>1:
             raise ValueError('Different coordinate systems require separate viewports')
         self.coordinate=next(iter(coordinates),None)
-        self.bindings={id:('Normalized tracks' if self.normalized else (assignments or {}).get(id,self.store.channels[id].unit)) for id in self.ids}
+        self.bindings={id:('Normalized tracks' if self.normalized else ('Actuators' if self.store.channels[id].attributes.get('actuator_binary') and (assignments or {}).get(id,self.store.channels[id].unit) in ('state','Actuators') else (assignments or {}).get(id,self.store.channels[id].unit))) for id in self.ids}
         units=list(dict.fromkeys(self.bindings.values()))
         primary=self.getViewBox()
         for i,unit in enumerate(units):
@@ -245,6 +245,8 @@ class PlotPane(pg.PlotWidget):
                 axis=pg.AxisItem('left' if side=='left' else 'right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
                 vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
                 self.axes[unit]=(axis,vb)
+            if unit=='Actuators':axis.setTicks([[(0,'OFF'),(1,'ON')]])
+            else:axis.setTicks(None)
             for j,id in enumerate(id for id in self.ids if self.bindings[id]==unit):
                 c=self.store.channels[id];x,y=c.values()
                 color=QtGui.QColor(COLORS[i%len(COLORS)])
@@ -344,6 +346,7 @@ class PlotPane(pg.PlotWidget):
             x,y=self.cache[(id,c.revision)].visible(left,right,budget)
             if id in self._normalization:
                 low,high,offset=self._normalization[id];y=np.where(np.isfinite(y),(y-low)/(high-low) if high>low else .5,np.nan)+offset
+            if c.attributes.get('actuator_binary') and len(x)>1:x=np.repeat(x,2)[1:];y=np.repeat(y,2)[:-1]
             curve.setData(x,y,connect='finite',skipFiniteCheck=False)
 
     def fit(self):
@@ -528,8 +531,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         groups={}
         for pane in self.visible_panes():
             for id in pane.ids:
-                c=self.store.channels[id];groups.setdefault((c.coordinate_kind,c.coordinate_unit),{}).setdefault(c.unit,[])
-                if id not in groups[(c.coordinate_kind,c.coordinate_unit)][c.unit]:groups[(c.coordinate_kind,c.coordinate_unit)][c.unit].append(id)
+                c=self.store.channels[id];groups.setdefault((c.coordinate_kind,c.coordinate_unit),{}).setdefault('Actuators' if c.attributes.get('actuator_binary') else c.unit,[])
+                key='Actuators' if c.attributes.get('actuator_binary') else c.unit
+                if id not in groups[(c.coordinate_kind,c.coordinate_unit)][key]:groups[(c.coordinate_kind,c.coordinate_unit)][key].append(id)
         chunks=[]
         for units in groups.values():
             entries=list(units.values())

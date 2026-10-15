@@ -53,6 +53,8 @@ class FrameModel(QtCore.QAbstractTableModel):
 class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__();self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose);self.setWindowTitle(f'Appliance Signal Studio · {VERSION}');self.setMinimumSize(1024,680)
+        from app_identity import apply_identity
+        apply_identity(self)
         self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set()
         self.pool=QtCore.QThreadPool.globalInstance();self.pool.setMaxThreadCount(2)
         self.theme=ThemeController(QtWidgets.QApplication.instance(),self)
@@ -114,9 +116,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.properties=QtWidgets.QWidget();form=QtWidgets.QFormLayout(self.properties);form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
         self.prop_name=QtWidgets.QLineEdit();self.prop_unit=QtWidgets.QLineEdit();self.prop_group=QtWidgets.QLineEdit()
         self.prop_kind=QtWidgets.QComboBox();self.prop_kind.addItems(['analog','discrete'])
+        self.prop_interpretation=QtWidgets.QComboBox();self.prop_interpretation.addItem('Auto (identify actuator commands)','auto');self.prop_interpretation.addItem('Numeric / original readings','numeric');self.prop_interpretation.addItem('Actuator ON / OFF','actuator')
         self.prop_attrs=QtWidgets.QPlainTextEdit();self.prop_attrs.setMaximumHeight(100)
         self.warning_min=QtWidgets.QLineEdit();self.warning_max=QtWidgets.QLineEdit();self.fault_min=QtWidgets.QLineEdit();self.fault_max=QtWidgets.QLineEdit()
-        for label,widget in [('Name',self.prop_name),('Unit',self.prop_unit),('Group',self.prop_group),('Kind',self.prop_kind),('Custom properties (JSON)',self.prop_attrs),('Warning minimum',self.warning_min),('Warning maximum',self.warning_max),('Fault minimum',self.fault_min),('Fault maximum',self.fault_max)]:form.addRow(label,widget)
+        for label,widget in [('Name',self.prop_name),('Unit',self.prop_unit),('Group',self.prop_group),('Kind',self.prop_kind),('Value interpretation',self.prop_interpretation),('Custom properties (JSON)',self.prop_attrs),('Warning minimum',self.warning_min),('Warning maximum',self.warning_max),('Fault minimum',self.fault_min),('Fault maximum',self.fault_max)]:form.addRow(label,widget)
         button=QtWidgets.QPushButton('Apply properties and limits');button.clicked.connect(lambda:self.guard(self.apply_properties));form.addRow(button)
         self.dock('Properties',self.properties,QtCore.Qt.DockWidgetArea.RightDockWidgetArea)
 
@@ -153,6 +156,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         def number(key):return f"{stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
         anchors=self.locked_cursor_texts(pane)
         summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; ΔY {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}"
+        if c.attributes.get('actuator_binary'):
+            from app_actuators import state_text
+            a,b=[line.value() for line in pane.cursor_lines]
+            if self.stats_scope.currentIndex()==1 and len(c.x):a,b=float(c.x[0]+c.shift),float(c.x[-1]+c.shift)
+            binary=pane.summaries[c.id][1].query(a,b);known=binary['Coverage']*binary['ΔX'];on=binary['Mean']*known
+            duty=f"{100*binary['Mean']:.4g}%" if np.isfinite(binary['Mean']) else 'Unknown'
+            duration=f'{on:.5g}' if np.isfinite(on) else 'Unknown'
+            summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>A {state_text(stats['A'])} &nbsp; B {state_text(stats['B'])}<br>{'ON time' if c.coordinate_kind=='time' else 'ON span'} {duration} {html.escape(c.coordinate_unit)} · Duty {duty}<br>Known time {known:.5g} {html.escape(c.coordinate_unit)}"
         self.interval_card.setText(('<br>'.join(anchors)+'<br><br>' if anchors else '')+summary)
 
     def _build_math(self):
@@ -264,6 +275,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.background(load,lambda other:self.merge_store(other,workspace))
 
     def merge_store(self,other,workspace=None,deduplicate_alignment=False):
+        from app_actuators import interpret_channel
+        for id,channel in list(other.channels.items()):other.channels[id]=interpret_channel(channel)
         from app_time_units import normalize_minutes
         normalize_minutes(other)
         if deduplicate_alignment:
@@ -304,6 +317,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.apply_button.setEnabled(True)
         if ids:
             c=self.store.channels[ids[0]];self.prop_name.setText(c.name);self.prop_unit.setText(c.unit);self.prop_group.setText(c.group);self.prop_kind.setCurrentText(c.kind)
+            self.prop_interpretation.setCurrentIndex(max(0,self.prop_interpretation.findData(c.attributes.get('value_interpretation','auto'))))
             self.prop_attrs.setPlainText(json.dumps(c.attributes,indent=2))
             for key,field in [('warning_min',self.warning_min),('warning_max',self.warning_max),('fault_min',self.fault_min),('fault_max',self.fault_max)]:field.setText(str(c.attributes.get(key,'')))
         self.show_source()
@@ -316,7 +330,24 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for key,field in [('warning_min',self.warning_min),('warning_max',self.warning_max),('fault_min',self.fault_min),('fault_max',self.fault_max)]:
             if field.text():attrs[key]=float(field.text())
             else:attrs.pop(key,None)
-        self.store.update(ids[0],name=self.prop_name.text(),unit=self.prop_unit.text(),group=self.prop_group.text(),kind=self.prop_kind.currentText(),attributes=attrs)
+        from app_actuators import interpret_channel
+        from dataclasses import replace
+        c=self.store.channels[ids[0]]
+        if self.prop_unit.text()!=c.unit:attrs['raw_unit']=self.prop_unit.text()
+        if self.prop_kind.currentText()!=c.kind:attrs['raw_kind']=self.prop_kind.currentText()
+        candidate=replace(c,name=self.prop_name.text(),unit=self.prop_unit.text(),group=self.prop_group.text(),kind=self.prop_kind.currentText(),attributes=attrs)
+        updated=interpret_channel(candidate,self.prop_interpretation.currentData())
+        self.store.update(c.id,name=updated.name,unit=updated.unit,group=updated.group,kind=updated.kind,y=updated.y,raw_y=updated.raw_y,attributes=updated.attributes)
+        if bool(c.attributes.get('actuator_binary'))!=bool(updated.attributes.get('actuator_binary')):
+            for workspace in self.workspaces:
+                for pane in workspace.panes:
+                    if c.id not in pane.curves or pane.normalized:continue
+                    view=pane.curves[c.id][0];bounds=[]
+                    for id,(axis,curve) in pane.curves.items():
+                        if axis is view:
+                            values=self.store.channels[id].values()[1];finite=values[np.isfinite(values)]
+                            if len(finite):bounds.extend([float(finite.min()),float(finite.max())])
+                    if bounds:view.setYRange(min(bounds),max(bounds) if max(bounds)>min(bounds) else min(bounds)+1,padding=.08)
 
     def show_source(self,*args):
         ds=self.store.datasets.get(self.source_selector.currentData())
@@ -436,6 +467,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             if not lock or lock['channel'] not in self.store.channels:continue
             channel=self.store.channels[lock['channel']];point=(a,b)[index];value=channel.sample(point)
             reading=f'{value:.6g} {html.escape(channel.unit)}' if np.isfinite(value) else 'No reading'
+            if channel.attributes.get('actuator_binary'):
+                from app_actuators import state_text
+                reading=state_text(value)
             locked.append(f'<span style="color:{CURSOR_COLORS[index]};background:#182033;padding:4px"><b>{("A","B")[index]} locked · {html.escape(channel.name)} = {reading}</b> @ {point:.6g} {html.escape(channel.coordinate_unit)}</span>')
         return locked
 
@@ -457,7 +491,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for row,(id,interval_stats) in enumerate(measurements.items()):
             stats=self.statistics_for_display(pane,id,interval_stats)
             c=self.store.channels[id]
-            for col,text in enumerate([c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—',display(stats['ΔY']),display(stats['Min']),display(stats['Max']),display(stats['Mean'])]):
+            cells=[c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—',display(stats['ΔY']),display(stats['Min']),display(stats['Max']),display(stats['Mean'])]
+            if c.attributes.get('actuator_binary'):
+                from app_actuators import state_text
+                cells[2]=state_text(stats['A']);cells[3]=state_text(stats['B']);cells[5]=cells[2]+' → '+cells[3];cells[6]=state_text(stats['Min']);cells[7]=state_text(stats['Max']);cells[8]=f"{100*stats['Mean']:.4g}% ON" if np.isfinite(stats['Mean']) else 'Unknown'
+            for col,text in enumerate(cells):
                 item=QtWidgets.QTableWidgetItem(text);item.setToolTip(f'{c.name}: {text}')
                 if col in (2,3):
                     item.setForeground(QtGui.QColor(CURSOR_COLORS[col-2]));item.setBackground(QtGui.QColor('#182033'))
@@ -513,6 +551,20 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def restore_path(self,path):
         store,views,ui=load_workspace(path)
+        from app_actuators import interpret_channel
+        converted=set()
+        for id,channel in list(store.channels.items()):
+            dataset=store.datasets.get(channel.dataset_id);column=channel.attributes.get('data_column');source=None
+            if channel.raw_y is None and dataset is not None and column in dataset.frame and len(dataset.frame)==len(channel.y):source=dataset.frame[column]
+            updated=interpret_channel(channel,raw_series=source);store.channels[id]=updated
+            if updated.attributes.get('actuator_binary') and not channel.attributes.get('actuator_binary'):converted.add(id)
+        for workspace in views:
+            for pane in workspace.get('panes',[]):
+                for id in converted.intersection(pane.get('ids',[])):
+                    if pane.get('bindings',{}).get(id) in ('state','',None):pane.setdefault('bindings',{})[id]='Actuators'
+                if converted.intersection(pane.get('ids',[])) and not pane.get('normalized'):
+                    pane.setdefault('axes',{})['Actuators']=[-.08,1.08]
+                    if pane['ids'][0] in converted and 'range' in pane:pane['range'][1]=[-.08,1.08]
         from app_time_units import normalize_minutes
         normalize_minutes(store,views)
         if len(views)==3:
@@ -587,5 +639,6 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
 def run_workbench():
     app=QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-    app.setStyle('Fusion');window=AdvancedStudioWindow();window.showMaximized()
+    app.setStyle('Fusion');from app_identity import apply_identity
+    apply_identity();window=AdvancedStudioWindow();window.showMaximized()
     return app.exec()

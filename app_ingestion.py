@@ -73,14 +73,17 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             for col in frame.columns:
                 if col == clock:
                     continue
+                from app_actuators import interpret_channel
                 y = pd.to_numeric(frame[col], errors='coerce').to_numpy(dtype=float)
-                if not np.isfinite(y).any():
-                    continue
                 detected_unit,unit_source=detect_unit(frame,col)
-                state = bool(re.search(r'valve|state|code|stage|switch|bool', str(col), re.I))
+                from app_data import classify_signal_kind
+                state = bool(re.search(r'valve|state|code|stage|switch|bool', str(col), re.I)) or classify_signal_kind(col) in ('control','door_lock','stage')
+                if detected_unit and detected_unit.lower() not in ('state','bool','boolean','code','1'):state=False
                 channel = Channel(str(col), x[order], y[order], unit=detected_unit,
                                   kind='discrete' if state else 'analog', coordinate_unit=unit,
                                   coordinate_kind=kind, dataset_id=ds.id, source=str(path),
                                   attributes={'unit_detection':unit_source,'original_coordinate_unit':source_unit,'source_column':str(col), 'source_rows':len(frame), 'projection_rows':len(order)})
+                channel=interpret_channel(channel,raw_series=frame[col].iloc[order].to_numpy())
+                if not np.isfinite(channel.y).any() and not channel.attributes.get('actuator_binary'):continue
                 ids.append(store.add(channel).id)
     return ids

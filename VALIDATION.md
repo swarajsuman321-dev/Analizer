@@ -1,3 +1,14 @@
+# Studio 2.1.4 validation
+
+The full source suite passes: **155 tests** (`/tmp/analizer-v214-tests.log`).
+Six additional actuator regressions cover integer states, physical-unit and
+program-code exclusions, reversible overrides, textual states, original readings,
+repeat alignment, old/new workspace persistence, step traces, duty/ON duration,
+report exports and non-null application/window icons. Targeted results are in
+`/tmp/analizer-v214-actuator-tests.log`. The frozen startup check now verifies the
+application and window icon. Windows CI tests and builds both executables before
+publishing 2.1.4. Historical validation records follow.
+
 # Studio 2.1.3 validation
 
 Six zoom-mode regressions exercise real diagonal rectangle drags in X, Y and XY,

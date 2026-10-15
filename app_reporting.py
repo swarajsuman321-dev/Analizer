@@ -38,10 +38,15 @@ def interval_tables(store,workspace):
                 if lock and lock.get('channel') in store.channels:metadata[f'cursor_{("A","B")[index]}_locked_channel']=store.channels[lock['channel']].name
             metadata['ΔY']=vb-va
             metadata['match_percent']=c.attributes.get('match_percent',np.nan) if match_color(c.attributes.get('match_percent')) else np.nan
+            if c.attributes.get('actuator_binary'):
+                from app_actuators import state_text
+                metadata.update(value_interpretation='actuator',A_state=state_text(va),B_state=state_text(vb))
+                scope=IntervalSummary(c).query(float(x[0]),float(x[-1])) if workspace.get('statistics_scope')=='Whole recording' and len(x) else IntervalSummary(c).query(a,b)
+                metadata['ON_time']=scope['Mean']*scope['Coverage']*scope['ΔX'];metadata['ON_fraction']=scope['Mean'];metadata['known_time']=scope['Coverage']*scope['ΔX']
             summary.append(metadata)
             frames.append(pd.DataFrame({'pane':pane_number,'channel_id':c.id,'channel':c.name,'coordinate':x[mask],
                                         'value':y[mask],'unit':c.unit,'coordinate_unit':c.coordinate_unit,
-                                        'cursor_A_X':a,'cursor_B_X':b,'match_percent':metadata['match_percent']}))
+                                        'cursor_A_X':a,'cursor_B_X':b,'match_percent':metadata['match_percent'],**({'original_value':c.raw_y[mask]} if c.raw_y is not None else {})}))
     if not summary:raise ValueError('Check at least one channel before exporting')
     return pd.concat(frames,ignore_index=True),pd.DataFrame(summary)
 
