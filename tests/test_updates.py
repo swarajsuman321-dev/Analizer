@@ -120,12 +120,12 @@ class InfoTests(unittest.TestCase):
         from app_version import VERSION
         w=AdvancedStudioWindow()
         try:
-            self.assertEqual(w.tabs.tabText(2),'Info');self.assertIn(VERSION,w.info.manuals)
+            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'Info & manual');self.assertIn(VERSION,w.info.manuals)
             self.assertIn('Updates',w.info.manual.toPlainText())
-            w.tabs.setCurrentIndex(1);w.tabs.setCurrentIndex(2);self.assertIs(w.active_workspace,w.comparison)
-            w.tabs.setCurrentIndex(0);w.tabs.setCurrentIndex(2);self.assertIs(w.active_workspace,w.dashboard);self.assertEqual(w.ui_state()['tab'],0)
+            w.tabs.setCurrentIndex(1);w.show_info();self.assertIs(w.active_workspace,w.comparison);self.assertTrue(w.info_dialog.isVisible())
+            w.tabs.setCurrentIndex(0);w.show_info();self.assertIs(w.active_workspace,w.dashboard);self.assertEqual(w.ui_state()['tab'],0)
             w.info.checked(manifest(version='2.1.10'),None);self.assertTrue(w.info.install_button.isEnabled())
             w.info.checked(manifest(version=VERSION),None);self.assertIn('latest',w.info.status.text())
             w.info.checked(None,'offline');self.assertIn('Could not check',w.info.status.text())
-            w.info.versions.setCurrentText('2.1.4');self.assertIn('Actuators',w.info.manual.toPlainText())
+            w.info.versions.setCurrentText('2.1.4');self.assertIn('Actuator interpretation',w.info.manual.toPlainText())
         finally:w.close();self.app.processEvents()

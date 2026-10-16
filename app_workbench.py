@@ -70,14 +70,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         from app_studio_tools import StudioTools
         self.studio=StudioTools(self)
         from app_info import InfoTab
-        self.info=InfoTab(self);self.tabs.addTab(self.info,'Info')
+        self.info_dialog=QtWidgets.QDialog(self);self.info_dialog.setWindowTitle(f'Info & user manual · {VERSION}');self.info_dialog.resize(1050,760)
+        info_layout=QtWidgets.QVBoxLayout(self.info_dialog);self.info=InfoTab(self);info_layout.addWidget(self.info)
         self.store.observe(self.store_changed)
         self.statusBar().showMessage('Open a recording to begin. Check channels to show them; drag A and B to inspect an interval.')
         self.readout_timer=QtCore.QTimer(self);self.readout_timer.setSingleShot(True);self.readout_timer.timeout.connect(self._readouts)
         self.resizeDocks([self.docks['Data Portal'],self.docks['Properties']],[260,280],QtCore.Qt.Orientation.Horizontal)
         self.resizeDocks([self.docks['Readout']],[180],QtCore.Qt.Orientation.Vertical)
-        for name in ('Properties','Channel Math','Engineering Controls','Channel Table','Interval Measurements'):self.docks[name].hide()
-        self.docks['Data Portal'].raise_();self.docks['Readout'].raise_()
+        self.enable_all_panels()
         self._readouts();self.theme.themeChanged.connect(self.plot_theme);self.theme.apply(self.theme.mode)
 
     def plot_theme(self,dark):
@@ -220,7 +220,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             item=QtGui.QAction(text,self);item.triggered.connect(lambda:self.guard(fn));item.setToolTip(tip or text)
             if shortcut:item.setShortcut(shortcut)
             toolbar.addAction(item);return item
-        action('Open',self.open_data,'Ctrl+O','Import CSV, Excel, ZIP, Parquet or JSON recording')
+        action('Open',self.open_data,'Ctrl+O','Import TDMS, CSV, Excel, ZIP, Parquet or JSON recording')
         action('Save workspace',self.save,'Ctrl+S');action('Restore',self.restore)
         self.export_button=QtWidgets.QPushButton('Export Report');self.export_button.setObjectName('exportReport')
         self.export_button.setStyleSheet('QPushButton {background:#216eb5; color:white; font-weight:600; padding:7px 16px; border-radius:5px;}')
@@ -234,12 +234,22 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.cursor_combo.currentTextChanged.connect(lambda mode:[p.set_cursor_mode(mode) for p in self.active_workspace.visible_panes()])
         self.snap_checkbox=QtWidgets.QCheckBox('Snap');self.snap_checkbox.setChecked(True);toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
         view=self.menuBar().addMenu('View')
+        view.addAction('Show all panels',self.enable_all_panels);view.addSeparator()
         for dock in self.docks.values():view.addAction(dock.toggleViewAction())
         channel=self.menuBar().addMenu('Channel')
         for text in ['Rename','Duplicate','Delete','Assign axis','Mask interval','Clear masks','Marker','ROI']:
             item=channel.addAction(text);item.triggered.connect(lambda checked=False,t=text:self.organize(t.lower()))
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
-        kind=view.addAction('Show channel kind');kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show))
+        kind=view.addAction('Show channel kind');self.channel_kind_action=kind;kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show));kind.setChecked(True)
+        self.info_action=toolbar.addAction('Info & manual');self.info_action.setToolTip('User manual, version information and updates');self.info_action.triggered.connect(self.show_info)
+
+    def enable_all_panels(self):
+        for dock in self.docks.values():dock.show()
+        self.channel_kind_action.setChecked(True)
+        self.docks['Data Portal'].raise_();self.docks['Properties'].raise_();self.docks['Readout'].raise_()
+
+    def show_info(self):
+        self.info_dialog.show();self.info_dialog.raise_();self.info_dialog.activateWindow()
 
     def guard(self,fn):
         try:return fn()
@@ -538,7 +548,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.background(calculate,complete)
 
     def ui_state(self):
-        return {'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
+        return {'app_version':VERSION,'show_channel_kind':not self.portal.tree.isColumnHidden(2),'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
                 'stats_scope':self.stats_scope.currentText(),'tab':getattr(self,'_plot_tab_index',0),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
@@ -551,7 +561,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         path,_=QtWidgets.QFileDialog.getOpenFileName(self,'Restore workspace','','Workspace (*.json)')
         if path:self.restore_path(path)
 
-    def restore_path(self,path):
+    def restore_path(self,path,upgrade_defaults=False):
         store,views,ui=load_workspace(path)
         from app_actuators import interpret_channel
         converted=set()
@@ -577,6 +587,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.store.observe(self.store_changed);self.store_changed(set())
         for encoded,method in [(ui.get('geometry'),self.restoreGeometry),(ui.get('docks'),self.restoreState)]:
             if encoded:method(QtCore.QByteArray.fromBase64(encoded.encode()))
+        if 'show_channel_kind' in ui:self.channel_kind_action.setChecked(bool(ui['show_channel_kind']))
+        if upgrade_defaults and 'app_version' not in ui:self.enable_all_panels()
         self.stats_scope.setCurrentText(ui.get('stats_scope','Cursor interval'))
         self.tabs.setCurrentIndex(min(ui.get('tab',0),len(self.workspaces)-1));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))
         selected=set(ui.get('selection',[]))
@@ -647,5 +659,5 @@ def run_workbench():
     apply_identity();window=AdvancedStudioWindow();window.showMaximized()
     if '--restore' in sys.argv:
         index=sys.argv.index('--restore')
-        if index+1<len(sys.argv):window.guard(lambda:window.restore_path(sys.argv[index+1]))
+        if index+1<len(sys.argv):window.guard(lambda:window.restore_path(sys.argv[index+1],upgrade_defaults=True))
     return app.exec()

@@ -108,3 +108,10 @@ The existing icon is assigned to the application, window and Windows taskbar.
 - Contextual command decoding while preserving program states, error codes and original readings.
 - Throttled mouse crosshair with independent Y-axis coordinates, nearest real sample marker/readout, and stable A/B cursor locks.
 - Offline 2.1.6 manual and frozen TDMS/hover smoke checks; published through the existing updater.
+
+## 2.1.7 — top-toolbar help and enabled View panels
+
+- Info/manual moves from graph tabs to a reusable, nonmodal window opened from the top toolbar (and About).
+- Complete feature manuals for each supported version, topic navigation and wraparound keyword search.
+- All View panels and channel-kind display enabled by default, with a Show all panels action and one-time older-updater visibility migration.
+- Explicit session restoration and later update recoveries retain saved layout/visibility preferences.

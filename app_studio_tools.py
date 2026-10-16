@@ -69,7 +69,7 @@ class StudioTools(QtCore.QObject):
         help_action.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Keyboard shortcuts','Ctrl+1 / 2 / 3: Zoom X / Y / XY\nCtrl+4 or Escape: Pan\nCtrl+= / Ctrl+-: Zoom in / out\nCtrl+0 or R on plot: Reset zoom / fit\nAlt+Left / Right: Previous / next view\nCtrl+L: Lock cursors to channel\nLeft / Right on plot: Step cursor A\nShift+Left / Right: Step cursor B\nCtrl+P: Export Report'))
         from app_version import VERSION
         about=menu.addAction(f'About version {VERSION}')
-        about.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Appliance Signal Studio',f'Version {VERSION}\nAnalysis and Comparison workspaces\nAdvanced capabilities are under Tools.'))
+        about.triggered.connect(w.show_info)
 
     @property
     def pane(self):return self.window.active_workspace.active

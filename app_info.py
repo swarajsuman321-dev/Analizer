@@ -1,4 +1,5 @@
 """Offline version manuals and non-blocking release updates."""
+import re
 from pathlib import Path
 import sys
 from PySide6 import QtCore,QtGui,QtWidgets
@@ -27,6 +28,11 @@ class InfoTab(QtWidgets.QWidget):
         self.progress=QtWidgets.QProgressBar();self.progress.hide();layout.addWidget(self.progress)
         self.notes=QtWidgets.QLabel();self.notes.setTextFormat(QtCore.Qt.TextFormat.PlainText);self.notes.setWordWrap(True);layout.addWidget(self.notes)
         row=QtWidgets.QHBoxLayout();row.addWidget(QtWidgets.QLabel('User manual for version:'));self.versions=QtWidgets.QComboBox();row.addWidget(self.versions);row.addStretch();layout.addLayout(row)
+        row=QtWidgets.QHBoxLayout();self.topics=QtWidgets.QComboBox();self.topics.setMinimumContentsLength(22);self.topics.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.search=QtWidgets.QLineEdit();self.search.setPlaceholderText('Find a feature or keyword…');self.next_match=QtWidgets.QPushButton('Find next')
+        row.addWidget(self.topics,1);row.addWidget(self.search,1);row.addWidget(self.next_match);layout.addLayout(row)
+        self.search_status=QtWidgets.QLabel();layout.addWidget(self.search_status)
+        self.topics.currentIndexChanged.connect(self.jump_topic);self.search.returnPressed.connect(self.find_manual);self.next_match.clicked.connect(self.find_manual)
         self.manual=QtWidgets.QTextBrowser();self.manual.setOpenExternalLinks(True);layout.addWidget(self.manual,1)
         root=Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))/'manuals'
         self.manuals={p.stem.removeprefix('v'):p for p in root.glob('v*.md')}
@@ -36,7 +42,26 @@ class InfoTab(QtWidgets.QWidget):
 
     def show_manual(self,version):
         path=self.manuals.get(version)
-        self.manual.setMarkdown(path.read_text(encoding='utf-8') if path else 'The manual is unavailable in this build. See the repository documentation.')
+        content=path.read_text(encoding='utf-8') if path else 'The manual is unavailable in this build. See the repository documentation.'
+        self.manual.setMarkdown(content);self.search_status.clear();self.search.clear();self.topics.blockSignals(True);self.topics.clear()
+        self.topics.addItems(re.findall(r'^## (.+)$',content,re.M));self.topics.blockSignals(False)
+        self.manual.moveCursor(QtGui.QTextCursor.MoveOperation.Start)
+
+    def jump_topic(self,index):
+        heading=self.topics.itemText(index);block=self.manual.document().firstBlock()
+        while block.isValid():
+            if block.blockFormat().headingLevel()==2 and block.text()==heading:
+                cursor=self.manual.textCursor();cursor.setPosition(block.position());self.manual.setTextCursor(cursor);self.manual.ensureCursorVisible();return
+            block=block.next()
+
+    def find_manual(self):
+        query=self.search.text().strip()
+        if not query:self.search_status.clear();return
+        original=self.manual.textCursor();found=self.manual.find(query)
+        if not found:
+            self.manual.moveCursor(QtGui.QTextCursor.MoveOperation.Start);found=self.manual.find(query)
+        if not found:self.manual.setTextCursor(original)
+        self.search_status.setText('' if found else 'No matches in this version’s manual.')
 
     def run_task(self,fn,complete):
         self.check_button.setEnabled(False);self.install_button.setEnabled(False)

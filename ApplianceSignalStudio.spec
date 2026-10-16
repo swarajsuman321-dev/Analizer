@@ -7,7 +7,7 @@ mode = os.environ.get('ANALYZER_BUILD_MODE', 'onefile')
 if mode not in ('onedir', 'onefile', 'debug'):
     raise ValueError('Unknown analyzer build mode.')
 assets = [(str(project / name), '.') for name in ('app_icon.ico', 'app_logo.png')]
-assets.append((str(project / 'manuals'), 'manuals'))
+assets.extend((str(path),'manuals') for path in sorted((project/'manuals').glob('v*.md')))
 analysis = Analysis(
     [str(project / 'windows_entry.py')],
     pathex=[str(project)],

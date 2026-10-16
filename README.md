@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.6
+# Appliance Signal Studio 2.1.7
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -16,7 +16,7 @@ On Windows use `.venv\Scripts\python.exe`, or build a portable executable with
 
 ## Everyday workflow
 
-1. **Open** CSV/text, Excel, ZIP-contained CSV, Parquet or JSON recordings. Data
+1. **Open** TDMS, CSV/text, Excel, ZIP-contained CSV, Parquet or JSON recordings. Data
    loads directly into the current Analysis or Comparison workspace. Clocks are
    detected from column names. Unlabelled numeric time is interpreted as seconds,
    then converted to **minutes**, as are seconds, milliseconds, hours and timestamps.
@@ -48,8 +48,10 @@ cursors; Space enables panning.
 See [FEATURE_PARITY.md](FEATURE_PARITY.md) for the earlier-feature audit and the location
 of every restored capability.
 
-**View** opens optional Engineering Controls, Properties, Channel Math, original
-Channel Table and detailed interval statistics. **Analyze** applies a formula or
+**View** controls Engineering Controls, Properties, Channel Math, original
+Channel Table and detailed interval statistics. All panels and channel-kind display
+are enabled by default; shared dock areas expose tabs. Use Show all panels to restore
+this visibility in one click. **Analyze** applies a formula or
 numerical operation directly as a derived channel. The advanced capabilities live under **Tools**, including channel styling, playback,
 engineering diagnostics, image-reference calibration, presets and extension management.
 There is no permanent sample-preview pane or separate legacy application. Save workspace writes a JSON manifest plus an
@@ -77,8 +79,8 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.6**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.1.6**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.7**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.1.7**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
 ## Navigation and locked cursors (2.1.1)
@@ -161,3 +163,11 @@ The 2.1.4 app needs one manual upgrade to 2.1.5 to gain the updater. Public, non
 Move the mouse over a plot for a live crosshair, pointer X/Y coordinates on the independent axis scales, and the nearest trace's actual sample time/value/unit. Hovering leaves A/B cursors and their locks unchanged. State traces show ON/OFF; hover guides disappear outside the plot and stay out of saved reports. The reader was checked against the supplied 27-channel recording (305,779 measurements, approximately 232.37 minutes), with source-value comparisons, workspace restoration and PDF/PNG/CSV exports. Uploaded recordings are not included in the repository or executable.
 
 TDMS also works in recording alignment and bench comparison. Those workflows use a derived union of the recorded timestamps, carrying only earlier readings for at most five seconds (the synchronization engine’s existing tolerance). The direct Analysis view keeps the native channel clocks. Alignment retains the untouched TDMS source table separately from this synchronized projection.
+
+## Top-toolbar help and complete manuals (2.1.7)
+
+**Info & manual** is now in the main top toolbar and opens a separate manual/update window. Only Analysis and Comparison remain in the graph-tab area. The offline version selector, topic navigation and Find next search provide a complete feature reference, including every processing operation, View panel, engineering/comparison workflow, export, shortcut, preset and extension facility. Archived manuals include only the features supported by their app version.
+
+Every View panel and Show channel kind start enabled. The first automatic update from a pre-2.1.7 session applies the new visibility default once; later recoveries retain the user's choices. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens the panels without clearing data.
+
+Maintain the manuals in `manuals/feature-guide.md` (each topic includes its first supported version), add release notes in `scripts/build_manuals.py`, then run `python scripts/build_manuals.py`. Only generated version manuals are bundled in the EXE.

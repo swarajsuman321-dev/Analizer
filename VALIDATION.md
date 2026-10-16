@@ -1,3 +1,22 @@
+# Studio 2.1.7 validation
+
+The full local headless Qt suite passed **176 tests** (one native Windows-only
+installer transaction skipped): `/tmp/analizer-v217-tests.log`. The focused
+manual/default-layout suite passed four checks, including the final one-time
+pre-2.1.7 updater visibility migration and explicit saved-layout restoration:
+`/tmp/analizer-v217-manual-tests.log`. Updater regressions also pass locally;
+native Windows runs the installer test in CI. The source startup smoke report
+is `/tmp/analizer-v217-source-smoke.json` (ok=true).
+
+Coverage verifies a top-toolbar manual button, two graph workspaces, nonmodal
+manual reopening without changing the active plot, enabled View docks and channel
+kind, topic navigation, wraparound keyword search, retained reading position for
+failed searches, and version-filtered documentation including every processing
+operation and View panel. Only generated version manuals are bundled; the source
+guide/generator stay out of the EXE. Frozen smoke checks validate the toolbar
+manual and topic navigation as well as retained TDMS/hover support. Native Windows
+CI runs the exact final suite and both executables before release publication.
+
 # Studio 2.1.6 validation
 
 The full local suite passed **170 tests** (one native Windows-only transaction

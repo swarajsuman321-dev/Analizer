@@ -26,6 +26,7 @@ def self_test():
             if (root/'report.svg').stat().st_size<100:raise RuntimeError('SVG export failed')
             from app_version import VERSION
             if VERSION not in window.info.manuals or 'Updates' not in window.info.manual.toPlainText():raise RuntimeError('Bundled Info manual is missing')
+            if window.tabs.count()!=2 or not hasattr(window,'info_action') or window.info.topics.findText('View menu and panel layout')<0:raise RuntimeError('Top-toolbar manual navigation is missing')
             from app_reporting import export_report
             for suffix in ('pdf','png','xlsx','csv'):
                 export_report(root/('report.'+suffix),window.store,window.dashboard.state())
@@ -63,5 +64,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','TDMS reader and units','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','top-toolbar manual and topics','TDMS reader and units','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

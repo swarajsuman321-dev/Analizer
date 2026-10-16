@@ -144,7 +144,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
                 w.export_button.click();dialog.assert_called_once();self.assertTrue(path.exists())
             with patch.object(QtWidgets.QFileDialog,'getSaveFileName',return_value=('','')) as dialog:w.export_button.click();dialog.assert_called_once()
         self.assertNotIn('Preview sample',[a.text() for a in w.findChildren(QtGui.QAction)])
-        self.assertEqual(w.tabs.count(),3);self.assertFalse(hasattr(w,'preview_plot'))
+        self.assertEqual(w.tabs.count(),2);self.assertFalse(hasattr(w,'preview_plot'))
     def test_export_empty_selection_rejected_without_output(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'empty.pdf'
