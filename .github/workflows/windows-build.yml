@@ -25,16 +25,20 @@ jobs:
           python -m venv .venv-exe
           .venv-exe\Scripts\python.exe -m pip install --only-binary=:all: -r requirements-build.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Check native update transactions
+      - name: Check native updates and channel interactions
         shell: pwsh
         run: |
           $output = & .venv-exe\Scripts\python.exe -m unittest discover -s tests -p test_updates.py -v 2>&1
           $code = $LASTEXITCODE
+          if ($code -eq 0) {
+            $output += & .venv-exe\Scripts\python.exe -m unittest discover -s tests -p test_simplified_workbench.py -k test_checkbox_and_master -v 2>&1
+            $code = $LASTEXITCODE
+          }
           $output | Write-Output
           if ($code -ne 0) {
             $tail = ($output | Select-Object -Last 35) -join "`n"
             $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-            Write-Output "::error title=Native updater test failure::$tail"
+            Write-Output "::error title=Native interaction test failure::$tail"
           }
           exit $code
       - name: Build and test portable and single-file executables

@@ -14,8 +14,10 @@ kind, topic navigation, wraparound keyword search, retained reading position for
 failed searches, and version-filtered documentation including every processing
 operation and View panel. Only generated version manuals are bundled; the source
 guide/generator stay out of the EXE. Frozen smoke checks validate the toolbar
-manual and topic navigation as well as retained TDMS/hover support. Native Windows
-CI runs the exact final suite and both executables before release publication.
+manual and topic navigation as well as retained TDMS/hover support. The channel tree uses compact indentation and content-sized Unit/Kind columns,
+with a regression that verifies the native checkbox fits entirely within its
+channel column. Native Windows CI preflights this actual click interaction.
+Native Windows CI runs the exact final suite and both executables before release publication.
 
 # Studio 2.1.6 validation
 
