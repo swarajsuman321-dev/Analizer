@@ -33,13 +33,16 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         raise AssertionError('Channel missing from tree')
     def test_checkbox_and_master_remove_axes_and_show_placeholder(self):
         w=self.window;a=self.add();b=self.add('Power','W')
-        item=self.item(a.id);rect=w.portal.tree.visualItemRect(item)
-        # Click the native indicator, not a parallel synthetic visibility API.
-        option=QtWidgets.QStyleOptionViewItem();option.initFrom(w.portal.tree)
-        option.rect=rect;option.features=QtWidgets.QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
-        indicator=w.portal.tree.style().subElementRect(QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,option,w.portal.tree)
-        QtTest.QTest.mouseClick(w.portal.tree.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=indicator.center());self.app.processEvents()
-        self.assertIn(a.id,w.dashboard.active.ids)
+        tree=w.portal.tree;item=self.item(a.id);tree.scrollToItem(item);self.app.processEvents()
+        # Use the actual column/delegate options, including text and check state.
+        # A whole-row rect with only HasCheckIndicator differs on Windows styles
+        # when the Unit and Kind columns are visible.
+        index=tree.indexFromItem(item,0);option=QtWidgets.QStyleOptionViewItem();option.initFrom(tree)
+        tree.itemDelegate().initStyleOption(option,index);option.rect=tree.visualRect(index)
+        indicator=tree.style().subElementRect(QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,option,tree)
+        self.assertTrue(tree.viewport().rect().contains(indicator.center()),str(indicator))
+        QtTest.QTest.mouseClick(tree.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=indicator.center());self.app.processEvents()
+        self.assertIn(a.id,w.dashboard.active.ids,f'Indicator {indicator}, column {option.rect}, check state {item.checkState(0)}')
         w.set_channel_visibility([b.id],True);self.assertEqual(len(w.dashboard.active.axes),1)
         QtTest.QTest.mouseClick(w.portal.select_all,QtCore.Qt.MouseButton.LeftButton);self.app.processEvents()
         self.assertEqual(w.dashboard.active.ids,[]);self.assertEqual(w.dashboard.active.axes,{})
