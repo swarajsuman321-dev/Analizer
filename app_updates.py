@@ -82,7 +82,11 @@ $log = {ps_quote(Path(directory)/'install.log')}
 Wait-Process -Id {os.getpid()} -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 try {{
-    if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant() -ne {ps_quote(expected_hash)}) {{ throw 'Update checksum changed' }}
+    $stream = [System.IO.File]::OpenRead($download)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {{ $actualHash = [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }}
+    finally {{ $stream.Dispose(); $sha.Dispose() }}
+    if ($actualHash -ne {ps_quote(expected_hash)}) {{ throw 'Update checksum changed' }}
     Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
     Move-Item -LiteralPath $target -Destination $backup
     try {{

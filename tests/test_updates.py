@@ -52,7 +52,7 @@ class UpdateTests(unittest.TestCase):
                 launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
                 args=launch.call_args.args[0];self.assertEqual(args[0],'powershell.exe');self.assertNotIn('shell',launch.call_args.kwargs)
                 script=(root/'install-update.ps1').read_text(encoding='utf-8-sig')
-                self.assertIn("User''s app.exe",script);self.assertIn('Wait-Process',script);self.assertIn('Get-FileHash',script);self.assertIn('Move-Item -LiteralPath $backup -Destination $target',script)
+                self.assertIn("User''s app.exe",script);self.assertIn('Wait-Process',script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('Move-Item -LiteralPath $backup -Destination $target',script)
                 self.assertEqual(target.read_bytes(),b'old')
                 download.write_bytes(b'tampered')
                 with self.assertRaises(ValueError):launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
