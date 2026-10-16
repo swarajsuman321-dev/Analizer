@@ -1,3 +1,26 @@
+# Studio 2.1.6 validation
+
+The full local suite passed **170 tests** (one native Windows-only transaction
+check skipped): `/tmp/analizer-v216-tests.log`. The final focused TDMS/hover suite
+passes **9 tests**, including two added engineering-adapter checks:
+`/tmp/analizer-v216-tdms-hover-tests.log`. The final Windows suite has 172 tests.
+Coverage includes native per-channel timestamps, units, quality, waveform clocks,
+absolute clocks, sample-index fallback, causal synchronization, source preservation,
+workspace roundtrips, real mouse movement, independent axes, normalized/shifted
+traces, null values, empty selection and stable locked cursors. Plot close stops
+pending rendering and hover callbacks.
+
+The supplied TDMS was independently checked: **27 channels, 305,779 measurements,
+232.3665 minutes**. Source values match exactly; seconds-to-minutes timestamps
+agree within floating-point rounding. Its complete workspace saves and restores,
+and PDF/PNG/CSV exports succeed. Alignment produces 27 channels on 124,585
+synchronized timestamps while retaining the untouched TDMS source table.
+Evidence is outside the repository at
+`/workspace/analizer-report-validation/v216/validation.json`; uploaded recordings
+and generated data are not packaged or committed. Frozen self-tests explicitly
+read a synthetic TDMS and exercise mouse XY hover. Windows CI runs the final full
+suite and both packaged-app checks before release publication.
+
 # Studio 2.1.5 validation
 
 The full local suite passed **160 tests** (`/tmp/analizer-v215-tests.log`).

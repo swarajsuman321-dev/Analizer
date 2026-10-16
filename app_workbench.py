@@ -267,7 +267,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         if path:field.setText(path)
 
     def open_data(self):
-        self.mutate();paths,_=QtWidgets.QFileDialog.getOpenFileNames(self,'Open recordings','','Data (*.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)')
+        self.mutate();paths,_=QtWidgets.QFileDialog.getOpenFileNames(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)')
         if not paths:return
         def load():
             store=ChannelStore()

@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.5
+# Appliance Signal Studio 2.1.6
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -77,8 +77,8 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.5**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.1.5**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.6**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.1.6**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
 ## Navigation and locked cursors (2.1.1)
@@ -153,3 +153,11 @@ Windows taskbar identity, in addition to being embedded in the executable.
 Open **Info** for the offline user manual and select a version. Choose **Check for updates → Download update → Install update & restart** to move to the latest stable GitHub release. The app verifies the SHA-256 checksum, saves a recovery workspace, keeps the previous EXE as a backup and restores your workspace after restarting. Update checks are manual and never upload recordings. Cancellation or a failed download leaves the installed app unchanged. Automatic installation requires the Windows app in a writable folder; source users update their checkout as usual.
 
 The 2.1.4 app needs one manual upgrade to 2.1.5 to gain the updater. Public, non-expiring downloads are published under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests and both frozen-app checks pass. Future releases must increment `app_version.py`, Windows version metadata and the bundled manual. CI creates `update.json` from the exact tested EXE and publishes it with the release; an already published version is immutable.
+
+## TDMS recordings and mouse X/Y hover (2.1.6)
+
+**Open** now accepts `.tdms` directly, including LabSys `dTime / Value / Status` groups and NI waveform channels. Each measurement keeps its own timestamps and sample count; time is displayed in minutes. Declared engineering units, source metadata and quality flags are retained. Invalid-quality points remain unknown. Existing engineering values are not scaled a second time, and metadata expressions are never executed. Undeclared units remain editable in Properties. The reader is bundled: no NI installation is required.
+
+Move the mouse over a plot for a live crosshair, pointer X/Y coordinates on the independent axis scales, and the nearest trace's actual sample time/value/unit. Hovering leaves A/B cursors and their locks unchanged. State traces show ON/OFF; hover guides disappear outside the plot and stay out of saved reports. The reader was checked against the supplied 27-channel recording (305,779 measurements, approximately 232.37 minutes), with source-value comparisons, workspace restoration and PDF/PNG/CSV exports. Uploaded recordings are not included in the repository or executable.
+
+TDMS also works in recording alignment and bench comparison. Those workflows use a derived union of the recorded timestamps, carrying only earlier readings for at most five seconds (the synchronization engine’s existing tolerance). The direct Analysis view keeps the native channel clocks. Alignment retains the untouched TDMS source table separately from this synchronized projection.

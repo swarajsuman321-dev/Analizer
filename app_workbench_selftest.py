@@ -44,10 +44,24 @@ def self_test():
             dialog=window.studio.plugin_plots();app.processEvents();dialog.close()
             export_full_workbook(root/'complete.xlsx',window.store,window.dashboard.state())
             if (root/'complete.xlsx').stat().st_size<100:raise RuntimeError('Complete workbook failed')
+            from nptdms import TdmsWriter,ChannelObject
+            from app_channel_store import ChannelStore
+            from app_ingestion import ingest
+            tdms=root/'smoke.tdms'
+            with TdmsWriter(tdms) as writer:
+                writer.write_segment([ChannelObject('Temperature','Time',np.array([0.,60.,120.]),properties={'unit_string':'s'}),ChannelObject('Temperature','Reading',np.array([20.,21.,22.]),properties={'unit_string':'°C'})])
+            tdms_store=ChannelStore();ingest(tdms_store,tdms);tdms_channel=next(iter(tdms_store.channels.values()))
+            np.testing.assert_allclose(tdms_channel.x,[0,1,2])
+            if tdms_channel.unit!='°C':raise RuntimeError('Bundled TDMS reader lost engineering units')
+            hover_pane=window.dashboard.panes[0];positions=[line.value() for line in hover_pane.cursor_lines]
+            hover_pane._mouse_hover((hover_pane.getViewBox().sceneBoundingRect().center(),))
+            if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
+            if [line.value() for line in hover_pane.cursor_lines]!=positions:raise RuntimeError('Hover moved measurement cursors')
+            hover_pane.clear_hover()
             from PIL import Image,ImageDraw
             image=Image.new('RGB',(800,704),'white');draw=ImageDraw.Draw(image)
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','TDMS reader and units','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

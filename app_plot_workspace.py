@@ -80,6 +80,7 @@ class PlotPane(pg.PlotWidget):
         self.showGrid(x=True,y=True,alpha=.2)
         self.getPlotItem().hideButtons()
         self.getViewBox().sigResized.connect(self._resize)
+        self.getViewBox().sigYRangeChanged.connect(self.clear_hover)
         self.getViewBox().sigXRangeChanged.connect(self._schedule)
         self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(self._render)
         self.cursor_lines=[pg.InfiniteLine(pos=0,angle=90,movable=True,pen=pg.mkPen(color,width=2),hoverPen=pg.mkPen(color,width=3),label=name,labelOpts={'color':color,'position':.95}) for color,name in zip(CURSOR_COLORS,('A','B'))]
@@ -94,7 +95,83 @@ class PlotPane(pg.PlotWidget):
         self.marker_views=[None,None]
         for marker in self.cursor_markers:marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);marker.setZValue(1000);marker.hide()
         self.scene().sigMouseClicked.connect(self._click)
+        self._build_hover()
         self.legend=self.addLegend(offset=(12,12));self.legend.hide()
+
+    def close(self):
+        if self.plotItem is None:return True
+        self._closing=True;self.timer.stop();self.hover_proxy.disconnect();self.clear_hover()
+        return super().close()
+
+    def _build_hover(self):
+        pen=pg.mkPen('#8394a8',width=1,style=QtCore.Qt.PenStyle.DashLine)
+        self.hover_lines=[pg.InfiniteLine(angle=90,pen=pen),pg.InfiniteLine(angle=0,pen=pen)]
+        for line in self.hover_lines:
+            line.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);line.setZValue(900);self.addItem(line,ignoreBounds=True);line.hide()
+        self.hover_marker=pg.ScatterPlotItem(size=9,brush=None,pen=pg.mkPen('#ffffff',width=2))
+        self.hover_marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.hover_marker.setZValue(901);self.addItem(self.hover_marker,ignoreBounds=True);self.hover_marker.hide()
+        self.hover_label=QtWidgets.QLabel(self);self.hover_label.setTextFormat(QtCore.Qt.TextFormat.PlainText);self.hover_label.setWordWrap(True)
+        self.hover_label.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents);self.hover_label.hide();self.hover_state=None
+        self.hover_proxy=pg.SignalProxy(self.scene().sigMouseMoved,rateLimit=30,slot=self._live_hover);self.hover_proxy.setParent(self)
+        self.viewport().setMouseTracking(True)
+
+    def clear_hover(self):
+        self.hover_state=None
+        if not hasattr(self,'hover_label'):return
+        self.hover_label.hide();self.hover_marker.hide()
+        for line in self.hover_lines:line.hide()
+
+    def leaveEvent(self,event):
+        self.clear_hover();super().leaveEvent(event)
+
+    def hover_values(self,position):
+        primary=self.getViewBox()
+        if not self.ids or not primary.sceneBoundingRect().contains(position):return None
+        point=primary.mapSceneToView(position);x=float(point.x());axes=[];nearest=None
+        for unit in dict.fromkeys(self.bindings.values()):
+            view=self.axes[unit][1] if unit in self.axes else primary
+            axes.append({'unit':unit or 'Value','y':float(view.mapSceneToView(position).y())})
+        for id,(view,curve) in self.curves.items():
+            channel=self.store.channels[id];xs,ys=channel.values()
+            if not len(xs) or x<xs[0] or x>xs[-1]:continue
+            index=min(len(xs)-1,int(np.searchsorted(xs,x)));previous=max(0,index-1)
+            if abs(xs[previous]-x)<=abs(xs[index]-x):index=previous
+            value=ys[index]
+            if not np.isfinite(value):continue
+            display=value
+            if id in self._normalization:
+                low,high,offset=self._normalization[id];display=((value-low)/(high-low) if high>low else .5)+offset
+            scene=view.mapViewToScene(QtCore.QPointF(float(xs[index]),float(display)))
+            distance=(scene.x()-position.x())**2+(scene.y()-position.y())**2
+            if nearest is None or distance<nearest['distance']:
+                nearest={'channel':id,'name':channel.name,'x':float(xs[index]),'y':float(value),'unit':channel.unit,'distance':distance,'scene':scene}
+        return {'x':x,'coordinate_unit':self.coordinate[1] if self.coordinate else '', 'axes':axes,'nearest':nearest}
+
+    def _live_hover(self,args):
+        if self.viewport().underMouse():self._mouse_hover(args)
+        else:self.clear_hover()
+
+    def _mouse_hover(self,args):
+        position=args[0];state=self.hover_values(position)
+        if state is None:self.clear_hover();return
+        self.hover_state=state;primary=self.getViewBox();point=primary.mapSceneToView(position)
+        for line,value in zip(self.hover_lines,(point.x(),point.y())):line.setValue(value);line.show()
+        text=[f"Mouse X  {state['x']:.6g} {state['coordinate_unit']}"]
+        text.append('Mouse Y  '+'  |  '.join(('ON/OFF track' if a['unit']=='Actuators' else f"{a['y']:.6g} {a['unit']}") for a in state['axes']))
+        nearest=state['nearest']
+        if nearest:
+            channel=self.store.channels[nearest['channel']]
+            from app_actuators import state_text
+            value=state_text(nearest['y']) if channel.attributes.get('actuator_binary') else f"{nearest['y']:.6g} {nearest['unit']}"
+            name=self.fontMetrics().elidedText(nearest['name'],QtCore.Qt.TextElideMode.ElideMiddle,max(120,min(330,self.width()-120)))
+            text.extend([name,f"Sample  {nearest['x']:.6g} {state['coordinate_unit']}  ·  {value}"])
+            self.hover_marker.setPen(pg.mkPen(self.curves[nearest['channel']][1].pen.color(),width=2))
+            marker=primary.mapSceneToView(nearest['scene']);self.hover_marker.setData([marker.x()],[marker.y()]);self.hover_marker.show()
+        else:text.append('No sample available here');self.hover_marker.hide()
+        self.hover_label.setText('\n'.join(text));self.hover_label.setStyleSheet('padding:7px; border:1px solid #7e8fa4; border-radius:5px; background:'+('#182033; color:#f0f5ff;' if self.dark else '#ffffff; color:#182033;'))
+        self.hover_label.setFixedWidth(max(140,min(360,self.width()-100)));self.hover_label.adjustSize()
+        bounds=self.getViewBox().sceneBoundingRect();corner=self.mapFromScene(bounds.topRight())
+        self.hover_label.move(max(0,corner.x()-self.hover_label.width()-8),max(0,corner.y()+8));self.hover_label.show();self.hover_label.raise_()
 
     def _cursor_changed(self):
         if self._normalizing:return
@@ -177,6 +254,7 @@ class PlotPane(pg.PlotWidget):
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
+        self.clear_hover()
         if hasattr(self,'empty_label'):self.empty_label.setGeometry(self.rect().adjusted(60,40,-60,-40))
 
     def _click(self,event):
@@ -206,6 +284,7 @@ class PlotPane(pg.PlotWidget):
         super().keyPressEvent(event)
 
     def bind(self, ids, assignments=None, fit=True):
+        self.clear_hover()
         for index,view in enumerate(self.marker_views):
             if view is not None:view.removeItem(self.cursor_markers[index]);self.marker_views[index]=None
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
@@ -244,7 +323,7 @@ class PlotPane(pg.PlotWidget):
                 side=self.store.channels[next(id for id in self.ids if self.bindings[id]==unit)].attributes.get('plot_style',{}).get('side','right')
                 axis=pg.AxisItem('left' if side=='left' else 'right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
                 vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
-                self.axes[unit]=(axis,vb)
+                self.axes[unit]=(axis,vb);vb.sigYRangeChanged.connect(self.clear_hover)
             if unit=='Actuators':axis.setTicks([[(0,'OFF'),(1,'ON')]])
             else:axis.setTicks(None)
             for j,id in enumerate(id for id in self.ids if self.bindings[id]==unit):
@@ -332,11 +411,14 @@ class PlotPane(pg.PlotWidget):
             vb.setGeometry(self.getViewBox().sceneBoundingRect());vb.linkedViewChanged(self.getViewBox(),vb.XAxis)
 
     def _schedule(self,*args):
+        if getattr(self,'_closing',False):return
+        self.clear_hover()
         if self.ids:self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
 
     def _render(self):
+        if getattr(self,'_closing',False):return
         left,right=self.getViewBox().viewRange()[0]
         budget=max(32,int(self.display_budget/max(1,len(self.ids))))
         for id,(vb,curve) in self.curves.items():

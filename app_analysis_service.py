@@ -49,7 +49,12 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
     order=np.argsort(x,kind='stable');frame=frame.iloc[order].reset_index(drop=True);x=x[order]
     store=ChannelStore()
     for name,path in (('Original power',power),('Original machine',machine)):
-        if path:add_table(store,name,smart_read_file(path),path,name.replace(' ','_'))
+        if path:
+            if Path(path).suffix.lower()=='.tdms':
+                from app_tdms import read_tdms_tables
+                original=read_tdms_tables(path)[0][1]
+            else:original=smart_read_file(path)
+            add_table(store,name,original,path,name.replace(' ','_'))
     aligned=add_table(store,'Aligned engineering data',frame,'; '.join(filter(None,(power,machine))),'Synchronized_Series')
     power_columns=set(next((d.frame.columns for d in store.datasets.values() if d.name=='Original power'),[]))
     machine_columns=set(next((d.frame.columns for d in store.datasets.values() if d.name=='Original machine'),[]))

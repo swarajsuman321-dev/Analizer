@@ -75,6 +75,9 @@ def smart_read_file(filepath):
         raise DataReadError(f"The selected file no longer exists: {filepath}")
 
     ext = os.path.splitext(filepath)[1].lower()
+    if ext=='.tdms':
+        from app_tdms import engineering_frame
+        return engineering_frame(filepath)
     if ext in ['.xlsx', '.xls', '.xlsm']:
         try:
             df = pd.read_excel(filepath)
@@ -254,7 +257,7 @@ def is_actuator_column(column_name, unit=None):
     """Identify actuator commands, excluding physical measurements and program codes."""
     name=re.sub(r'[^a-z0-9]+',' ',str(column_name).lower())
     if unit and str(unit).strip().lower() not in ('state','bool','boolean','1'):return False
-    if re.search(r'\b(power|energy|current|voltage|temperature|temp|pressure|speed|rpm|flow|frequency|duration|count|retry|stage|phase|code|duty|pwm|position)\b',name):return False
+    if re.search(r'\b(power|energy|current|voltage|temperature|temp|pressure|speed|rpm|flow|frequency|duration|count|retry|stage|phase|code|duty|pwm|position|error|fault|alarm|diagnostic|status|detected)\b',name):return False
     return bool(re.search(r'\b(valv\w*|vavle|ventil\w*|door|interlock|lid|lock|heater|heating|heat|pump|pumpe|relay|relais|solenoid|actuator|contactor|fan|motor|compressor)\b',name))
 
 

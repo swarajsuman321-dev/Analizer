@@ -10,6 +10,9 @@ from app_channel_store import Channel, Dataset
 def read_tables(path):
     path = Path(path)
     suffix = path.suffix.lower()
+    if suffix == '.tdms':
+        from app_tdms import read_tdms_tables
+        return read_tdms_tables(path)
     if suffix == '.zip':
         with zipfile.ZipFile(path) as archive:
             names = [n for n in archive.namelist() if n.lower().endswith('.csv')]
@@ -26,6 +29,9 @@ def read_tables(path):
 
 
 def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=False):
+    if Path(path).suffix.lower()=='.tdms':
+        from app_tdms import ingest_tdms
+        return ingest_tdms(store,path,time_column,coordinate_unit,force_sample)
     ids = []
     with store.batch():
         for name, frame in read_tables(path):

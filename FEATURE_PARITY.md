@@ -101,3 +101,10 @@ The existing icon is assigned to the application, window and Windows taskbar.
 - Manual GitHub update checks, background verified downloads and cancellation.
 - Windows restart with a saved recovery workspace, previous-EXE backup and replacement/launch-error rollback.
 - Tested Windows releases publish durable downloads and a checksum manifest for the updater.
+
+## 2.1.6 — TDMS and live X/Y inspection
+
+- Direct TDMS import with LabSys per-measurement clocks, NI waveform timing, absolute clocks, original units/metadata and quality status.
+- Contextual command decoding while preserving program states, error codes and original readings.
+- Throttled mouse crosshair with independent Y-axis coordinates, nearest real sample marker/readout, and stable A/B cursor locks.
+- Offline 2.1.6 manual and frozen TDMS/hover smoke checks; published through the existing updater.
