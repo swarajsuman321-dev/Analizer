@@ -69,6 +69,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
         from app_studio_tools import StudioTools
         self.studio=StudioTools(self)
+        from app_info import InfoTab
+        self.info=InfoTab(self);self.tabs.addTab(self.info,'Info')
         self.store.observe(self.store_changed)
         self.statusBar().showMessage('Open a recording to begin. Check channels to show them; drag A and B to inspect an interval.')
         self.readout_timer=QtCore.QTimer(self);self.readout_timer.setSingleShot(True);self.readout_timer.timeout.connect(self._readouts)
@@ -89,7 +91,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     @property
     def workspaces(self):return [self.dashboard,self.comparison]
     @property
-    def active_workspace(self):return self.workspaces[self.tabs.currentIndex()]
+    def active_workspace(self):return self.workspaces[getattr(self,'_plot_tab_index',0)]
 
     def eventFilter(self,obj,event):
         if obj in self.workspaces:
@@ -537,7 +539,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def ui_state(self):
         return {'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
-                'stats_scope':self.stats_scope.currentText(),'tab':self.tabs.currentIndex(),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
+                'stats_scope':self.stats_scope.currentText(),'tab':getattr(self,'_plot_tab_index',0),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
@@ -609,6 +611,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.readouts()
 
     def workspace_changed(self,*args):
+        if self.tabs.currentIndex()<2:self._plot_tab_index=self.tabs.currentIndex()
         if hasattr(self,'layout_combo'):
             pane=self.active_workspace.active
             for widget,value in ((self.layout_combo,self.active_workspace.layout_name),(self.cursor_combo,pane.cursor_mode)):
@@ -629,6 +632,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self._readouts()
 
     def closeEvent(self,event):
+        if hasattr(self,'info') and not self.info.prepare_close():event.ignore();return
         self.generation+=1
         if hasattr(self,'studio'):self.studio.pause()
         self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
@@ -641,4 +645,7 @@ def run_workbench():
     app=QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     app.setStyle('Fusion');from app_identity import apply_identity
     apply_identity();window=AdvancedStudioWindow();window.showMaximized()
+    if '--restore' in sys.argv:
+        index=sys.argv.index('--restore')
+        if index+1<len(sys.argv):window.guard(lambda:window.restore_path(sys.argv[index+1]))
     return app.exec()

@@ -128,7 +128,7 @@ class QtParityTests(unittest.TestCase):
         self.window.close();self.app.processEvents();self.app.sendPostedEvents(None,QtCore.QEvent.Type.DeferredDelete);self.warning.stop();self.assertEqual(self.errors,[])
     def add(self,name='Probe',unit='V',**kwargs):return self.window.store.add(Channel(name,np.arange(11.),np.arange(11.)*2,unit=unit,coordinate_unit='min',**kwargs))
     def test_tools_do_not_add_default_workspaces_or_open_docks(self):
-        w=self.window;self.assertEqual(w.tabs.count(),2);self.assertTrue(any(a.text()=='Tools' for a in w.menuBar().actions()))
+        w=self.window;self.assertEqual(w.tabs.count(),3);self.assertTrue(any(a.text()=='Tools' for a in w.menuBar().actions()))
         self.assertFalse(w.docks['Engineering Controls'].isVisible());self.assertFalse(w.docks['Properties'].isVisible())
     def test_channel_mapping_style_manual_bounds_and_ten_panels(self):
         w=self.window;a=self.add();b=self.add('Power','W');w.dashboard.assign([a.id,b.id])
@@ -170,7 +170,7 @@ class QtParityTests(unittest.TestCase):
         w.studio.play_timer.start();dialog.close();self.app.processEvents();self.assertFalse(w.studio.play_timer.isActive());self.assertIsNone(w.studio.play_context)
     def test_illustrative_signals_load_directly_no_preview_window(self):
         w=self.window;w.studio.illustrative();self.assertEqual(len(w.store.channels),10);self.assertEqual(sum(len(p.ids) for p in w.dashboard.panes if not p.isHidden()),10)
-        self.assertTrue(all(c.attributes['illustrative'] for c in w.store.channels.values()));self.assertEqual(w.tabs.count(),2)
+        self.assertTrue(all(c.attributes['illustrative'] for c in w.store.channels.values()));self.assertEqual(w.tabs.count(),3)
         self.assertFalse(hasattr(w,'preview_plot'))
     def test_studio_settings_and_report_tables_survive_snapshot(self):
         from app_workspace_io import save_workspace

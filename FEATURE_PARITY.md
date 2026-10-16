@@ -94,3 +94,10 @@ readings, unknown-data gaps and reversible per-channel modes. Measured power and
 other physical quantities and enumerated program/fault codes remain numeric.
 Binary states have step plots, OFF/ON ticks, ON duration and duty over known time.
 The existing icon is assigned to the application, window and Windows taskbar.
+
+## 2.1.5 — versioned help and release updates
+
+- Offline Info tab with manuals for 2.1.0–2.1.5; switching tabs retains the active analysis context.
+- Manual GitHub update checks, background verified downloads and cancellation.
+- Windows restart with a saved recovery workspace, previous-EXE backup and replacement/launch-error rollback.
+- Tested Windows releases publish durable downloads and a checksum manifest for the updater.

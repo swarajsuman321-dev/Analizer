@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.4
+# Appliance Signal Studio 2.1.5
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -77,11 +77,11 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.0**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.1.0**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.5**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.1.5**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
-## Navigation and locked cursors (2.1.4)
+## Navigation and locked cursors (2.1.1)
 
 The navigation toolbar exposes Zoom X/Y/XY, Pan, Reset zoom and Lock cursors.
 **F1** lists shortcuts: Ctrl+1/2/3 selects X/Y/XY rectangle zoom, Ctrl+4 pans,
@@ -105,7 +105,7 @@ Unchanged results keep their IDs and do not create duplicates. Appended samples
 update existing traces; newly available columns add channels. Channel names,
 styles, visibility and cursor anchors remain attached to their existing IDs.
 
-## Equal navigation for every channel (2.1.4)
+## Equal navigation for every channel (2.1.2)
 
 Vertical pan, wheel zoom, rectangle zoom and zoom buttons move every visible
 unit axis together by the same screen proportion. Each axis keeps its own units
@@ -123,7 +123,7 @@ identify that scope; A/B values, differences and CSV/Excel sample exports still
 follow the active cursor interval. **Add note** (Ctrl+Shift+N) pins a short event
 note to cursor A; notes persist in sessions and appear in plot reports.
 
-## Zoom mode correction (2.1.4)
+## Zoom mode correction (2.1.3)
 
 Zoom X keeps every Y-axis range fixed; Zoom Y keeps the time range fixed. The
 selection band spans the disabled dimension, and wheel/zoom buttons respect the
@@ -147,3 +147,9 @@ the interpretation and original numeric codes; source tables stay unchanged.
 
 The existing app icon is now assigned to the Qt application/window and the
 Windows taskbar identity, in addition to being embedded in the executable.
+
+### Updates and the Info tab (2.1.5)
+
+Open **Info** for the offline user manual and select a version. Choose **Check for updates → Download update → Install update & restart** to move to the latest stable GitHub release. The app verifies the SHA-256 checksum, saves a recovery workspace, keeps the previous EXE as a backup and restores your workspace after restarting. Update checks are manual and never upload recordings. Cancellation or a failed download leaves the installed app unchanged. Automatic installation requires the Windows app in a writable folder; source users update their checkout as usual.
+
+The 2.1.4 app needs one manual upgrade to 2.1.5 to gain the updater. Public, non-expiring downloads are published under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests and both frozen-app checks pass. Future releases must increment `app_version.py`, Windows version metadata and the bundled manual. CI creates `update.json` from the exact tested EXE and publishes it with the release; an already published version is immutable.

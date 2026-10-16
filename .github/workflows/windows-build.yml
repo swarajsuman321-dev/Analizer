@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   windows-exe:
+    permissions:
+      contents: write
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -31,7 +33,7 @@ jobs:
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: ApplianceSignalStudio-Windows-v2.1.4
+          name: ApplianceSignalStudio-Windows-v2.1.5
           path: |
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip
@@ -46,3 +48,22 @@ jobs:
             build/build.log
             build/*_smoke_report.json
           if-no-files-found: ignore
+      - name: Publish tested version to GitHub Releases
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          .venv-exe\Scripts\python.exe scripts/release_manifest.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = .venv-exe\Scripts\python.exe -c "from app_version import VERSION; print(VERSION)"
+          $draft = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft' 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ($draft -eq 'false') { Write-Output "Version already published; keeping immutable release."; exit 0 }
+            gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md"
+          } else {
+            gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file "manuals/v$version.md" dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md"
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release edit "v$version" --repo $env:GITHUB_REPOSITORY --draft=false --latest
+          exit $LASTEXITCODE

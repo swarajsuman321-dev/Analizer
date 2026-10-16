@@ -1,3 +1,19 @@
+# Studio 2.1.5 validation
+
+The full local suite passed **160 tests** (`/tmp/analizer-v215-tests.log`).
+The final focused updater suite passed seven tests; its eighth test exercises
+native PowerShell replacement and rollback on Windows CI and is skipped on Linux
+(`/tmp/analizer-v215-update-tests.log`). The final Windows suite contains 163 tests.
+Coverage includes stable-version ordering, update URL/size/checksum validation,
+corrupted-download cleanup, offline errors, cancellation, background completion,
+script quoting, unchanged installed files before restart, Info manuals and active
+analysis context. The native transaction test uses real filesystem operations and
+simulates process waiting/restart so it never replaces the CI interpreter.
+Frozen self-tests check that the version manual is actually bundled. CI publishes
+release downloads and their SHA-256 manifest only after both packaged apps pass.
+Physical power-loss recovery and operating-system security-software prompts are
+not simulated. The previous EXE and recovery workspace remain available.
+
 # Studio 2.1.4 validation
 
 The full source suite passes: **155 tests** (`/tmp/analizer-v214-tests.log`).

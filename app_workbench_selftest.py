@@ -24,6 +24,8 @@ def self_test():
             for id,c in window.store.channels.items():np.testing.assert_array_equal(c.y,restored.channels[id].y)
             render_report(root/'report.svg',window.store,window.dashboard.state())
             if (root/'report.svg').stat().st_size<100:raise RuntimeError('SVG export failed')
+            from app_version import VERSION
+            if VERSION not in window.info.manuals or 'Updates' not in window.info.manual.toPlainText():raise RuntimeError('Bundled Info manual is missing')
             from app_reporting import export_report
             for suffix in ('pdf','png','xlsx','csv'):
                 export_report(root/('report.'+suffix),window.store,window.dashboard.state())
@@ -47,5 +49,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()
