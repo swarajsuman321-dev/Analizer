@@ -76,7 +76,7 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(result.returncode,0,result.stderr)
                 log=(root/'install.log').read_text(encoding='utf-16') if (root/'install.log').exists() else result.stderr
                 self.assertEqual(target.read_bytes(),b'old' if fail else b'new',log)
-                self.assertIn(str(target),restart.read_text(encoding='utf-8-sig'))
+                self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
 
