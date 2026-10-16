@@ -93,6 +93,10 @@ def main():
         return 0
     except (RuntimeError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         print(f'\nBUILD FAILED: {exc}', file=sys.stderr)
+        if os.environ.get('GITHUB_ACTIONS')=='true' and (BUILD/'build.log').exists():
+            tail=(BUILD/'build.log').read_text(encoding='utf-8',errors='replace')[-12000:]
+            annotation=tail.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+            print('::error title=Windows build diagnostics::'+annotation,flush=True)
         return 1
 
 
