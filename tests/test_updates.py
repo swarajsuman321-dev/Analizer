@@ -74,7 +74,8 @@ class UpdateTests(unittest.TestCase):
                 wrapper.write_text("function Wait-Process {}\nfunction Start-Sleep {}\n$script:launchCount = 0\nfunction Start-Process { param($FilePath, $ArgumentList)\n$script:launchCount++\n"+("if ($script:launchCount -eq 1) { throw 'Simulated restart failure' }\n" if fail else '')+"Set-Content -LiteralPath "+quoted(restart)+" -Value $FilePath\n}\n. "+quoted(root/'install-update.ps1'),encoding='utf-8-sig')
                 result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30)
                 self.assertEqual(result.returncode,0,result.stderr)
-                self.assertEqual(target.read_bytes(),b'old' if fail else b'new')
+                log=(root/'install.log').read_text(encoding='utf-16') if (root/'install.log').exists() else result.stderr
+                self.assertEqual(target.read_bytes(),b'old' if fail else b'new',log)
                 self.assertIn(str(target),restart.read_text(encoding='utf-8-sig'))
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')

@@ -25,6 +25,18 @@ jobs:
           python -m venv .venv-exe
           .venv-exe\Scripts\python.exe -m pip install --only-binary=:all: -r requirements-build.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check native update transactions
+        shell: pwsh
+        run: |
+          $output = & .venv-exe\Scripts\python.exe -m unittest discover -s tests -p test_updates.py -v 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 35) -join "`n"
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Native updater test failure::$tail"
+          }
+          exit $code
       - name: Build and test portable and single-file executables
         shell: pwsh
         run: |
