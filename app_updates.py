@@ -9,7 +9,6 @@ import sys
 import tempfile
 import urllib.request
 import urllib.error
-import shutil
 from urllib.parse import urlsplit
 
 REPOSITORY='swarajsuman321-dev/Analizer'
@@ -49,8 +48,8 @@ def network_hint(exc):
         return 'Corporate HTTPS certificate verification failed. Ask IT for the approved certificate configuration; do not disable TLS checks. Offline import is available.'
     if 'proxy' in message or 'tunnel' in message:
         return 'Corporate proxy connection failed. Request approved proxy access or use an offline update.'
-    if 'name resolution' in message or 'getaddrinfo' in message:
-        return 'GitHub hostname could not be resolved by DNS. Offline import is available.'
+    if any(phrase in message for phrase in ('name resolution', 'getaddrinfo', '11001', 'no such host', 'temporary failure in name resolution')):
+        return 'DNS lookup failed for the update endpoint or corporate proxy (Windows 11001). Ask IT to verify approved DNS/proxy access, or use Import offline update.'
     if 'timed out' in message or 'timeout' in message:
         return 'Connection timed out; GitHub may be blocked. Offline import is available.'
     return f'Network update failed: {exc}. Offline import is available.'
