@@ -179,3 +179,7 @@ See [application status, user requirements, real-file audit and maintenance refe
 ### Desktop finalization (v2.2.0)
 
 Engineering Controls starts as the selected dock tab. Each file has independent selection/close controls; graph navigation follows the active canvas. About/Updates and the searchable User Manual are separate windows. See [desktop finalization and compatibility/cleanup details](docs/DESKTOP_FINALIZATION.md) and the [v2.2.0 manual](manuals/v2.2.0.md).
+
+### TDMS engineering templates and update restart (v2.2.1)
+
+Engineering Controls now shares Open's first-use TDMS review and persistent templates. The updater starts an independent bundled runtime instead of inheriting the exiting app's temporary extraction path. See [fix details and recovery instructions](docs/TDMS_AND_UPDATE_FIXES.md), the [v2.2.1 manual](manuals/v2.2.1.md), and the [installed Windows application assessment](docs/INSTALLATION_OPTIONS.md).

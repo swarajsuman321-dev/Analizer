@@ -282,7 +282,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             if error:self.guard(lambda:(_ for _ in ()).throw(ValueError(error)))
             else:self.guard(lambda:callback(result))
             if error:self.statusBar().showMessage(error)
-            elif self.statusBar().currentMessage()=='Working…':self.statusBar().showMessage('Ready')
+            elif not self.busy and self.statusBar().currentMessage()=='Working…':self.statusBar().showMessage('Ready')
         worker.signals.finished.connect(complete);self.pool.start(worker)
 
     def pick_file(self,field):
@@ -300,13 +300,21 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.background(load,lambda other:self.finish_import(other,workspace))
 
     def finish_import(self,other,workspace=None):
+        if self.review_tdms_import(other):self.merge_store(other,workspace)
+
+    def review_tdms_import(self,other):
+        """Use one template contract for Open and Engineering Controls."""
         from app_tdms_templates import ParameterTemplates,ParameterReview
         templates=ParameterTemplates();unknown=templates.unknown(other)
         if unknown:
             dialog=ParameterReview(unknown,self,templates.warning)
-            if dialog.exec()!=QtWidgets.QDialog.DialogCode.Accepted:return
-            templates.save(dialog.entries())
-        templates.apply(other);self.merge_store(other,workspace)
+            try:
+                if dialog.exec()!=QtWidgets.QDialog.DialogCode.Accepted:return False
+                templates.save(dialog.entries())
+            finally:
+                dialog.deleteLater()
+        templates.apply(other)
+        return True
 
     def review_loaded_tdms(self):
         self.mutate()
@@ -584,15 +592,38 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
         self.update_interval_card()
 
+    def engineering_import(self,paths,calculate,complete):
+        """Review every native TDMS parameter before starting derived analysis.
+
+        Nothing is merged on cancellation. Loading and analysis stay in workers;
+        the dialog and template writes stay on the UI thread, like Open.
+        """
+        from pathlib import Path
+        tdms=list(dict.fromkeys(str(p) for p in paths if p and Path(p).suffix.lower()=='.tdms'))
+        if not tdms:
+            self.background(calculate,complete)
+            return
+        def load():
+            native=ChannelStore()
+            for path in tdms:ingest(native,path)
+            return native
+        def reviewed(native):
+            if self.review_tdms_import(native):self.background(calculate,complete)
+            else:self.statusBar().showMessage('TDMS import cancelled; workspace unchanged')
+        self.background(load,reviewed)
+
     def align(self):
         power,machine,strategy,offset=self.power_path.text(),self.machine_path.text(),self.sync.currentData() or self.sync.currentText(),self.offset.value()
         from app_analysis_service import align_recordings
         def calculate():return align_recordings(power,machine,strategy,offset,self.studio.plugins)
         def complete(result):
-            other,frame=result;self.aligned_frame=frame
+            other,frame=result
+            from app_tdms_templates import ParameterTemplates
+            ParameterTemplates().apply(other)
+            self.aligned_frame=frame
             self.engineering_notes.setPlainText(json.dumps(frame.attrs.get('sync_report',{}),default=str,indent=2))
             self.merge_store(other,self.dashboard,deduplicate_alignment=True);self.tabs.setCurrentIndex(0);self.studio.apply_display()
-        self.background(calculate,complete)
+        self.engineering_import((power,machine),calculate,complete)
 
     def compare(self):
         machine,simulation=self.machine_path.text(),self.simulation_path.text()
@@ -602,11 +633,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             from app_analysis_service import compare_recordings
             return compare_recordings(machine,simulation,reference_settings=settings,calibration=calibration,bench_columns=mapping,tolerances=dict(self.studio.tolerances),detailed=True)
         def complete(result):
+            from app_tdms_templates import ParameterTemplates
+            ParameterTemplates().apply(result.store)
             self.comparison_result=result
             from app_reporting import match_scorecard
             self.scorecard_data=match_scorecard(result.score);self.scorecard.setModel(FrameModel(self.scorecard_data))
             self.merge_store(result.store,self.comparison);self.tabs.setCurrentIndex(1);self.show_dock('Engineering Controls');self.studio.apply_display()
-        self.background(calculate,complete)
+        self.engineering_import((machine,),calculate,complete)
 
     def ui_state(self):
         return {'app_version':VERSION,'show_channel_kind':not self.portal.tree.isColumnHidden(2),'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),

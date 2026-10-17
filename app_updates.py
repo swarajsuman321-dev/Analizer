@@ -219,6 +219,10 @@ def launch_installer(download,recovery,directory,expected_hash):
     except OSError as exc:raise ValueError('Move the app to a writable folder before installing an update') from exc
     script=Path(directory)/'install-update.ps1'
     script.write_text(f'''$ErrorActionPreference = 'Stop'
+# This process outlives the old one-file extraction directory. Both successful
+# restart and rollback must start a fresh PyInstaller bootloader, not a worker.
+$env:PYINSTALLER_RESET_ENVIRONMENT = '1'
+Get-ChildItem Env: | Where-Object {{ $_.Name -like '_PYI_*' -or $_.Name -eq '_MEIPASS2' }} | ForEach-Object {{ Remove-Item -LiteralPath ('Env:' + $_.Name) }}
 $target = {ps_quote(target)}
 $backup = {ps_quote(backup)}
 $download = {ps_quote(download)}
@@ -245,4 +249,17 @@ try {{
     }}
 }} catch {{ $_ | Out-File -LiteralPath $log }}
 ''',encoding='utf-8-sig')
-    subprocess.Popen(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(script)],creationflags=subprocess.CREATE_NO_WINDOW,close_fds=True)
+    subprocess.Popen(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(script)],creationflags=subprocess.CREATE_NO_WINDOW,close_fds=True,env=restart_environment())
+
+
+def restart_environment():
+    """Detach a future application instance from the current frozen runtime.
+
+    The installer waits for this app to exit, which deletes its _MEI directory.
+    PyInstaller's public reset flag forces independent extraction even when the
+    executable is replaced at the same pathname. Keep proxy and user settings.
+    """
+    env={key:value for key,value in os.environ.items()
+         if not key.upper().startswith('_PYI_') and key.upper()!='_MEIPASS2'}
+    env['PYINSTALLER_RESET_ENVIRONMENT']='1'
+    return env

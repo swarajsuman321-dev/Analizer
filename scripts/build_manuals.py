@@ -12,7 +12,8 @@ NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, proce
        '2.1.7':'Top-toolbar Info/manual access, complete searchable version manuals, and every View panel enabled by default.',
        '2.1.8':'Windows system-proxy fallback, verified offline update import and actionable connection guidance.',
        '2.1.9':'Complete recording removal, reviewed TDMS parameter templates, persistent output folders, and real-file import corrections.',
-       '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.'}
+       '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.',
+       '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.'}
 
 
 def generate(versions=None):

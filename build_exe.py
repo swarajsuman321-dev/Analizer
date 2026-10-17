@@ -27,11 +27,11 @@ def run(command, *, env=None):
         raise RuntimeError(f'Command exited with {result}. See build/build.log.')
 
 
-def check_bundle(executable, mode):
+def check_bundle(executable, mode, *, env=None):
     report = BUILD / f'{mode}_smoke_report.json'
     report.unlink(missing_ok=True)
     process = subprocess.run([str(executable), '--self-test', '--report', str(report)],
-                             cwd=executable.parent, timeout=180, capture_output=True, text=True)
+                             cwd=executable.parent, timeout=180, capture_output=True, text=True, env=env)
     if not report.exists():
         raise RuntimeError(f'{mode} EXE did not write its self-test report (exit {process.returncode}). '
                            'Run build_debug.bat to diagnose the startup error.')
@@ -52,6 +52,18 @@ def build(mode):
     if not executable.is_file():
         raise RuntimeError(f'Expected executable was not created: {executable}')
     check_bundle(executable, mode)
+    if mode == 'onefile':
+        from unittest.mock import patch
+        from app_updates import restart_environment
+        # Reproduce a same-path updater restart after the old _MEI is gone.
+        # Public reset must override the inherited worker-process state before
+        # Python itself loads; a normal source self-test cannot detect this bug.
+        stale = dict(_PYI_APPLICATION_HOME_DIR=str(BUILD / 'deleted-old-MEI'),
+                     _PYI_ARCHIVE_FILE=str(executable.resolve()),
+                     _PYI_PARENT_PROCESS_LEVEL='1', _MEIPASS2=str(BUILD / 'deleted-old-MEI'))
+        with patch.dict(os.environ, stale):
+            env = restart_environment()
+        check_bundle(executable, 'onefile_restart', env=env)
     return executable
 
 

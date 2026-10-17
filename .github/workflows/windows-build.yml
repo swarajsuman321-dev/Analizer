@@ -51,7 +51,7 @@ jobs:
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: ApplianceSignalStudio-Windows-v2.2.0
+          name: ApplianceSignalStudio-Windows-v2.2.1
           path: |
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip

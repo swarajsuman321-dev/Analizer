@@ -442,3 +442,20 @@ Settings, reviewed TDMS templates, presets and extensions now use `%APPDATA%/App
 After a normal packaged Windows startup and successful recovery restore, the app discovers its exact product registry entries and previously registered installation paths. It removes obsolete executable files only after checking the product/version resources or a stored file inventory. Unchanged dependency files are removed only when a prior ownership/hash inventory exists; directories are removed only when empty. The running EXE, user data and modified/unrecognized files are retained. Older portable libraries without an inventory cannot safely be attributed to the app and are retained. Permission or migration failures leave cleanup pending; there is no elevation or execution of registry uninstall commands. The process records removed/retained paths in `lifecycle.json`.
 
 The updater retains a previous EXE while replacement is in progress. That obsolete backup is eligible for permanent removal only after the new application successfully initializes/restores. If recovery fails, it is retained. Self-tests and source launches never delete installed binaries.
+
+## TDMS templates in Engineering Controls | 2.2.1
+
+1. Choose a TDMS file in either recording field of **Engineering Controls**.
+2. Click **Align recordings** or select the TDMS machine recording and a reference, then **Compare original recordings**.
+3. On first use, review all new native TDMS parameters. Edit the short display names and units; choose Automatic, Raw numeric or ON/OFF. Save to continue. Cancel leaves the current workspace unchanged.
+4. Previously reviewed exact TDMS parameter identities reuse the same template as **Open Data Files**. Only newly encountered identities need another review. Templates remain in the per-user settings folder across updates.
+5. Alignment shows your reviewed channel names and interpretation. Comparison bench labels carry a **· bench** suffix; reference labels remain separate. Comparison traces retain their calculated reference units and comparison meaning. Display names do not rename raw source columns or silently change benchmark mappings.
+6. Use **Review TDMS parameters** to revise saved choices. Original measurements remain available; choosing Raw numeric recovers actuator codes rather than losing them to ON/OFF normalization.
+
+Sample-indexed TDMS channels without a clock can be reviewed through Open, but engineering alignment requires recorded timing. Reviewing a name does not calibrate raw motor speed into drum RPM or establish a correspondence between two unknown sensors.
+
+## Update restart and Python DLL recovery | 2.2.1
+
+Updates and rollback restart with a fresh bundled Python runtime, independent of the old temporary extraction folder. If an older updater shows **Failed to load Python DLL** immediately after replacing the executable, close the error and launch the saved executable directly from File Explorer. The updated updater takes effect once the new app has started.
+
+If a direct launch also fails, download the portable ZIP from the same GitHub release, extract its entire folder, and keep `_internal` beside the executable. Preserve your workspaces and templates. Do not fetch individual runtime DLLs from unofficial download sites. If the complete portable folder cannot run, retain the exact error and check your machine's security/quarantine history with IT.

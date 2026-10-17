@@ -1,0 +1,32 @@
+{
+  "native_channels": 27,
+  "unknown_after_review": 0,
+  "alignments": [
+    {
+      "slot": "machine",
+      "channels": 27,
+      "rows": 124585
+    },
+    {
+      "slot": "power",
+      "channels": 27,
+      "rows": 124585
+    }
+  ],
+  "comparison_channels": 14,
+  "score_rows": 11,
+  "seconds": 31.7,
+  "version": "2.2.1",
+  "environment": "Linux cloud source execution; offscreen Qt",
+  "input_kind": "User-supplied TDMS and simulation CSV; measurements not committed",
+  "checks": {
+    "both_recording_slots": "passed",
+    "reviewed_alignment_labels": "passed",
+    "exact_source_template_identity": "passed",
+    "comparison_execution": "passed"
+  },
+  "limitations": [
+    "Comparison execution is not evidence that unknown physical parameters are calibrated or correctly mapped.",
+    "Timing is an observation under concurrent testing, not a performance guarantee."
+  ]
+}

@@ -56,8 +56,13 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
             else:original=smart_read_file(path)
             add_table(store,name,original,path,name.replace(' ','_'))
     aligned=add_table(store,'Aligned engineering data',frame,'; '.join(filter(None,(power,machine))),'Synchronized_Series')
+    from app_tdms_templates import engineering_columns
+    originals={d.name:d for d in store.datasets.values()}
+    power_tdms=engineering_columns(originals['Original power'].frame) if power else {}
+    machine_tdms=engineering_columns(originals['Original machine'].frame) if machine else {}
     power_columns=set(next((d.frame.columns for d in store.datasets.values() if d.name=='Original power'),[]))
     machine_columns=set(next((d.frame.columns for d in store.datasets.values() if d.name=='Original machine'),[]))
+    power_columns.update(power_tdms);machine_columns.update(machine_tdms)
     for column in frame:
         if column in ('relative_minutes','datetime','dt') or str(column).endswith(('_BIN','_BIN_ops')):continue
         kind=classify_signal_kind(column)
@@ -68,10 +73,12 @@ def align_recordings(power,machine,strategy,offset_seconds=0,plugins=None):
         detected=detect_unit(frame,column)[0]
         if detected and detected.lower() not in ('state','bool','boolean','code','1'):state=False
         source_column=str(column)[:-4] if str(column).endswith('_ops') and str(column)[:-4] in machine_columns else str(column)
-        source_path=machine if str(column).endswith('_ops') or column not in power_columns else power
+        machine_owned=str(column).endswith('_ops') or column not in power_columns
+        source_path=machine if machine_owned else power
+        template_attrs=(machine_tdms if machine_owned else power_tdms).get(source_column,{})
         store.add(Channel(str(column),x,values.to_numpy(float),source=source_path or '',unit=detect_unit(frame,column)[0] or ('state' if state else ''),
                           kind='discrete' if state else 'analog',coordinate_unit='min',dataset_id=aligned.id,group='Aligned',
-                          attributes={'source_column':source_column,'data_column':str(column),'signal_kind':kind}))
+                          attributes={**template_attrs,'source_column':source_column,'data_column':str(column),'signal_kind':kind}))
     rows=engineering_metrics(frame)
     if plugins:
         for hook in plugins.custom_kpi_hooks:
@@ -137,6 +144,8 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
         store=ChannelStore();bench=add_table(store,'Original bench comparison',original,machine,'Original_Bench')
         add_table(store,'Prepared bench comparison',raw,machine,'Raw_Test_Log')
         reference=add_table(store,'Simulation reference',pd.DataFrame() if image else adapter.frame,simulation,'Simulation_CSV' if not image else 'Reference_Image')
+        from app_tdms_templates import engineering_columns
+        tdms_columns=engineering_columns(original)
         for spec in specs:
             entries=traces[spec['key']]
             for source in ('sim','bench'):
@@ -144,9 +153,11 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
                 if trace is None:continue
                 x,y,kind=trace;unit=spec['unit']
                 if spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital':unit='state'
-                store.add(Channel(f'{spec["label"]} · {source}',x,y,unit=unit,kind='analog' if kind=='analog' else 'discrete',coordinate_unit='min',
+                column=columns.get(spec['key']) if source=='bench' else None
+                template_attrs=tdms_columns.get(column,{})
+                store.add(Channel(f'{spec["label"]} · {source}',x,y,source=machine if source=='bench' else simulation,unit=unit,kind='analog' if kind=='analog' else 'discrete',coordinate_unit='min',
                                   dataset_id=reference.id if source=='sim' else bench.id,group='Comparison',
-                                  attributes={'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital'}))
+                                  attributes={**template_attrs,'source_column':column or spec['key'],'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital'}))
             if spec['key'] in curves:add_table(store,spec['label']+' reference',curves[spec['key']],simulation,'Sim_'+spec['key'])
         from app_reporting import match_scorecard
         add_table(store,'Comparison scorecard',match_scorecard(score),sheet='Scorecard_Summary')

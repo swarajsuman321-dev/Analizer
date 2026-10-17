@@ -125,6 +125,11 @@ def engineering_frame(path):
     earlier readings for at most five seconds, matching the engine's tolerance.
     """
     store=ChannelStore();ingest_tdms(store,path)
+    # The UI has reviewed unknown parameters before this worker is started.
+    # Apply known units/interpretation before analysis while retaining stable
+    # engine column names (custom display names belong to the channel tree).
+    from app_tdms_templates import ParameterTemplates
+    ParameterTemplates().apply(store)
     channels=[c for c in store.channels.values() if c.coordinate_kind=='time' and len(c.x)]
     if not channels:raise ValueError('TDMS has no recorded timing; use Open to inspect its sample-indexed channels')
     timeline=np.unique(np.concatenate([c.x for c in channels]));source=next(iter(store.datasets.values())).frame
@@ -139,7 +144,8 @@ def engineering_frame(path):
         raw=np.where(np.isfinite(effective),raw,np.nan)
         index=np.searchsorted(x,timeline,side='right')-1;safe=np.clip(index,0,len(x)-1)
         valid=(index>=0)&(timeline-x[safe]<=5/60);values=np.full(len(timeline),np.nan);values[valid]=raw[safe[valid]]
-        name=channel.name if channel.group=='Measurements' else channel.group+' / '+channel.name
+        original_name=channel.attributes.get('original_name',channel.name)
+        name=original_name if channel.group=='Measurements' else channel.group+' / '+original_name
         frame[name]=values;units[name]='boolean' if channel.attributes.get('actuator_binary') else channel.unit
     frame.attrs={**source.attrs,'column_units':units,'source_path':str(Path(path).resolve()),'source_format':'tdms',
                  'tdms_projection_policy':'Union of recorded clocks; previous reading held for at most 5 seconds. Native samples remain in the original TDMS source table.'}

@@ -29,12 +29,13 @@ def merge_alignment(target,incoming):
             identity=identity_of(c);old=index.get(identity)
             if old:
                 from app_actuators import interpret_channel
-                mode=old.attributes.get('value_interpretation','auto')
-                if mode=='numeric':c=replace(c,attributes={**c.attributes,'raw_unit':old.unit,'raw_kind':old.kind})
+                reviewed=bool(c.attributes.get('template_key'))
+                mode=c.attributes.get('value_interpretation','auto') if reviewed else old.attributes.get('value_interpretation','auto')
+                if mode=='numeric' and not reviewed:c=replace(c,attributes={**c.attributes,'raw_unit':old.unit,'raw_kind':old.kind})
                 c=interpret_channel(c,mode)
                 attrs={**old.attributes,**c.attributes}
                 if not (np.array_equal(old.x,c.x,equal_nan=True) and np.array_equal(old.y,c.y,equal_nan=True) and ((old.raw_y is None and c.raw_y is None) or (old.raw_y is not None and c.raw_y is not None and np.array_equal(old.raw_y,c.raw_y,equal_nan=True))) and old.attributes==attrs and old.dataset_id==datasets[c.dataset_id]):
-                    target.update(old.id,x=c.x,y=c.y,kind=c.kind,coordinate_kind=c.coordinate_kind,coordinate_unit=c.coordinate_unit,dataset_id=datasets[c.dataset_id],attributes=attrs,raw_y=c.raw_y,unit=c.unit if c.raw_y is not None else old.unit or c.unit);updated+=1
+                    target.update(old.id,name=c.name if old.name in (old.attributes.get('data_column'),old.attributes.get('template_display_name')) else old.name,x=c.x,y=c.y,kind=c.kind,coordinate_kind=c.coordinate_kind,coordinate_unit=c.coordinate_unit,dataset_id=datasets[c.dataset_id],attributes=attrs,raw_y=c.raw_y,unit=c.unit if reviewed or c.raw_y is not None else old.unit or c.unit);updated+=1
             else:
                 target.add(replace(c,dataset_id=datasets[c.dataset_id]));added.append(c.id)
         # Tables and KPIs can change even if sampled curves do not.

@@ -51,7 +51,9 @@ class UpdateTests(unittest.TestCase):
             with patch('app_updates.sys.platform','win32'),patch('app_updates.sys.frozen',True,create=True),patch('app_updates.sys.executable',str(target)),patch('app_updates.subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_updates.subprocess.Popen') as launch:
                 launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
                 args=launch.call_args.args[0];self.assertEqual(args[0],'powershell.exe');self.assertNotIn('shell',launch.call_args.kwargs)
+                self.assertEqual(launch.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'],'1')
                 script=(root/'install-update.ps1').read_text(encoding='utf-8-sig')
+                self.assertIn("$env:PYINSTALLER_RESET_ENVIRONMENT = '1'",script);self.assertIn("'_PYI_*'",script)
                 self.assertIn("User''s app.exe",script);self.assertIn('Wait-Process',script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('Move-Item -LiteralPath $backup -Destination $target',script)
                 self.assertEqual(target.read_bytes(),b'old')
                 download.write_bytes(b'tampered')
@@ -71,14 +73,30 @@ class UpdateTests(unittest.TestCase):
                 # Exercise real PowerShell file operations. Stub only process waiting,
                 # sleep and restart so CI never replaces or closes its own interpreter.
                 wrapper=root/'exercise.ps1'
-                wrapper.write_text("function Wait-Process {}\nfunction Start-Sleep {}\n$script:launchCount = 0\nfunction Start-Process { param($FilePath, $ArgumentList)\n$script:launchCount++\n"+("if ($script:launchCount -eq 1) { throw 'Simulated restart failure' }\n" if fail else '')+"Set-Content -LiteralPath "+quoted(restart)+" -Value $FilePath\n}\n. "+quoted(root/'install-update.ps1'),encoding='utf-8-sig')
-                result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30)
+                wrapper.write_text("function Wait-Process {}\nfunction Start-Sleep {}\n$script:launchCount = 0\nfunction Start-Process { param($FilePath, $ArgumentList)\nif ($env:PYINSTALLER_RESET_ENVIRONMENT -ne '1' -or (Test-Path Env:_PYI_APPLICATION_HOME_DIR) -or (Test-Path Env:_MEIPASS2)) { throw 'Stale runtime environment at restart' }\n$script:launchCount++\n"+("if ($script:launchCount -eq 1) { throw 'Simulated restart failure' }\n" if fail else '')+"Set-Content -LiteralPath "+quoted(restart)+" -Value $FilePath\n}\n. "+quoted(root/'install-update.ps1'),encoding='utf-8-sig')
+                import os
+                stale=dict(os.environ,_PYI_APPLICATION_HOME_DIR='deleted-MEI',_MEIPASS2='deleted-MEI',_PYI_ARCHIVE_FILE=str(target),_PYI_PARENT_PROCESS_LEVEL='1')
+                result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30,env=stale)
                 self.assertEqual(result.returncode,0,result.stderr)
                 log=(root/'install.log').read_text(encoding='utf-16') if (root/'install.log').exists() else result.stderr
                 self.assertEqual(target.read_bytes(),b'old' if fail else b'new',log)
                 self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
+
+    def test_restart_environment_discards_old_bootloader_state_only(self):
+        from app_updates import restart_environment
+        import os
+        with patch.dict(os.environ,{'_PYI_APPLICATION_HOME_DIR':'deleted-MEI',
+                                    '_PYI_ARCHIVE_FILE':'same-path.exe','_PYI_PARENT_PROCESS_LEVEL':'1',
+                                    '_MEIPASS2':'deleted-MEI','HTTPS_PROXY':'approved-proxy',
+                                    'ANALIZER_SETTINGS_DIR':'user-settings'}):
+            result=restart_environment()
+            self.assertFalse(any(k.upper().startswith('_PYI_') or k.upper()=='_MEIPASS2' for k in result))
+            self.assertEqual(result['PYINSTALLER_RESET_ENVIRONMENT'],'1')
+            self.assertEqual(result['HTTPS_PROXY'],'approved-proxy')
+            self.assertEqual(result['ANALIZER_SETTINGS_DIR'],'user-settings')
+            self.assertEqual(os.environ['_PYI_APPLICATION_HOME_DIR'],'deleted-MEI')
 
     def test_windows_proxy_fallback_is_used_only_on_connection_failures(self):
         from app_updates import request, MANIFEST_URL

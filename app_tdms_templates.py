@@ -43,7 +43,7 @@ def suggested_name(channel):
 
 def identity(channel):
     # Full TDMS group/channel identity prevents unrelated sensors sharing a label.
-    return str(channel.attributes.get('source_column',channel.name))
+    return str(channel.attributes.get('tdms_template_key',channel.attributes.get('source_column',channel.name)))
 
 
 class ParameterTemplates:
@@ -82,8 +82,14 @@ class ParameterTemplates:
             if c.attributes.get('format')!='TDMS':continue
             entry=self.entries.get(identity(c))
             if not entry:continue
+            if c.attributes.get('comparison_source'):
+                # Comparison values have already been converted to reference
+                # units. Apply the reviewed label without relabelling those
+                # numbers or reinterpreting derived traces a second time.
+                store.channels[id]=replace(c,name=entry['name']+' · '+c.attributes['comparison_source'])
+                continue
             original=c.attributes.get('original_name',c.name)
-            attrs={**c.attributes,'original_name':original,'value_interpretation':entry['interpretation'],'template_key':identity(c)}
+            attrs={**c.attributes,'original_name':original,'value_interpretation':entry['interpretation'],'template_key':identity(c),'template_display_name':entry['name']}
             # Unit is metadata, not a numerical conversion. Raw readings stay intact.
             attrs['raw_unit']=entry['unit']
             updated=replace(c,unit=entry['unit'],attributes=attrs)
@@ -128,3 +134,17 @@ class ParameterReview(QtWidgets.QDialog):
         try:self.entries()
         except ValueError as exc:self.error.setText(str(exc));return
         super().accept()
+
+
+def engineering_columns(frame):
+    """Resolve projected engineering names to the original TDMS value path.
+
+    Raw column identity stays unchanged for alignment deduplication and export.
+    Template v1 keys remain exactly compatible with files reviewed through Open.
+    """
+    result={}
+    for key,spec in frame.attrs.get('tdms_projections',{}).items():
+        name=spec['name'] if spec['group']=='Measurements' else spec['group']+' / '+spec['name']
+        result[name]={'format':'TDMS','tdms_template_key':key,'original_name':spec['name'],
+                      'tdms_group':spec['tdms_group']}
+    return result
