@@ -34,7 +34,101 @@ def validate_manifest(data):
 
 
 def request(url):
-    return urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'ApplianceSignalStudio-Updater'}),timeout=30)
+    """Try Python's configured proxy; then Windows PAC/SSO if it cannot connect."""
+    req = urllib.request.Request(url, headers={'User-Agent': 'ApplianceSignalStudio-Updater'})
+    try:
+        return urllib.request.urlopen(req, timeout=30)
+    except (urllib.error.URLError, OSError) as error:
+        if sys.platform != 'win32' or (
+                isinstance(error, urllib.error.HTTPError) and error.code != 407):
+            raise
+        try:
+            return _windows_system_request(url)
+        except (OSError, ValueError) as secondary:
+            raise OSError(
+                f'Python networking failed ({error}); Windows system proxy '
+                f'fallback unavailable ({secondary}). Contact IT or import an offline update.'
+            ) from secondary
+
+
+
+class _WindowsProxyResponse:
+    """Stream bytes from Windows' approved system-proxy HTTP stack."""
+    def __init__(self, process, url):
+        self.process = process
+        self.url = url
+
+    def __enter__(self):
+        return self
+
+    def read(self, size=-1):
+        chunk = self.process.stdout.read(size)
+        if not chunk:
+            code = self.process.wait(timeout=10)
+            if code:
+                detail = self.process.stderr.read(4096).decode('utf-8', errors='replace').strip()
+                raise OSError('Windows system proxy request failed: ' + (detail or f'exit code {code}'))
+        return chunk
+
+    def geturl(self):
+        # The Windows handler independently rejects non-HTTPS final destinations.
+        return self.url
+
+    def __exit__(self, exc_type, exc, traceback):
+        if self.process.poll() is None:
+            self.process.kill()
+        self.process.communicate()
+
+
+def _windows_system_request(url):
+    """Use Windows Internet Options (including PAC/WPAD) and signed-in proxy credentials.
+
+    The built-in Windows PowerShell/.NET Framework stack is used only as a
+    fallback. It inherits corporate proxy and TLS policies: no password storage,
+    custom certificate bypass or execution-policy override.
+    """
+    import base64
+    parsed = urlsplit(url)
+    if parsed.scheme != 'https' or parsed.hostname != 'github.com' or (
+            parsed.username or parsed.password):
+        raise ValueError('Unapproved update URL')
+    script = """$ErrorActionPreference = 'Stop'
+$response = $null
+$stream = $null
+try {
+    $request = [System.Net.WebRequest]::Create(%s)
+    $request.UserAgent = 'ApplianceSignalStudio-Updater'
+    $request.Timeout = 30000
+    $request.ReadWriteTimeout = 30000
+    $request.AllowAutoRedirect = $true
+    $request.MaximumAutomaticRedirections = 5
+    $request.Proxy = [System.Net.WebRequest]::GetSystemWebProxy()
+    $request.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+    $response = $request.GetResponse()
+    if ($response.ResponseUri.Scheme -ne 'https') { throw 'HTTPS required after redirects' }
+    $stream = $response.GetResponseStream()
+    $output = [Console]::OpenStandardOutput()
+    $buffer = New-Object byte[] 65536
+    while (($count = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+        $output.Write($buffer, 0, $count)
+    }
+    $output.Flush()
+} catch {
+    [Console]::Error.WriteLine('System proxy failed: ' + $_.Exception.Message)
+    exit 1
+} finally {
+    if ($null -ne $stream) { $stream.Dispose() }
+    if ($null -ne $response) { $response.Dispose() }
+}
+""" % ps_quote(url)
+    encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
+    process = subprocess.Popen(
+        ['powershell.exe', '-NoLogo', '-NoProfile', '-NonInteractive',
+         '-EncodedCommand', encoded],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        close_fds=True)
+    return _WindowsProxyResponse(process, url)
 
 
 def network_hint(exc):
