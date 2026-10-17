@@ -7,7 +7,7 @@ import sys
 import subprocess
 import unittest
 from unittest.mock import patch
-from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote
+from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote,import_offline_update,network_hint
 
 
 def manifest(body=b'example executable',version='2.1.6'):
@@ -79,6 +79,87 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
+
+    def test_windows_proxy_fallback_is_used_only_on_connection_failures(self):
+        from app_updates import request, MANIFEST_URL
+        import urllib.error
+        original = urllib.error.URLError(OSError(11001, 'getaddrinfo failed'))
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=original), \
+             patch('app_updates._windows_system_request', return_value=Response(b'ok')) as win:
+            with request(MANIFEST_URL) as response:
+                self.assertEqual(response.read(), b'ok')
+            win.assert_called_once_with(MANIFEST_URL)
+        with patch('app_updates.sys.platform', 'linux'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=original), \
+             patch('app_updates._windows_system_request') as win:
+            with self.assertRaises(urllib.error.URLError):
+                request(MANIFEST_URL)
+            win.assert_not_called()
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=urllib.error.HTTPError(MANIFEST_URL, 404, 'Not found', {}, None)), \
+             patch('app_updates._windows_system_request') as win:
+            with self.assertRaises(urllib.error.HTTPError):
+                request(MANIFEST_URL)
+            win.assert_not_called()
+
+    def test_windows_proxy_response_stream_and_error_handling(self):
+        from app_updates import _WindowsProxyResponse, _windows_system_request, MANIFEST_URL
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.stdout = io.BytesIO(b'binary\x00payload')
+        fake.stderr = io.BytesIO(b'')
+        fake.poll.return_value = 0
+        fake.wait.return_value = 0
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.subprocess.Popen', return_value=fake) as launch:
+            with _windows_system_request(RELEASES + '/latest/download/update.json') as response:
+                self.assertEqual(response.read(128), b'binary\x00payload')
+                self.assertEqual(response.read(128), b'')
+            command = launch.call_args.args[0]
+            self.assertIn('-Command', command)
+            self.assertNotIn('-EncodedCommand', command)
+            script = command[-1]
+            self.assertIn('GetSystemWebProxy', script)
+            self.assertIn('DefaultNetworkCredentials', script)
+            self.assertIn('HTTPS required after redirects', script)
+            self.assertNotIn('ExecutionPolicy', script)
+        failed = MagicMock()
+        failed.stdout = io.BytesIO(b'')
+        failed.stderr = io.BytesIO(b'proxy authentication denied')
+        failed.wait.return_value = 1
+        failed.poll.return_value = 1
+        with _WindowsProxyResponse(failed, MANIFEST_URL) as response:
+            with self.assertRaisesRegex(OSError, 'proxy authentication denied'):
+                response.read(128)
+        with self.assertRaises(ValueError):
+            _windows_system_request('http://example.com/untrusted.json')
+
+    def test_win_11001_resolution_failure_explained(self):
+        message = network_hint('<urlopen error [Errno 11001] getaddrinfo failed>')
+        self.assertIn('DNS lookup failed', message)
+        self.assertIn('offline update', message)
+
+    def test_corporate_offline_import_verified_and_tampering_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            destination = root / 'destination'
+            package = manifest(body=b'approved executable', version='2.1.8')
+            (source / 'update.json').write_text(json.dumps(package), encoding='utf-8')
+            exe = source / 'ApplianceSignalStudio.exe'
+            exe.write_bytes(b'approved executable')
+            progress = []
+            metadata, target = import_offline_update(source / 'update.json', destination, progress.append)
+            self.assertEqual(metadata['version'], '2.1.8')
+            self.assertEqual(target.read_bytes(), b'approved executable')
+            self.assertEqual(progress[-1], 100)
+            exe.write_bytes(b'tampered')
+            with self.assertRaises(ValueError):
+                import_offline_update(source / 'update.json', destination)
+            self.assertEqual(target.read_bytes(), b'approved executable')
+            self.assertFalse(list(destination.glob('*.part')))
 
     def test_offline_failure_and_script_escaping(self):
         with patch('app_updates.request',side_effect=OSError('offline')):
