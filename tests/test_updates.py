@@ -104,7 +104,7 @@ class UpdateTests(unittest.TestCase):
             win.assert_not_called()
 
     def test_windows_proxy_response_stream_and_error_handling(self):
-        from app_updates import _WindowsProxyResponse, _windows_system_request
+        from app_updates import _WindowsProxyResponse, _windows_system_request, MANIFEST_URL
         from unittest.mock import MagicMock
         fake = MagicMock()
         fake.stdout = io.BytesIO(b'binary\x00payload')
