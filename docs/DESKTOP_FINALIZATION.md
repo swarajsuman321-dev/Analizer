@@ -4,7 +4,9 @@ Updated 17 October 2026. This document supersedes the layout/selection details i
 
 ## Status
 
-Implementation and local verification are complete. Windows release verification is pending in this source commit; publication evidence will be recorded here after the workflow succeeds.
+**v2.2.0 is published and verified.** [Download the release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.2.0). The [Windows workflow](https://github.com/swarajsuman321-dev/Analizer/actions/runs/39052160699) succeeded for source commit `5f8fa33fdcd295776ceacbbc96336ce6a8f5f159`: all 199 regression tests, native updater/channel preflight, portable and single-file builds, both packaged smoke checks (including Windows product/version resources), uploads and release publication.
+
+The public latest-release manifest was fetched after publication and verified as **2.2.0**, EXE size **154264406 bytes**, SHA-256 **`d9975b9184f0c0ba3fdfa3748284563be45d13d3c0d9f212b29cc15658877e9f`**, with the official versioned EXE URL. Documentation-only commits after the tested source do not change the executable. The [machine-readable release evidence](validation/release-v2.2.0.json) records the same values.
 
 ## Final interaction decisions
 
@@ -79,7 +81,7 @@ python -m unittest discover -s tests -v
 python -m unittest discover -s tests -p test_desktop_finalization.py -v
 ```
 
-For Linux automation, set `QT_QPA_PLATFORM=offscreen` and writable cache/output directories. Native Windows CI validates platform behavior and both EXE modes. High-DPI appearance and a specific company's registry/proxy permissions still require that machine’s acceptance pass.
+For Linux automation, set `QT_QPA_PLATFORM=offscreen` and writable cache/output directories. Native Windows CI passed all 199 tests and both EXE modes. High-DPI appearance and a specific company's registry/proxy permissions still require that machine’s acceptance pass.
 
 ## Maintenance
 

@@ -1,0 +1,15 @@
+{
+  "version": "2.2.0",
+  "source_commit": "5f8fa33fdcd295776ceacbbc96336ce6a8f5f159",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39052160699",
+  "workflow_conclusion": "success",
+  "regression_tests": 199,
+  "portable_and_single_file_smoke_checks": "passed",
+  "public_manifest": {
+    "version": "2.2.0",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.2.0/ApplianceSignalStudio.exe",
+    "size": 154264406,
+    "sha256": "d9975b9184f0c0ba3fdfa3748284563be45d13d3c0d9f212b29cc15658877e9f",
+    "notes": "Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup."
+  }
+}
