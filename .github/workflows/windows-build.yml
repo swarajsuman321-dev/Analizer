@@ -46,8 +46,15 @@ jobs:
       - name: Build and test portable and single-file executables
         shell: pwsh
         run: |
-          .venv-exe\Scripts\python.exe build_exe.py --skip-install
-          exit $LASTEXITCODE
+          $output = & .venv-exe\Scripts\python.exe build_exe.py --skip-install 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 65) -join "`n"
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows package failure::$tail"
+          }
+          exit $code
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
