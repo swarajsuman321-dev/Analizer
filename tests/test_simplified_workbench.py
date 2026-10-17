@@ -91,8 +91,10 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         self.assertIn('ΔX',w.interval_card.text());self.assertIn('Mean',w.interval_card.text())
     def test_real_cursor_mouse_drag_stays_inside_data(self):
         w=self.window;c=self.add();w.dashboard.assign([c.id]);self.app.processEvents();pane=w.dashboard.active
-        line=pane.cursor_lines[0];before=line.value()
-        scene=pane.getViewBox().mapViewToScene(QtCore.QPointF(before,10));start=pane.mapFromScene(scene)
+        w.activateWindow();w.raise_();QtTest.QTest.qWait(60);self.app.processEvents()
+        line=pane.cursor_lines[0];before=line.value();view=pane.getViewBox()
+        scene=view.mapViewToScene(QtCore.QPointF(before,float(np.mean(view.viewRange()[1]))));start=pane.mapFromScene(scene)
+        self.assertTrue(view.sceneBoundingRect().contains(scene));self.assertFalse(w.dashboard.navigation_bar.geometry().contains(start))
         end=start+QtCore.QPoint(100,0)
         QtTest.QTest.mouseMove(pane.viewport(),start)
         QtTest.QTest.qWait(40)  # Let the scene process hover before the drag starts.

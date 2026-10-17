@@ -97,6 +97,13 @@ class DesktopFinalizationTests(unittest.TestCase):
             self.assertIs(workspace.store,w.store);self.assertFalse(workspace.active.ids)
         self.assertEqual(set(w.store.channels),set(ids))
 
+    def test_restore_preserves_offscreen_cursor_anchors_during_layout_changes(self):
+        w=self.w;_,ids=self.add_file('A');w.dashboard.assign(ids);p=w.dashboard.active
+        state=p.state();state['range'][0]=[5,9];state['cursors']=[1,3]
+        p.restore(state);self.app.processEvents();np.testing.assert_allclose([line.value() for line in p.cursor_lines],[1,3])
+        p.resize(p.width()+50,p.height());self.app.processEvents();np.testing.assert_allclose([line.value() for line in p.cursor_lines],[1,3])
+        p.cursor_lines[0].setValue(7);self.assertEqual(p.cursor_lines[0].value(),7)
+
     def test_crossed_cursor_hud_has_absolute_differences(self):
         _,ids=self.add_file('A');w=self.w;w.dashboard.assign(ids);p=w.dashboard.active
         p.cursor_lines[0].setValue(8);p.cursor_lines[1].setValue(2);w._readouts()
@@ -130,7 +137,7 @@ class MigrationLifecycleTests(unittest.TestCase):
             root=Path(directory);exe=root/'ApplianceSignalStudio.exe';exe.write_bytes(b'old');internal=root/'_internal';internal.mkdir();library=internal/'old.dll';library.write_bytes(b'lib');modified=internal/'modified.dll';modified.write_bytes(b'changed');user=root/'report.csv';user.write_bytes(b'private');outside=root.parent/'outside.dll'
             files={exe.name:digest(exe),'_internal/old.dll':digest(library),'_internal/modified.dll':'0'*64,'report.csv':digest(user),'../outside.dll':'0'*64}
             inventory={'product':PRODUCT,'version':'2.1.9','files':files}
-            removed,retained=cleanup_inventory(root,inventory,root/'current.exe');self.assertFalse(exe.exists());self.assertFalse(library.exists());self.assertTrue(user.exists());self.assertTrue(modified.exists());self.assertIn(str(modified),retained)
+            removed,retained=cleanup_inventory(root,inventory,root/'current.exe');self.assertFalse(exe.exists());self.assertFalse(library.exists());self.assertTrue(user.exists());self.assertTrue(modified.exists());self.assertTrue(any(Path(p).resolve()==modified.resolve() for p in retained))
             exe.write_bytes(b'current');inventory['files']={exe.name:digest(exe)}
             cleanup_inventory(root,inventory,exe);self.assertTrue(exe.exists())
             inventory['product']='Other product';self.assertEqual(cleanup_inventory(root,inventory,root/'different.exe')[0],[])

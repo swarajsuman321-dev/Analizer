@@ -46,15 +46,15 @@ Cleanup eligibility is deliberately narrow:
 
 `migration.json`, `installations.json` and `lifecycle.json` record migration evidence, file ownership and removed/retained paths. HKCU product registration is updated for future versions. Source runs and packaged self-tests do not delete installed files.
 
-**Limits:** Older portable packages did not record ownership inventories or register every location. Unregistered folders elsewhere on disk cannot be reliably discovered. Uninventoried libraries cannot be safely attributed to the app and are retained; protected/modified files may also remain. No blanket directory deletion or claim of complete system-wide cleanup is made.
+**Limits:** Modified-file detection relies on stored inventories; uninventoried older executables are identified by their Windows product/version resources. Older portable packages did not record ownership inventories or register every location. Unregistered folders elsewhere on disk cannot be reliably discovered. Uninventoried libraries cannot be safely attributed to the app and are retained; protected/modified files may also remain. No blanket directory deletion or claim of complete system-wide cleanup is made.
 
 The Windows entry parser now accepts `--restore`; this fixes a previously uncovered mismatch between the updater's recovery launch command and EXE argument parsing.
 
 ## Verification
 
-Local full regression: **196 tests passed, one Windows-only test skipped**. The expanded focused finalization suite passed all **10 cases**, including two additional restore guards after that full run (198 distinct tests in the final source). Source/bundle smoke now checks separate windows, graph controls, per-file selection availability and Windows product/version resources.
+Final local regression: **199 tests passed, one Windows-only test skipped**. The focused finalization suite passed all **11 cases**, including restore guards and saved offscreen cursor anchors. Native Windows verification exposed and corrected a short/long-path assertion and an unsettled cursor-drag target; navigation-toolbar parenting now changes only when the active canvas changes. Source/bundle smoke now checks separate windows, graph controls, per-file selection availability and Windows product/version resources.
 
-Ten focused finalization cases cover:
+Eleven focused finalization cases cover:
 
 - Default Engineering tab, distinct modal/nonmodal windows.
 - Native checkbox clicks: File A selection does not toggle File B, including with filters; closing File B keeps File A plotted.
@@ -66,8 +66,11 @@ Ten focused finalization cases cover:
 - Inventory-only cleanup preserving changed/user/current/unrecognized files and rejecting traversal outside the install root.
 - Invalid saved views rejected before replacing the open workspace.
 - Early source-only workspaces rebind every viewport without leaving stale store references.
+- Saved offscreen cursor anchors survive restoration and layout/geometry changes; a subsequent deliberate cursor drag resumes normal clamping/scrubbing.
 
-Existing regressions still cover data loading, sampling/nulls, unit/time conversion, processing, reports, alignment deduplication, updates/offline import and responsive save/restore. The supplied machine CSV and WT500 power CSV were imported together in the new UI: selecting only the machine dataset kept the power dataset unchecked; closing power preserved all 24 machine channels. An actual mouse click into another graph also transferred the corner toolbar correctly. The real-file audit tools remain available for rerunning the four supplied inputs; this release does not alter their ingestion projections.
+Existing regressions still cover data loading, sampling/nulls, unit/time conversion, processing, reports, alignment deduplication, updates/offline import and responsive save/restore. An actual v2.1.9 workspace created during the earlier four-file audit was restored in v2.2.0: **86 channels/four datasets**, identical channel/axis bindings and cursor coordinates, in **19.88 seconds** on this executor. Restoring cursor pairs is atomic so an intermediate range/layout notification cannot clamp a saved anchor or broadcast a half-restored pair.
+
+The supplied machine CSV and WT500 power CSV were imported together in the new UI: selecting only the machine dataset kept the power dataset unchecked; closing power preserved all 24 machine channels. An actual mouse click into another graph also transferred the corner toolbar correctly. The real-file audit tools remain available for rerunning the four supplied inputs; this release does not alter their ingestion projections.
 
 Reproduction (use a venv with `requirements-build.txt`):
 

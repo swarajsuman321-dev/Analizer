@@ -175,6 +175,7 @@ class PlotPane(pg.PlotWidget):
         self.hover_label.move(max(0,corner.x()-self.hover_label.width()-8),max(0,corner.y()+8));self.hover_label.show();self.hover_label.raise_()
 
     def _cursor_changed(self):
+        if self.sender() in self.cursor_lines and not getattr(self,'_restoring_cursors',False):self._restored_positions=False
         if self._normalizing:return
         if not self._synchronizing:
             self._normalizing=True
@@ -414,7 +415,7 @@ class PlotPane(pg.PlotWidget):
     def _schedule(self,*args):
         if getattr(self,'_closing',False):return
         self.clear_hover()
-        if self.ids:self._cursor_changed()
+        if self.ids and not getattr(self,'_restored_positions',False):self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
 
@@ -502,19 +503,30 @@ class PlotPane(pg.PlotWidget):
                 'cursor_locks':[dict(lock) if lock else None for lock in self.cursor_locks],'snap':self.snap,'annotations':list(self.annotations),'normalized':self.normalized,'normalization_bindings':self.normalization_bindings,'show_grid':self.show_grid,'show_legends':self.show_legends}
 
     def restore_ranges(self,state):
-        if 'cursor_locks' in state:
-            self.cursor_locks=[dict(lock) if lock and lock.get('channel') in self.store.channels else None for lock in state['cursor_locks']]
-        if 'range' in state:
-            self.setXRange(*state['range'][0],padding=0);self.setYRange(*state['range'][1],padding=0)
-        for unit,bounds in state.get('axes',{}).items():
-            if unit in self.axes:self.axes[unit][1].setYRange(*bounds,padding=0)
-        for index,(line,pos) in enumerate(zip(self.cursor_lines,state.get('cursors',[]))):
-            lock=self.cursor_locks[index]
-            if lock and lock['channel'] in self.store.channels:
-                x=self.store.channels[lock['channel']].values()[0]
-                if len(x):pos=float(x[int(np.clip(lock['index'],0,len(x)-1))])
-            line.setValue(pos)
-            line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
+        # Restore serialized anchors atomically. Geometry/range notifications
+        # must not clamp an offscreen saved cursor or broadcast a half-restored
+        # pair into another viewport while the layout is still settling.
+        self._restoring_cursors=True;self._restored_positions=True
+        previous=self._synchronizing;self._synchronizing=True
+        blocker=QtCore.QSignalBlocker(self)
+        try:
+            if 'cursor_locks' in state:
+                self.cursor_locks=[dict(lock) if lock and lock.get('channel') in self.store.channels else None for lock in state['cursor_locks']]
+            if 'range' in state:
+                self.setXRange(*state['range'][0],padding=0);self.setYRange(*state['range'][1],padding=0)
+            for unit,bounds in state.get('axes',{}).items():
+                if unit in self.axes:self.axes[unit][1].setYRange(*bounds,padding=0)
+            for index,(line,pos) in enumerate(zip(self.cursor_lines,state.get('cursors',[]))):
+                lock=self.cursor_locks[index]
+                if lock and lock['channel'] in self.store.channels:
+                    x=self.store.channels[lock['channel']].values()[0]
+                    if len(x):pos=float(x[int(np.clip(lock['index'],0,len(x)-1))])
+                line.setValue(pos)
+                line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
+        finally:
+            self._synchronizing=previous;self._restoring_cursors=False
+            del blocker
+        self.update_cursor_markers()
 
     def restore(self,state):
         self.snap=state.get('snap',True);self.normalized=state.get('normalized',False);self.normalization_bindings=state.get('normalization_bindings',{})
@@ -551,7 +563,9 @@ class PlotWorkspace(QtWidgets.QWidget):
     def place_navigation(self):
         if not self.active:return
         canvas=self.active.viewport()
-        self.navigation_bar.setParent(canvas)
+        # Reparent only on an actual active-canvas change. Reparenting a child
+        # during every layout notification can disturb native mouse grabs.
+        if self.navigation_bar.parentWidget() is not canvas:self.navigation_bar.setParent(canvas)
         width=min(self.navigation_bar.sizeHint().width(),max(1,canvas.width()-16))
         self.navigation_bar.setGeometry(max(0,canvas.width()-width-8),6,width,32)
         self.navigation_bar.show();self.navigation_bar.raise_()

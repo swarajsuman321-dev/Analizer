@@ -425,7 +425,7 @@ Each file header in Data Portal has its own Select All/Deselect All checkbox. It
 
 The active graph's top-right toolbar offers **Zoom In**, **Zoom Out**, **Box Zoom**, **Pan Graph**, **Reset Scale** and **Lock Time Axes**. It follows the graph you click, and uses an overflow menu in narrow panels. With Lock Time Axes enabled, compatible time viewports share X navigation; zoom buttons also scale each independent value axis once. Reset Scale fits the synchronized group to its full combined data extent. Disable Lock Time Axes to navigate the active plot independently. Time and frequency/sample coordinates remain separate.
 
-Tools → Plot retains **Zoom Time Axis**, **Zoom Value Axes** and **Zoom Both Axes** with Ctrl+1/2/3; Pan is Ctrl+4, Reset is Ctrl+0/R. The floating HUD shows absolute |ΔY| and nonnegative ΔX even when A crosses B; signed B−A values remain available in the detailed table and export. Cursor A stays cyan and B orange.
+Tools → Plot retains **Zoom Time Axis**, **Zoom Value Axes** and **Zoom Both Axes** with Ctrl+1/2/3; Pan is Ctrl+4, Reset is Ctrl+0/R. The floating HUD shows absolute |ΔY| and nonnegative ΔX even when A crosses B; signed B−A values remain available in the detailed table and export. Cursor A stays cyan and B orange. Restoring a saved workspace preserves offscreen cursor anchors while the layout settles; a deliberate drag resumes normal visible-data clamping.
 
 ## Separate About and User Manual windows | 2.2.0
 
