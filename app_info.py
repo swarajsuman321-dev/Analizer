@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from PySide6 import QtCore,QtGui,QtWidgets
 from app_version import VERSION
-from app_updates import check_latest,download_update,launch_installer,version_tuple,RELEASES
+from app_updates import check_latest,download_update,launch_installer,version_tuple,RELEASES,import_offline_update,network_hint
 
 
 class UpdateTask(QtCore.QThread):
@@ -22,8 +22,8 @@ class InfoTab(QtWidgets.QWidget):
         layout=QtWidgets.QVBoxLayout(self)
         title=QtWidgets.QLabel(f'<h2>Appliance Signal Studio {VERSION}</h2>');layout.addWidget(title)
         row=QtWidgets.QHBoxLayout();self.check_button=QtWidgets.QPushButton('Check for updates');self.install_button=QtWidgets.QPushButton('Download update');self.install_button.setEnabled(False)
-        self.cancel_button=QtWidgets.QPushButton('Cancel download');self.cancel_button.hide()
-        row.addWidget(self.check_button);row.addWidget(self.install_button);row.addWidget(self.cancel_button);row.addStretch();layout.addLayout(row)
+        self.cancel_button=QtWidgets.QPushButton('Cancel download');self.cancel_button.hide();self.offline_button=QtWidgets.QPushButton('Import offline update…')
+        row.addWidget(self.check_button);row.addWidget(self.install_button);row.addWidget(self.offline_button);row.addWidget(self.cancel_button);row.addStretch();layout.addLayout(row)
         self.status=QtWidgets.QLabel('Updates are checked only when you choose. Your recordings stay on this computer.');self.status.setWordWrap(True);layout.addWidget(self.status)
         self.progress=QtWidgets.QProgressBar();self.progress.hide();layout.addWidget(self.progress)
         self.notes=QtWidgets.QLabel();self.notes.setTextFormat(QtCore.Qt.TextFormat.PlainText);self.notes.setWordWrap(True);layout.addWidget(self.notes)
@@ -38,7 +38,7 @@ class InfoTab(QtWidgets.QWidget):
         self.manuals={p.stem.removeprefix('v'):p for p in root.glob('v*.md')}
         for version in sorted(self.manuals,key=version_tuple,reverse=True):self.versions.addItem(version)
         self.versions.currentTextChanged.connect(self.show_manual);self.show_manual(self.versions.currentText())
-        self.check_button.clicked.connect(self.check);self.install_button.clicked.connect(self.update);self.cancel_button.clicked.connect(self.cancel_download)
+        self.check_button.clicked.connect(self.check);self.install_button.clicked.connect(self.update);self.cancel_button.clicked.connect(self.cancel_download);self.offline_button.clicked.connect(self.import_offline)
 
     def show_manual(self,version):
         path=self.manuals.get(version)
@@ -64,7 +64,7 @@ class InfoTab(QtWidgets.QWidget):
         self.search_status.setText('' if found else 'No matches in this version’s manual.')
 
     def run_task(self,fn,complete):
-        self.check_button.setEnabled(False);self.install_button.setEnabled(False)
+        self.check_button.setEnabled(False);self.install_button.setEnabled(False);self.offline_button.setEnabled(False)
         self.task=UpdateTask(fn,self);self.task.result.connect(complete);self.task.progress.connect(self.progress.setValue)
         task=self.task;task.finished.connect(lambda:self.task_finished(task));task.finished.connect(task.deleteLater);task.start()
 
@@ -73,13 +73,48 @@ class InfoTab(QtWidgets.QWidget):
         self.run_task(check_latest,self.checked)
 
     def checked(self,result,error):
-        self.check_button.setEnabled(True);self.install_button.setEnabled(False)
-        if error:self.status.setText('Could not check for updates. Check your connection and try again. '+error);return
+        self.check_button.setEnabled(True);self.install_button.setEnabled(False);self.offline_button.setEnabled(True)
+        if error:self.status.setText(network_hint(error));self.offline_button.setEnabled(True);return
         self.manifest=result
         if version_tuple(result['version'])<=version_tuple(VERSION):self.status.setText(f'You have the latest version ({VERSION}).');return
         self.status.setText(f"Version {result['version']} is available ({result['size']/1024/1024:.0f} MB).")
         self.notes.setText(str(result.get('notes','')))
         self.install_button.setEnabled(True)
+
+    def import_offline(self):
+        if self.task and self.task.isRunning():
+            self.status.setText('Finish the current update operation first.')
+            return
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Select approved update manifest', '',
+            'Update manifest (update.json);;JSON files (*.json)')
+        if not filename:
+            return
+        self.progress.setValue(0)
+        self.progress.show()
+        self.status.setText('Validating approved offline update…')
+        self.run_task(lambda: import_offline_update(
+            filename, self.update_directory(), self.download_progress), self.offline_imported)
+
+    def offline_imported(self, result, error):
+        self.check_button.setEnabled(True)
+        self.offline_button.setEnabled(True)
+        self.progress.hide()
+        if error:
+            self.status.setText('Offline update rejected: ' + str(error))
+            return
+        manifest, download = result
+        if version_tuple(manifest['version']) <= version_tuple(VERSION):
+            self.status.setText('This package is not newer than the installed version.')
+            return
+        self.manifest, self.download = manifest, download
+        self.notes.setText(str(manifest.get('notes', '')))
+        if sys.platform == 'win32' and getattr(sys, 'frozen', False):
+            self.install_button.setText('Install update & restart')
+            self.install_button.setEnabled(True)
+            self.status.setText(f"Offline update v{manifest['version']} verified. Ready to install.")
+        else:
+            self.status.setText(f'Offline package verified at {download}. Installation requires the Windows EXE.')
 
     def update(self):
         if self.window.busy:self.status.setText('Wait for data processing to finish before updating.');return
@@ -100,7 +135,7 @@ class InfoTab(QtWidgets.QWidget):
         path.mkdir(parents=True,exist_ok=True);return path
 
     def downloaded(self,result,error):
-        self.check_button.setEnabled(True);self.progress.hide();self.cancel_button.hide()
+        self.check_button.setEnabled(True);self.offline_button.setEnabled(True);self.progress.hide();self.cancel_button.hide()
         if error:self.status.setText('Download failed. '+error);self.install_button.setEnabled(True);return
         self.download=result
         if sys.platform=='win32' and getattr(sys,'frozen',False):
