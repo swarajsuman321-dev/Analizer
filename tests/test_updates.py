@@ -80,6 +80,61 @@ class UpdateTests(unittest.TestCase):
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
 
+    def test_windows_proxy_fallback_is_used_only_on_connection_failures(self):
+        from app_updates import request, MANIFEST_URL
+        import urllib.error
+        original = urllib.error.URLError(OSError(11001, 'getaddrinfo failed'))
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=original), \
+             patch('app_updates._windows_system_request', return_value=Response(b'ok')) as win:
+            with request(MANIFEST_URL) as response:
+                self.assertEqual(response.read(), b'ok')
+            win.assert_called_once_with(MANIFEST_URL)
+        with patch('app_updates.sys.platform', 'linux'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=original), \
+             patch('app_updates._windows_system_request') as win:
+            with self.assertRaises(urllib.error.URLError):
+                request(MANIFEST_URL)
+            win.assert_not_called()
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.urllib.request.urlopen', side_effect=urllib.error.HTTPError(MANIFEST_URL, 404, 'Not found', {}, None)), \
+             patch('app_updates._windows_system_request') as win:
+            with self.assertRaises(urllib.error.HTTPError):
+                request(MANIFEST_URL)
+            win.assert_not_called()
+
+    def test_windows_proxy_response_stream_and_error_handling(self):
+        from app_updates import _WindowsProxyResponse, _windows_system_request
+        from unittest.mock import MagicMock
+        import base64
+        fake = MagicMock()
+        fake.stdout = io.BytesIO(b'binary\x00payload')
+        fake.stderr = io.BytesIO(b'')
+        fake.poll.return_value = 0
+        fake.wait.return_value = 0
+        with patch('app_updates.sys.platform', 'win32'), \
+             patch('app_updates.subprocess.Popen', return_value=fake) as launch:
+            with _windows_system_request(RELEASES + '/latest/download/update.json') as response:
+                self.assertEqual(response.read(128), b'binary\x00payload')
+                self.assertEqual(response.read(128), b'')
+            command = launch.call_args.args[0]
+            self.assertIn('-EncodedCommand', command)
+            script = base64.b64decode(command[-1]).decode('utf-16-le')
+            self.assertIn('GetSystemWebProxy', script)
+            self.assertIn('DefaultNetworkCredentials', script)
+            self.assertIn('HTTPS required after redirects', script)
+            self.assertNotIn('ExecutionPolicy', script)
+        failed = MagicMock()
+        failed.stdout = io.BytesIO(b'')
+        failed.stderr = io.BytesIO(b'proxy authentication denied')
+        failed.wait.return_value = 1
+        failed.poll.return_value = 1
+        with _WindowsProxyResponse(failed, MANIFEST_URL) as response:
+            with self.assertRaisesRegex(OSError, 'proxy authentication denied'):
+                response.read(128)
+        with self.assertRaises(ValueError):
+            _windows_system_request('http://example.com/untrusted.json')
+
     def test_win_11001_resolution_failure_explained(self):
         message = network_hint('<urlopen error [Errno 11001] getaddrinfo failed>')
         self.assertIn('DNS lookup failed', message)
