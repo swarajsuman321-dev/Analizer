@@ -13,7 +13,8 @@ NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, proce
        '2.1.8':'Windows system-proxy fallback, verified offline update import and actionable connection guidance.',
        '2.1.9':'Complete recording removal, reviewed TDMS parameter templates, persistent output folders, and real-file import corrections.',
        '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.',
-       '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.'}
+       '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.',
+       '2.2.2':'Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas.'}
 
 
 def generate(versions=None):
@@ -37,7 +38,13 @@ def generate(versions=None):
                     body=body.replace('It uses **reports**, **workspaces**, **templates**, **diagnostics** and **presets** subfolders.','Reports, workspaces and diagnostics use this output directory. Templates and presets use the per-user settings directory in %APPDATA%/ApplianceSignalStudio.').replace('**Info & manual**','**About / Updates**')
                 body=body.replace('The previous EXE is retained as a backup;','The previous EXE is retained until a successful new startup/recovery restore, then removed by verified lifecycle cleanup;')
                 body=body.replace('| Shortcut reference | F1 |','| User Manual and shortcut guide | F1 |')
-            text+=f'## {title}\n'+body.replace('{{DEFAULT_VIEW}}',default)
+            if number>=(2,2,2):
+                if title=='File isolation and graph navigation':
+                    body=re.sub(r"The active graph's top-right toolbar[^\n]+", "The upper application toolbar offers Zoom X, Zoom Y, Zoom XY, Pan, Zoom In, Zoom Out, Reset View, Lock Time Axes and Lock Cursors. It sits above graph tabs and controls the active graph. Mode buttons show the current selection; shortcuts use the same mode state. With Lock Time Axes enabled, compatible time viewports share X navigation; zoom buttons scale each independent value axis once. Reset View fits the synchronized group to its combined data extent. Disable Lock Time Axes to navigate the active plot independently. Time and frequency/sample coordinates remain separate.", body)
+                if title=='Mouse X/Y hover':
+                    body=body.replace('compact readout','fixed readout strip above the graph')
+                body=body.replace('**Reset zoom / Fit**','**Reset View**')
+            text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 
 

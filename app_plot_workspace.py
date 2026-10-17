@@ -67,6 +67,7 @@ class PreparedCurve(pg.GraphicsObject):
 
 class PlotPane(pg.PlotWidget):
     cursorsChanged=QtCore.Signal()
+    hoverChanged=QtCore.Signal(object)
 
     def __init__(self, store):
         view=NavigationViewBox();super().__init__(viewBox=view);view.owner=self
@@ -79,7 +80,7 @@ class PlotPane(pg.PlotWidget):
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.showGrid(x=True,y=True,alpha=.2)
         self.getPlotItem().hideButtons()
-        self.getPlotItem().layout.setContentsMargins(0,36,0,0)
+        self.getPlotItem().layout.setContentsMargins(0,0,0,0)
         self.getViewBox().sigResized.connect(self._resize)
         self.getViewBox().sigYRangeChanged.connect(self.clear_hover)
         self.getViewBox().sigXRangeChanged.connect(self._schedule)
@@ -111,16 +112,19 @@ class PlotPane(pg.PlotWidget):
             line.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);line.setZValue(900);self.addItem(line,ignoreBounds=True);line.hide()
         self.hover_marker=pg.ScatterPlotItem(size=9,brush=None,pen=pg.mkPen('#ffffff',width=2))
         self.hover_marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.hover_marker.setZValue(901);self.addItem(self.hover_marker,ignoreBounds=True);self.hover_marker.hide()
-        self.hover_label=QtWidgets.QLabel(self);self.hover_label.setTextFormat(QtCore.Qt.TextFormat.PlainText);self.hover_label.setWordWrap(True)
-        self.hover_label.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents);self.hover_label.hide();self.hover_state=None
+        self.hover_state=None;self.hover_text=''
+        # Only passive crosshairs/markers live in the canvas. Text is emitted to
+        # the workspace's fixed readout strip so it never covers a trace.
         self.hover_proxy=pg.SignalProxy(self.scene().sigMouseMoved,rateLimit=30,slot=self._live_hover);self.hover_proxy.setParent(self)
         self.viewport().setMouseTracking(True)
 
     def clear_hover(self):
-        self.hover_state=None
-        if not hasattr(self,'hover_label'):return
-        self.hover_label.hide();self.hover_marker.hide()
+        had_state=getattr(self,'hover_state',None) is not None
+        self.hover_state=None;self.hover_text=''
+        if not hasattr(self,'hover_marker'):return
+        self.hover_marker.hide()
         for line in self.hover_lines:line.hide()
+        if had_state:self.hoverChanged.emit(None)
 
     def leaveEvent(self,event):
         self.clear_hover();super().leaveEvent(event)
@@ -157,22 +161,18 @@ class PlotPane(pg.PlotWidget):
         if state is None:self.clear_hover();return
         self.hover_state=state;primary=self.getViewBox();point=primary.mapSceneToView(position)
         for line,value in zip(self.hover_lines,(point.x(),point.y())):line.setValue(value);line.show()
-        text=[f"Mouse X  {state['x']:.6g} {state['coordinate_unit']}"]
-        text.append('Mouse Y  '+'  |  '.join(('ON/OFF track' if a['unit']=='Actuators' else f"{a['y']:.6g} {a['unit']}") for a in state['axes']))
+        text=[f"Mouse X  {state['x']:.6g} {state['coordinate_unit']}  |  Mouse Y  "+'  |  '.join(('ON/OFF track' if a['unit']=='Actuators' else f"{a['y']:.6g} {a['unit']}") for a in state['axes'])]
         nearest=state['nearest']
         if nearest:
             channel=self.store.channels[nearest['channel']]
             from app_actuators import state_text
             value=state_text(nearest['y']) if channel.attributes.get('actuator_binary') else f"{nearest['y']:.6g} {nearest['unit']}"
-            name=self.fontMetrics().elidedText(nearest['name'],QtCore.Qt.TextElideMode.ElideMiddle,max(120,min(330,self.width()-120)))
-            text.extend([name,f"Sample  {nearest['x']:.6g} {state['coordinate_unit']}  ·  {value}"])
+            text.append(f"{nearest['name']}  |  Sample  {nearest['x']:.6g} {state['coordinate_unit']}  ·  {value}")
             self.hover_marker.setPen(pg.mkPen(self.curves[nearest['channel']][1].pen.color(),width=2))
             marker=primary.mapSceneToView(nearest['scene']);self.hover_marker.setData([marker.x()],[marker.y()]);self.hover_marker.show()
         else:text.append('No sample available here');self.hover_marker.hide()
-        self.hover_label.setText('\n'.join(text));self.hover_label.setStyleSheet('padding:7px; border:1px solid #7e8fa4; border-radius:5px; background:'+('#182033; color:#f0f5ff;' if self.dark else '#ffffff; color:#182033;'))
-        self.hover_label.setFixedWidth(max(140,min(360,self.width()-100)));self.hover_label.adjustSize()
-        bounds=self.getViewBox().sceneBoundingRect();corner=self.mapFromScene(bounds.topRight())
-        self.hover_label.move(max(0,corner.x()-self.hover_label.width()-8),max(0,corner.y()+8));self.hover_label.show();self.hover_label.raise_()
+        self.hover_text='\n'.join(text)
+        self.hoverChanged.emit(state)
 
     def _cursor_changed(self):
         if self.sender() in self.cursor_lines and not getattr(self,'_restoring_cursors',False):self._restored_positions=False
@@ -543,40 +543,55 @@ class PlotWorkspace(QtWidgets.QWidget):
     measurementsChanged=QtCore.Signal()
 
     def __init__(self,store):
-        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self.time_axes_locked=True
+        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
         self.grid=QtWidgets.QGridLayout(self.container);self.grid.setContentsMargins(0,0,0,0)
-        # A single toolbar follows the active canvas, rather than duplicating
-        # controls in every subplot. Qt supplies an overflow menu at small sizes.
+        # The main window mounts this toolbar in its upper toolbar area. A
+        # standalone workspace also gets a normal layout row, never an overlay.
         self.navigation_bar=QtWidgets.QToolBar('Graph Navigation',self)
         self.navigation_bar.setObjectName('graphNavigation');self.navigation_bar.setMovable(False)
-        self.navigation_actions={}
-        for label,command in [('Zoom In','in'),('Zoom Out','out'),('Box Zoom','box'),('Pan Graph','pan'),('Reset Scale','reset')]:
+        self.navigation_actions={};self.mode_group=QtGui.QActionGroup(self);self.mode_group.setExclusive(True)
+        for label,command in [('Zoom X','x'),('Zoom Y','y'),('Zoom XY','xy'),('Pan','pan'),('Zoom In','in'),('Zoom Out','out'),('Reset View','reset')]:
             action=self.navigation_bar.addAction(label);action.triggered.connect(lambda checked=False,c=command:self.navigate(c));self.navigation_actions[command]=action
+            if command in ('x','y','xy','pan'):
+                action.setCheckable(True);self.mode_group.addAction(action)
+                action.setToolTip({'x':'Box zoom in time only (Ctrl+1)','y':'Box zoom in value axes only (Ctrl+2)','xy':'Box zoom in time and values (Ctrl+3)','pan':'Drag to pan the graph (Ctrl+4)'}[command])
+        self.navigation_actions['pan'].setChecked(True)
+        self.navigation_actions['box']=self.navigation_actions['xy']
         self.time_lock_action=self.navigation_bar.addAction('Lock Time Axes');self.time_lock_action.setCheckable(True);self.time_lock_action.setChecked(True)
         self.time_lock_action.toggled.connect(self.set_time_lock)
-        self.activeChanged.connect(lambda *_:self.place_navigation())
+        outer.insertWidget(0,self.navigation_bar)
+        self.hover_readout=QtWidgets.QLabel('Mouse X/Y · Move over a graph to inspect values',self)
+        self.hover_readout.setObjectName('mouseXYReadout');self.hover_readout.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        self.hover_readout.setFixedHeight(48);self.hover_readout.setContentsMargins(8,2,8,2)
+        self.hover_readout.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Fixed)
+        outer.insertWidget(1,self.hover_readout)
         self.set_layout('Single')
 
-    def place_navigation(self):
-        if not self.active:return
-        canvas=self.active.viewport()
-        # Reparent only on an actual active-canvas change. Reparenting a child
-        # during every layout notification can disturb native mouse grabs.
-        if self.navigation_bar.parentWidget() is not canvas:self.navigation_bar.setParent(canvas)
-        width=min(self.navigation_bar.sizeHint().width(),max(1,canvas.width()-16))
-        self.navigation_bar.setGeometry(max(0,canvas.width()-width-8),6,width,32)
-        self.navigation_bar.show();self.navigation_bar.raise_()
+    def _hover_changed(self,pane,state):
+        if state is None and pane is not self._hover_pane:return
+        self._hover_pane=pane if state else None
+        text=pane.hover_text if state else 'Mouse X/Y · Move over a graph to inspect values'
+        self.hover_readout.setToolTip(text)
+        width=max(0,self.hover_readout.contentsRect().width())
+        self.hover_readout.setText('\n'.join(self.hover_readout.fontMetrics().elidedText(line,QtCore.Qt.TextElideMode.ElideRight,width) for line in text.splitlines()))
+
+    def resizeEvent(self,event):
+        super().resizeEvent(event)
+        if self._hover_pane:self._hover_changed(self._hover_pane,self._hover_pane.hover_state)
 
     def navigate(self,command,factor=None):
         """Scale synchronized X once, and every independent Y axis once."""
         active=self.active
         targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and active.coordinate and p.coordinate==active.coordinate)]
-        if command in ('box','pan'):
-            for pane in targets:
-                view=pane.getViewBox();view.setMouseMode(view.RectMode if command=='box' else view.PanMode);view.setMouseEnabled(x=True,y=True)
+        if command in ('x','y','xy','box','pan'):
+            self.navigation_mode='xy' if command=='box' else command
+            self.navigation_actions[self.navigation_mode].setChecked(True)
+            for pane in self.visible_panes():
+                view=pane.getViewBox();view.setMouseMode(view.PanMode if command=='pan' else view.RectMode)
+                view.setMouseEnabled(x=command!='y',y=command!='x')
         elif command=='reset':
             for pane in targets:pane.fit()
             channels=[self.store.channels[id] for pane in targets for id in pane.ids if len(self.store.channels[id].x)]
@@ -600,7 +615,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
             pane=PlotPane(self.store);pane.installEventFilter(self)
-            pane.getViewBox().sigResized.connect(self.place_navigation)
+            pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
             pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
             self.panes.append(pane)
         for i,pane in enumerate(self.panes):
@@ -613,7 +628,7 @@ class PlotWorkspace(QtWidgets.QWidget):
             # Reparenting into a visible layout hides newly created widgets.
             pane.setVisible(i<required)
         self.layout_name=name;self.active=self.panes[0];self.activeChanged.emit(self.active)
-        self.link()
+        self.navigate(self.navigation_mode);self.link()
 
     def eventFilter(self,obj,event):
         if event.type()==QtCore.QEvent.Type.FocusIn and obj in self.panes:
@@ -706,10 +721,12 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.link()
 
     def state(self):
-        return {'time_axes_locked':self.time_axes_locked,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
+        return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
                 'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        mode=state.get('navigation_mode','pan');self.navigation_mode=mode if mode in ('x','y','xy','pan') else 'pan'
+        if self._hover_pane:self._hover_changed(self._hover_pane,None)
         self.time_axes_locked=bool(state.get('time_axes_locked',True))
         blocker=QtCore.QSignalBlocker(self.time_lock_action);self.time_lock_action.setChecked(self.time_axes_locked);del blocker
         self.statistics_scope=state.get('statistics_scope','Cursor interval')

@@ -28,7 +28,7 @@ def self_test():
             if VERSION not in window.info.manuals or 'Updates' not in window.info.manual.toPlainText():raise RuntimeError('Bundled Info manual is missing')
             if window.tabs.count()!=2 or not hasattr(window,'help_action') or window.help.topics.findText('View menu and panel layout')<0:raise RuntimeError('Top-toolbar manual navigation is missing')
             if not window.info_dialog.isModal() or window.help_dialog.isModal() or window.help.parentWidget() is not window.help_dialog:raise RuntimeError('About/Help window separation failed')
-            if hasattr(window.portal,'select_all') or not window.dashboard.navigation_actions:raise RuntimeError('Dataset isolation or canvas navigation is missing')
+            if hasattr(window.portal,'select_all') or not window.dashboard.navigation_actions:raise RuntimeError('Dataset isolation or header navigation is missing')
             import sys
             if sys.platform=='win32' and getattr(sys,'frozen',False):
                 from app_lifecycle import windows_product_version,PRODUCT
@@ -70,6 +70,8 @@ def self_test():
             hover_pane=window.dashboard.panes[0];positions=[line.value() for line in hover_pane.cursor_lines]
             hover_pane._mouse_hover((hover_pane.getViewBox().sceneBoundingRect().center(),))
             if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
+            if hasattr(hover_pane,'hover_label') or 'Mouse X' not in window.dashboard.hover_readout.toolTip():raise RuntimeError('Mouse readout must stay outside the canvas')
+            if window.dashboard.navigation_bar.parentWidget() is not window or not {'x','y','xy','pan','reset'}<=window.dashboard.navigation_actions.keys():raise RuntimeError('Header navigation controls are missing')
             if [line.value() for line in hover_pane.cursor_lines]!=positions:raise RuntimeError('Hover moved measurement cursors')
             hover_pane.clear_hover()
             from PIL import Image,ImageDraw
@@ -77,5 +79,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','separate About and User Manual windows','graph-corner navigation','per-file channel controls','Windows product/version identity','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','separate About and User Manual windows','header navigation and fixed hover readout','per-file channel controls','Windows product/version identity','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

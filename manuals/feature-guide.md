@@ -459,3 +459,20 @@ Sample-indexed TDMS channels without a clock can be reviewed through Open, but e
 Updates and rollback restart with a fresh bundled Python runtime, independent of the old temporary extraction folder. If an older updater shows **Failed to load Python DLL** immediately after replacing the executable, close the error and launch the saved executable directly from File Explorer. The updated updater takes effect once the new app has started.
 
 If a direct launch also fails, download the portable ZIP from the same GitHub release, extract its entire folder, and keep `_internal` beside the executable. Preserve your workspaces and templates. Do not fetch individual runtime DLLs from unofficial download sites. If the complete portable folder cannot run, retain the exact error and check your machine's security/quarantine history with IT.
+
+## Upper navigation toolbar and clear hover view | 2.2.2
+
+The graph tools are in the **upper application toolbar, directly below the main file/report controls**, above the Analysis/Comparison graph area. They no longer float inside a plot.
+
+- **Zoom X** (Ctrl+1): box zoom along time only; value axes stay fixed.
+- **Zoom Y** (Ctrl+2): box zoom along value axes only; time stays fixed.
+- **Zoom XY** (Ctrl+3): box zoom along both dimensions.
+- **Pan** (Ctrl+4): drag to move the view.
+- **Zoom In / Zoom Out** (Ctrl+= / Ctrl+-): scale the enabled dimensions.
+- **Reset View** (Ctrl+0): fit the active compatible group to its data.
+- **Lock Time Axes**: link compatible plots in the current workspace.
+- **Lock Cursors** (Ctrl+L): anchor A and/or B to samples from chosen visible channels. Read the anchored values in the Readout table and cursor cards; the rest of the channels follow those times.
+
+The selected navigation mode stays visibly pressed. Analysis and Comparison remember their own modes. New plots inherit that workspace's selection, and saved workspaces retain it. Older workspaces without a mode use Pan.
+
+Mouse X/Y text is displayed in a **fixed strip outside the canvas**. The first line reports the mouse coordinate and the independent Y-axis coordinates. The second line identifies the nearest trace, actual sample time, value and unit. A stationary strip cannot cover traces, drag handles or cursor labels. It does not resize the graph as values change. Long content is shortened to fit; hovering over the strip reveals the complete readout. Moving out of a graph clears the transient readout and guides. Hover remains enabled by default and does not move or unlock A/B.

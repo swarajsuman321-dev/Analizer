@@ -53,7 +53,7 @@ class StudioTools(QtCore.QObject):
         for name,items in groups.items():
             submenu=menu.addMenu(name);self.submenus[name]=submenu
             for text,fn in items:
-                display={'Zoom X':'Zoom Time Axis','Zoom Y':'Zoom Value Axes','Zoom XY':'Zoom Both Axes','Fit':'Reset Scale','Pan':'Pan Graph','Back':'Previous View','Forward':'Next View','KPIs & data quality…':'Measurements and Data Quality…','Channel math & filters':'Calculate Channels and Apply Filters','ROI':'Mark Interval'}.get(text,text)
+                display={'Zoom X':'Zoom Time Axis','Zoom Y':'Zoom Value Axes','Zoom XY':'Zoom Both Axes','Fit':'Reset View','Pan':'Pan Graph','Back':'Previous View','Forward':'Next View','KPIs & data quality…':'Measurements and Data Quality…','Channel math & filters':'Calculate Channels and Apply Filters','ROI':'Mark Interval'}.get(text,text)
                 action=submenu.addAction(display)
                 shortcut={'Back':'Alt+Left','Forward':'Alt+Right','Zoom in':'Ctrl+=','Zoom out':'Ctrl+-','Fit':'Ctrl+0','Pan':'Ctrl+4','Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Lock cursors to channel…':'Ctrl+L'}.get(text)
                 if shortcut:action.setShortcut(shortcut)
@@ -316,10 +316,7 @@ class StudioTools(QtCore.QObject):
         self.window.active_workspace.navigate('in' if factor<1 else 'out',factor)
 
     def navigation(self,mode):
-        import pyqtgraph as pg
-        for pane in self.window.active_workspace.visible_panes():
-            view=pane.getViewBox();view.setMouseMode(pg.ViewBox.PanMode if mode=='pan' else pg.ViewBox.RectMode)
-            view.setMouseEnabled(x=mode!='y',y=mode!='x')
+        self.window.active_workspace.navigate(mode)
 
     def cursor_lock_dialog(self):
         pane=self.pane;dialog,layout=self.dialog('Lock cursors to channel');form=QtWidgets.QFormLayout();layout.addLayout(form);fields=[]

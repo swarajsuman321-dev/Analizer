@@ -126,17 +126,17 @@ class HoverTests(unittest.TestCase):
         self.assertEqual(state['nearest']['channel'],self.b.id);self.assertAlmostEqual(state['nearest']['x'],2.05);self.assertAlmostEqual(state['nearest']['y'],200)
         p.activateWindow();p.raise_();self.app.processEvents();QtTest.QTest.mouseMove(p.viewport(),QtCore.QPoint(0,0));QtTest.QTest.qWait(20)
         QtTest.QTest.mouseMove(p.viewport(),p.mapFromScene(position));QtTest.QTest.qWait(150);self.app.processEvents()
-        self.assertIsNotNone(p.hover_state);self.assertTrue(p.hover_label.isVisible());self.assertIn('Pa',p.hover_label.text());self.assertIn('Mouse X',p.hover_label.text())
+        self.assertIsNotNone(p.hover_state);self.assertFalse(hasattr(p,'hover_label'));self.assertIn('Pa',p.hover_text);self.assertIn('Mouse X',p.hover_text)
         self.assertEqual([line.value() for line in p.cursor_lines],cursors)
-        self.assertLessEqual(p.hover_label.geometry().right(),p.width());self.assertTrue(p.hover_marker.isVisible())
+        self.assertTrue(p.hover_marker.isVisible())
 
     def test_missing_values_empty_selection_and_leaving_clear_hover(self):
         from PySide6 import QtCore
         p=self.pane
         self.store.update(self.a.id,y=np.array([np.nan]*3));self.store.update(self.b.id,y=np.array([np.nan]*3));p.bind([self.a.id,self.b.id])
         position=p.getViewBox().sceneBoundingRect().center();p._mouse_hover((position,))
-        self.assertIsNone(p.hover_state['nearest']);self.assertIn('No sample',p.hover_label.text());self.assertFalse(p.hover_marker.isVisible())
-        p._mouse_hover((QtCore.QPointF(-100,-100),));self.assertIsNone(p.hover_state);self.assertFalse(p.hover_label.isVisible())
+        self.assertIsNone(p.hover_state['nearest']);self.assertIn('No sample',p.hover_text);self.assertFalse(p.hover_marker.isVisible())
+        p._mouse_hover((QtCore.QPointF(-100,-100),));self.assertIsNone(p.hover_state);self.assertEqual(p.hover_text,'')
         p.bind([]);p._mouse_hover((position,));self.assertIsNone(p.hover_state);self.assertTrue(all(not line.isVisible() for line in p.hover_lines))
 
     def test_shifted_normalized_channels_show_original_sample_values(self):

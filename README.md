@@ -183,3 +183,7 @@ Engineering Controls starts as the selected dock tab. Each file has independent 
 ### TDMS engineering templates and update restart (v2.2.1)
 
 Engineering Controls now shares Open's first-use TDMS review and persistent templates. The updater starts an independent bundled runtime instead of inheriting the exiting app's temporary extraction path. See [fix details and recovery instructions](docs/TDMS_AND_UPDATE_FIXES.md), the [v2.2.1 manual](manuals/v2.2.1.md), and the [installed Windows application assessment](docs/INSTALLATION_OPTIONS.md).
+
+### Header navigation and non-obstructing hover (v2.2.2)
+
+Zoom X, Zoom Y, Zoom XY, Pan, Reset View and Lock Cursors are in the upper application toolbar. Mouse X/Y readings use a fixed strip outside the canvas. Modes remain visible and persist per workspace. See [layout and verification details](docs/HEADER_NAVIGATION_AND_HOVER.md) and the [v2.2.2 manual](manuals/v2.2.2.md).

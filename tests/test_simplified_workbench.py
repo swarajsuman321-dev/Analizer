@@ -94,7 +94,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         w.activateWindow();w.raise_();QtTest.QTest.qWait(60);self.app.processEvents()
         line=pane.cursor_lines[0];before=line.value();view=pane.getViewBox()
         scene=view.mapViewToScene(QtCore.QPointF(before,float(np.mean(view.viewRange()[1]))));start=pane.mapFromScene(scene)
-        self.assertTrue(view.sceneBoundingRect().contains(scene));self.assertFalse(w.dashboard.navigation_bar.geometry().contains(start))
+        self.assertTrue(view.sceneBoundingRect().contains(scene));self.assertFalse(w.dashboard.navigation_bar.rect().contains(w.dashboard.navigation_bar.mapFromGlobal(pane.viewport().mapToGlobal(start))))
         end=start+QtCore.QPoint(100,0)
         QtTest.QTest.mouseMove(pane.viewport(),start)
         QtTest.QTest.qWait(40)  # Let the scene process hover before the drag starts.

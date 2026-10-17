@@ -252,6 +252,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
         channel.addAction('Remove recording…',lambda:self.guard(self.remove_recording));channel.addAction('Clear workspace',lambda:self.guard(self.clear_recordings))
 
+        # Keep navigation beside the main application controls, above graph
+        # tabs. Each workspace retains its mode; only the active bar is shown.
+        self.addToolBarBreak(QtCore.Qt.ToolBarArea.TopToolBarArea)
+        for index,workspace in enumerate(self.workspaces):
+            bar=workspace.navigation_bar;bar.setObjectName(('Analysis','Comparison')[index]+'Navigation')
+            bar.addSeparator();lock=bar.addAction('Lock Cursors…');lock.setToolTip('Lock Cursor A or B to a chosen channel sample (Ctrl+L)')
+            lock.triggered.connect(lambda:self.guard(self.studio.cursor_lock_dialog))
+            self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea,bar);bar.setVisible(index==0)
+
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
         self.channel_kind_action.setChecked(True)
@@ -730,6 +739,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def workspace_changed(self,*args):
         if self.tabs.currentIndex()<2:self._plot_tab_index=self.tabs.currentIndex()
         if hasattr(self,'layout_combo'):
+            for workspace in self.workspaces:workspace.navigation_bar.setVisible(workspace is self.active_workspace)
             pane=self.active_workspace.active
             for widget,value in ((self.layout_combo,self.active_workspace.layout_name),(self.cursor_combo,pane.cursor_mode)):
                 blocker=QtCore.QSignalBlocker(widget);widget.setCurrentIndex(widget.findData(value)) if widget is self.cursor_combo else widget.setCurrentText(value);del blocker

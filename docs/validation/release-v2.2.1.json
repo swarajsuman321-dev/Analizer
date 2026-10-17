@@ -1,0 +1,17 @@
+{
+  "version": "2.2.1",
+  "source_commit": "7bae9194433eb2640c85b55eeb79034f689eac0a",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39053857156",
+  "workflow_conclusion": "success",
+  "regression_tests": 207,
+  "native_windows_preflight": "passed",
+  "portable_and_single_file_smoke_checks": "passed",
+  "independent_onefile_restart_smoke": "passed",
+  "public_manifest": {
+    "version": "2.2.1",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.2.1/ApplianceSignalStudio.exe",
+    "size": 154288307,
+    "sha256": "53cf65147f940a197063396cdb7872d8d0c31963106dd4049ae9a325ca956f78",
+    "notes": "Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates."
+  }
+}
