@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import urllib.error
+import shutil
 from urllib.parse import urlsplit
 
 REPOSITORY='swarajsuman321-dev/Analizer'
@@ -34,6 +36,58 @@ def validate_manifest(data):
 
 def request(url):
     return urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'ApplianceSignalStudio-Updater'}),timeout=30)
+
+
+def network_hint(exc):
+    """Provide actionable corporate-network diagnostics without disabling TLS."""
+    if isinstance(exc, urllib.error.HTTPError):
+        if exc.code in (401, 403, 407):
+            return f'HTTP {exc.code}: GitHub access or proxy authentication is restricted. Ask IT to approve GitHub Releases, or import an offline update.'
+        return f'GitHub returned HTTP {exc.code}. You can import an offline update instead.'
+    message = str(exc).lower()
+    if 'certificate' in message or 'ssl' in message:
+        return 'Corporate HTTPS certificate verification failed. Ask IT for the approved certificate configuration; do not disable TLS checks. Offline import is available.'
+    if 'proxy' in message or 'tunnel' in message:
+        return 'Corporate proxy connection failed. Request approved proxy access or use an offline update.'
+    if 'name resolution' in message or 'getaddrinfo' in message:
+        return 'GitHub hostname could not be resolved by DNS. Offline import is available.'
+    if 'timed out' in message or 'timeout' in message:
+        return 'Connection timed out; GitHub may be blocked. Offline import is available.'
+    return f'Network update failed: {exc}. Offline import is available.'
+
+
+def import_offline_update(manifest_path, directory, progress=lambda value: None):
+    """Import IT-approved update.json + matching EXE without contacting GitHub."""
+    manifest_path = Path(manifest_path)
+    if manifest_path.name != 'update.json':
+        raise ValueError('Select the update.json supplied with the release.')
+    if manifest_path.stat().st_size > 256 * 1024:
+        raise ValueError('Update manifest is too large.')
+    manifest = validate_manifest(json.loads(manifest_path.read_text(encoding='utf-8')))
+    source = manifest_path.parent / 'ApplianceSignalStudio.exe'
+    if not source.is_file():
+        raise ValueError('Place ApplianceSignalStudio.exe alongside update.json.')
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / f"ApplianceSignalStudio-{manifest['version']}.exe"
+    part = target.with_suffix('.part')
+    digest = hashlib.sha256()
+    count = 0
+    try:
+        with source.open('rb') as incoming, part.open('wb') as outgoing:
+            while chunk := incoming.read(1024 * 1024):
+                count += len(chunk)
+                if count > manifest['size']:
+                    raise ValueError('Offline update is larger than the manifest specifies.')
+                digest.update(chunk)
+                outgoing.write(chunk)
+                progress(int(count * 100 / manifest['size']))
+        if count != manifest['size'] or digest.hexdigest() != manifest['sha256']:
+            raise ValueError('Offline update checksum mismatch. The installed application was not changed.')
+        os.replace(part, target)
+        return manifest, target
+    finally:
+        part.unlink(missing_ok=True)
 
 
 def check_latest():
