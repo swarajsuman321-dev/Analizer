@@ -50,8 +50,9 @@ jobs:
           $code = $LASTEXITCODE
           $output | Write-Output
           if ($code -ne 0) {
-            $tail = ($output | Select-Object -Last 65) -join "`n"
+            $tail = ($output | Select-Object -Last 18) -join "`n"
             $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            if ($tail.Length -gt 3000) { $tail = $tail.Substring($tail.Length - 3000) }
             Write-Output "::error title=Windows package failure::$tail"
           }
           exit $code
