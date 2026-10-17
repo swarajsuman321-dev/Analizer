@@ -7,7 +7,7 @@ import sys
 import subprocess
 import unittest
 from unittest.mock import patch
-from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote
+from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote,import_offline_update
 
 
 def manifest(body=b'example executable',version='2.1.6'):
@@ -79,6 +79,27 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
+
+    def test_corporate_offline_import_verified_and_tampering_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            destination = root / 'destination'
+            package = manifest(body=b'approved executable', version='2.1.8')
+            (source / 'update.json').write_text(json.dumps(package), encoding='utf-8')
+            exe = source / 'ApplianceSignalStudio.exe'
+            exe.write_bytes(b'approved executable')
+            progress = []
+            metadata, target = import_offline_update(source / 'update.json', destination, progress.append)
+            self.assertEqual(metadata['version'], '2.1.8')
+            self.assertEqual(target.read_bytes(), b'approved executable')
+            self.assertEqual(progress[-1], 100)
+            exe.write_bytes(b'tampered')
+            with self.assertRaises(ValueError):
+                import_offline_update(source / 'update.json', destination)
+            self.assertEqual(target.read_bytes(), b'approved executable')
+            self.assertFalse(list(destination.glob('*.part')))
 
     def test_offline_failure_and_script_escaping(self):
         with patch('app_updates.request',side_effect=OSError('offline')):
