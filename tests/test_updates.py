@@ -106,7 +106,6 @@ class UpdateTests(unittest.TestCase):
     def test_windows_proxy_response_stream_and_error_handling(self):
         from app_updates import _WindowsProxyResponse, _windows_system_request
         from unittest.mock import MagicMock
-        import base64
         fake = MagicMock()
         fake.stdout = io.BytesIO(b'binary\x00payload')
         fake.stderr = io.BytesIO(b'')
@@ -118,8 +117,9 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(response.read(128), b'binary\x00payload')
                 self.assertEqual(response.read(128), b'')
             command = launch.call_args.args[0]
-            self.assertIn('-EncodedCommand', command)
-            script = base64.b64decode(command[-1]).decode('utf-16-le')
+            self.assertIn('-Command', command)
+            self.assertNotIn('-EncodedCommand', command)
+            script = command[-1]
             self.assertIn('GetSystemWebProxy', script)
             self.assertIn('DefaultNetworkCredentials', script)
             self.assertIn('HTTPS required after redirects', script)
