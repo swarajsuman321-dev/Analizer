@@ -74,7 +74,7 @@ class InfoTab(QtWidgets.QWidget):
 
     def checked(self,result,error):
         self.check_button.setEnabled(True);self.install_button.setEnabled(False);self.offline_button.setEnabled(True)
-        if error:self.status.setText(network_hint(error));self.offline_button.setEnabled(True);return
+        if error:self.status.setText('Could not check for updates. '+network_hint(error));self.offline_button.setEnabled(True);return
         self.manifest=result
         if version_tuple(result['version'])<=version_tuple(VERSION):self.status.setText(f'You have the latest version ({VERSION}).');return
         self.status.setText(f"Version {result['version']} is available ({result['size']/1024/1024:.0f} MB).")
