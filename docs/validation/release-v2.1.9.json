@@ -1,0 +1,14 @@
+{
+  "version": "2.1.9",
+  "source_commit": "9790afefb794539ef88c2b299dfa93bc2ea5b9a1",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39043439187",
+  "workflow_conclusion": "success",
+  "portable_and_single_file_smoke_checks": "passed",
+  "public_manifest": {
+    "version": "2.1.9",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.1.9/ApplianceSignalStudio.exe",
+    "size": 154198660,
+    "sha256": "1bddc8c2b52f1c70ca78229ae85ef8de021843a1f35a8ddc082e01a30a4505a5",
+    "notes": "Complete recording removal, reviewed TDMS parameter templates, persistent output folders, and real-file import corrections."
+  }
+}

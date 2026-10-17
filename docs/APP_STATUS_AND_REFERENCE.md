@@ -6,7 +6,9 @@ Updated: **17 October 2026 (India time)**. Maintained in `swarajsuman321-dev/Ana
 
 The baseline at the start of this audit was GitHub `main` commit `e3b3367` and **published v2.1.8**. The official latest-release `update.json` was fetched successfully: version `2.1.8`, EXE size `154165843`, SHA-256 `9621fc57818b3a20dd3e9db0eaa2f856da762f05db382846c61108c26ea21d26`. This confirms publication, not connectivity from a particular user's corporate network.
 
-**The changes described below target v2.1.9.** Local tests and the real-file audit passed. Windows packaging and release verification are pending at the time of this implementation commit; this section will be updated after the workflow finishes. Do not confuse code pushed to `main` with an available download.
+**v2.1.9 is published and verified.** The [Windows workflow](https://github.com/swarajsuman321-dev/Analizer/actions/runs/39043439187) completed successfully for source commit `9790afefb794539ef88c2b299dfa93bc2ea5b9a1`: native updater/channel checks, the full regression suite, portable and single-file packaging, both packaged smoke checks, artifact uploads and release publication. [Download v2.1.9](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.1.9).
+
+The public latest-release manifest was fetched after publication and confirmed **2.1.9**, EXE size **154198660 bytes**, SHA-256 **`1bddc8c2b52f1c70ca78229ae85ef8de021843a1f35a8ddc082e01a30a4505a5`**, with the official versioned EXE URL. The source/manual/output-folder changes are therefore available in the downloadable app as well as `main`. Documentation-only updates after this source commit do not change the tested executable.
 
 - [GitHub source](https://github.com/swarajsuman321-dev/Analizer)
 - [Windows build workflow](https://github.com/swarajsuman321-dev/Analizer/actions/workflows/windows-build.yml)
@@ -111,13 +113,14 @@ An installed v2.1.5 which cannot connect needs a **manual approved download once
 
 ## Test coverage and evidence
 
-- **188 regression tests passed locally**, one Windows-only test skipped on Linux. Command: `python -m unittest discover -s tests -v` with `QT_QPA_PLATFORM=offscreen` and writable Qt/Matplotlib cache/output paths.
+- **188 regression tests passed locally**, one Windows-only test skipped on Linux; the full Windows build subsequently passed with its native checks and both packaged smoke tests. Command: `python -m unittest discover -s tests -v` with `QT_QPA_PLATFORM=offscreen` and writable Qt/Matplotlib cache/output paths.
 - **All 15 nonempty subsets of the four inputs passed**: each file alone; six pairs; four triples; all four. Each checks all trace membership, X/Y/XY zoom constraints, locked sample stepping, out-of-bounds pan, deselect/reselect all and complete-recording removal from Analysis/Comparison.
 - TDMS review: 27 parameters, saved template reload, zero unknown parameters after restart, unchanged native X/Y data.
 - Mixed export: 86 summary channels, 7,115 active-interval rows; CSV/XLSX/PDF/PNG generated successfully. Existing tests separately verify cursor metadata/match colors and numerical report contents.
 - Full workspace: 86 channels/four datasets saved/restored with exact projected arrays and source DataFrames; JSON `290681800` bytes; measured round trip **53.027 s** on this executor. This is an observed result, not a hardware-independent guarantee.
 - Eight focused lifecycle tests cover cancellation, unknown-only prompting, corrupt templates, interpretation reversibility, clock selection, dependency/lock cleanup, persistent output defaults and background workspace save/load.
 - Source smoke includes icons, bundled manual/topics, TDMS reader/review/template persistence, whole-recording removal, mouse hover, FFT separation, reports, presets, normalization, extensions, full workbook and image calibration.
+- The Remove recording and Clear workspace buttons were also exercised through their actual Qt signals, including cancelled and confirmed clear actions.
 - Review dialog inspected visually at 1000×650: original labels elide with full-path tooltips, short editable labels remain visible, and interpretations/ranges fit beside them.
 
 ### Engineering scenarios and deliberate rejections
