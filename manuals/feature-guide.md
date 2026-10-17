@@ -387,3 +387,31 @@ All panels listed in View, plus the channel-kind column, are enabled in a new wo
 | Export is empty | Select visible channels in the intended active workspace and review A/B |
 
 Use Channel Table for source evidence, diagnostics for assumptions/quality, and a saved workspace to reproduce the analysis. The status bar and action messages identify invalid inputs; correct the cause before re-running an operation.
+
+## Removing recordings and clearing the workspace | 2.1.9
+
+Use **Data Portal → Remove recording…** (also in the Channel menu), choose the loaded dataset and confirm the selection. It unloads that dataset's channels and dependent derived traces from Analysis and Comparison, releases their cursor locks, and removes its source table. Other recordings stay loaded. Source-only diagnostic tables can also be selected in this picker. Independently imported aligned/comparison datasets remain separate entries; remove those entries too if you no longer need them.
+
+**Clear workspace** unloads every recording, generated channel, table and plot from both workspaces after confirmation, and clears the engineering file fields. Original input files, saved reports, workspaces and parameter templates are kept. Hiding/deselecting a channel only changes visibility; removing a recording unloads it. Save a workspace before clearing if you want to resume that analysis later. Removal is unavailable while processing is in progress. Large workspace save and restore run in the background so the interface can continue repainting; wait for completion before modifying channels.
+
+## TDMS parameter review and reusable templates | 2.1.9
+
+On the first **Open** of a TDMS recording, review all measurement parameters before they are added to the workspace. The table shows original parameter names, suggested short names, editable units, interpretation, sample counts and numerical ranges. For example, `PDH_AAS_B_V1_0_R` is suggested as **Valve 1**; you can change it to the actual function you know. Unknown hardware labels remain descriptive rather than receiving an invented physical meaning.
+
+Choose **Automatic**, **Raw numeric**, or **ON/OFF** per parameter. ON/OFF maps zero to OFF and finite nonzero integers to ON; fractional and missing readings remain unknown. Choose this for actual actuator commands, not temperature, speed, program states, error codes or sensor readings. The automatic interpretation keeps its contextual rules. Editing a unit declares metadata; it does not numerically convert values. Use an explicit conversion operation when a conversion is needed.
+
+**Save template and load** stores reviewed choices in `templates/tdms-parameters.json` under the output folder. It stores labels, units and interpretation only, never measurement arrays. Future imports compare exact original group/channel identities and reuse known choices automatically; only unknown parameters prompt for review. The source filename may change without losing a template. Cancelling review cancels that import batch without adding data or saving choices.
+
+To revise saved choices, use **Channel → Review TDMS parameters…** with a TDMS recording loaded. Changes apply to loaded TDMS channels and future imports. Original names remain in channel metadata, original source tables are retained, and raw actuator readings remain available. Save the workspace separately to persist a session. An unreadable template produces a review warning instead of silently applying invalid choices.
+
+## Output folder and stored files | 2.1.9
+
+The app creates **SignalStudio_Output** beside the executable (beside the source checkout when running Python). It uses **reports**, **workspaces**, **templates**, **diagnostics** and **presets** subfolders. If the application directory is read-only, it falls back to `Documents/SignalStudio_Output`. **Info & manual** shows the actual path and an **Open output folder** button.
+
+Report/export and workspace/preset save dialogs start in these folders. You can deliberately choose a different destination. Nothing is exported without a save action. Keep workspace JSON and its named NPZ companion together. Reports and templates survive clearing the workspace and updating the executable. Do not keep personal recordings or generated output inside Git; the repository ignores the default output folder.
+
+## Updates on managed networks and offline import | 2.1.8
+
+If the check fails with a DNS/proxy error such as `getaddrinfo failed`, the installed app cannot reach GitHub through that connection. Starting in 2.1.8, the updater retries through Windows Internet Options' system proxy, including PAC/WPAD and signed-in proxy credentials. It keeps HTTPS verification and company policies in place. It cannot override a blocked domain or a network outage; ask IT to permit the official GitHub release download locations if needed.
+
+For an approved offline update, put the official release's `update.json` and `ApplianceSignalStudio.exe` together in one folder. Choose **Info & manual → Import offline update…** and select that manifest. The app validates the official repository URL, version, file size and SHA-256, then offers installation on the packaged Windows app. Do not rename arbitrary executables to bypass validation. The same workspace recovery, backup and rollback process applies.

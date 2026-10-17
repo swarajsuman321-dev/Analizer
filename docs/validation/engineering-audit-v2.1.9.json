@@ -1,0 +1,93 @@
+[
+  {
+    "machine": "Cotton 60 label with 9kg IEC load T-3.csv",
+    "strategy": "Intelligent (Heater ON to >1.5kW Spike)",
+    "status": "passed",
+    "channels": 30,
+    "datasets": 6,
+    "duplicate_new_channels": 0,
+    "seconds": 10.968
+  },
+  {
+    "machine": "Cotton 60 label with 9kg IEC load T-3.csv",
+    "strategy": "First Drum Start to First Power Rise",
+    "status": "passed",
+    "channels": 30,
+    "datasets": 6,
+    "duplicate_new_channels": 0,
+    "seconds": 10.957
+  },
+  {
+    "machine": "Cotton 60 label with 9kg IEC load T-3.csv",
+    "strategy": "Raw Timestamps (No Shift)",
+    "status": "passed",
+    "channels": 30,
+    "datasets": 6,
+    "duplicate_new_channels": 0,
+    "seconds": 6.786
+  },
+  {
+    "machine": "Cotton 60 label with 9kg IEC load T-3.csv",
+    "strategy": "Manual Time Offset (Minutes)",
+    "status": "passed",
+    "channels": 30,
+    "datasets": 6,
+    "duplicate_new_channels": 0,
+    "seconds": 6.248
+  },
+  {
+    "machine": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+    "strategy": "Intelligent (Heater ON to >1.5kW Spike)",
+    "status": "expected_rejection",
+    "seconds": 2.503,
+    "reason": "The two recordings do not overlap after synchronization. Check their dates/time zones, choose drum-start or heater synchronization, or set a manual offset."
+  },
+  {
+    "machine": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+    "strategy": "First Drum Start to First Power Rise",
+    "status": "expected_rejection",
+    "seconds": 2.497,
+    "reason": "Drum-start synchronization needs a drum speed/feedback channel in RD and an active power channel in PD."
+  },
+  {
+    "machine": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+    "strategy": "Raw Timestamps (No Shift)",
+    "status": "expected_rejection",
+    "seconds": 2.463,
+    "reason": "The two recordings do not overlap after synchronization. Check their dates/time zones, choose drum-start or heater synchronization, or set a manual offset."
+  },
+  {
+    "machine": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+    "strategy": "Manual Time Offset (Minutes)",
+    "status": "expected_rejection",
+    "seconds": 2.719,
+    "reason": "The two recordings do not overlap after synchronization. Check their dates/time zones, choose drum-start or heater synchronization, or set a manual offset."
+  },
+  {
+    "machine": "Cotton 60 label with 9kg IEC load T-3.csv",
+    "scenario": "Comparison against supplied simulation",
+    "status": "passed",
+    "channels": 18,
+    "metrics": 11,
+    "classifications": {
+      "RED": 5,
+      "VALUE": 4,
+      "GREEN": 1,
+      "MISSING": 1
+    },
+    "seconds": 3.279
+  },
+  {
+    "machine": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+    "scenario": "Comparison against supplied simulation",
+    "status": "passed",
+    "channels": 14,
+    "metrics": 11,
+    "classifications": {
+      "MISSING": 5,
+      "REVIEW": 5,
+      "RED": 1
+    },
+    "seconds": 2.72
+  }
+]

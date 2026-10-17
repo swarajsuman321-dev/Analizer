@@ -14,6 +14,7 @@ from app_workspace_io import save_workspace,load_workspace
 from app_qt_style import ThemeController
 from app_presentation import CURSOR_COLORS,match_color
 from app_version import VERSION
+from app_output import output_directory,output_path
 
 OPERATIONS=['Moving average','Savitzky–Golay','Butterworth low-pass','Offset and scale','Time shift','Resampling',
             'Differentiation','Cumulative integration','Descriptive statistics','Histogram','FFT','Welch PSD','Peak and valley detection']
@@ -56,6 +57,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         from app_identity import apply_identity
         apply_identity(self)
         self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set()
+        self.output_root=output_directory()
         self.pool=QtCore.QThreadPool.globalInstance();self.pool.setMaxThreadCount(2)
         self.theme=ThemeController(QtWidgets.QApplication.instance(),self)
         self.tabs=QtWidgets.QTabWidget();self.setCentralWidget(self.tabs)
@@ -112,6 +114,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.portal=ChannelPortal(self.store);self.portal.plotRequested.connect(lambda ids:self.guard(lambda:self.active_workspace.assign(ids)))
         self.portal.visibilityRequested.connect(lambda ids,visible:self.guard(lambda:self.set_channel_visibility(ids,visible)))
         self.portal.selectionChanged.connect(self.selection);self.portal.organizeRequested.connect(self.organize)
+        self.portal.removeRequested.connect(lambda:self.guard(self.remove_recording));self.portal.clearRequested.connect(lambda:self.guard(self.clear_recordings))
         self.dock('Data Portal',self.portal,QtCore.Qt.DockWidgetArea.LeftDockWidgetArea)
 
     def _build_properties(self):
@@ -242,6 +245,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
         kind=view.addAction('Show channel kind');self.channel_kind_action=kind;kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show));kind.setChecked(True)
         self.info_action=toolbar.addAction('Info & manual');self.info_action.setToolTip('User manual, version information and updates');self.info_action.triggered.connect(self.show_info)
+        channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
+        channel.addAction('Remove recording…',lambda:self.guard(self.remove_recording));channel.addAction('Clear workspace',lambda:self.guard(self.clear_recordings))
 
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
@@ -269,7 +274,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             self.busy=False;self.apply_button.setEnabled(True)
             if error:self.guard(lambda:(_ for _ in ()).throw(ValueError(error)))
             else:self.guard(lambda:callback(result))
-            self.statusBar().showMessage('Ready' if not error else error)
+            if error:self.statusBar().showMessage(error)
+            elif self.statusBar().currentMessage()=='Working…':self.statusBar().showMessage('Ready')
         worker.signals.finished.connect(complete);self.pool.start(worker)
 
     def pick_file(self,field):
@@ -284,7 +290,55 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             for path in paths:ingest(store,path)
             return store
         workspace=self.active_workspace
-        self.background(load,lambda other:self.merge_store(other,workspace))
+        self.background(load,lambda other:self.finish_import(other,workspace))
+
+    def finish_import(self,other,workspace=None):
+        from app_tdms_templates import ParameterTemplates,ParameterReview
+        templates=ParameterTemplates();unknown=templates.unknown(other)
+        if unknown:
+            dialog=ParameterReview(unknown,self,templates.warning)
+            if dialog.exec()!=QtWidgets.QDialog.DialogCode.Accepted:return
+            templates.save(dialog.entries())
+        templates.apply(other);self.merge_store(other,workspace)
+
+    def review_loaded_tdms(self):
+        self.mutate()
+        from app_tdms_templates import ParameterTemplates,ParameterReview,identity
+        channels=[c for c in self.store.channels.values() if c.attributes.get('format')=='TDMS']
+        if not channels:raise ValueError('Open a TDMS recording first')
+        templates=ParameterTemplates();dialog=ParameterReview(channels,self,templates.warning)
+        for row,c in enumerate(dialog.channels):
+            entry=templates.entries.get(identity(c))
+            if entry:
+                dialog.table.item(row,1).setText(entry['name']);dialog.table.item(row,2).setText(entry['unit'])
+                dialog.table.cellWidget(row,3).setCurrentIndex(dialog.table.cellWidget(row,3).findData(entry['interpretation']))
+        if dialog.exec()==QtWidgets.QDialog.DialogCode.Accepted:
+            templates.save(dialog.entries());templates.apply(self.store);self.store.changed(*[c.id for c in channels])
+
+    def remove_recording(self):
+        self.mutate();datasets=list(self.store.datasets.values())
+        if not datasets:return
+        labels=[f'{ds.name} [{ds.id[:8]}]' for ds in datasets]
+        choice,ok=QtWidgets.QInputDialog.getItem(self,'Remove recording','Unload recording (original file is kept):',labels,0,False)
+        if ok:self.drop_recordings([datasets[labels.index(choice)].id])
+
+    def clear_recordings(self):
+        self.mutate()
+        if not self.store.datasets and not self.store.channels:return
+        answer=QtWidgets.QMessageBox.question(self,'Clear workspace','Unload all recordings and generated channels from Analysis and Comparison? Original files and saved outputs are kept.')
+        if answer==QtWidgets.QMessageBox.StandardButton.Yes:self.drop_recordings(list(self.store.datasets),clear_all=True)
+
+    def drop_recordings(self,dataset_ids,clear_all=False):
+        self.mutate()
+        with self.store.batch():
+            self.store.remove_datasets(dataset_ids)
+            if clear_all:self.store.delete(list(self.store.channels))
+        self.scorecard_data=None;self.scorecard.setModel(FrameModel())
+        if not self.store.channels:
+            self.prop_name.clear();self.prop_unit.clear();self.prop_group.clear();self.prop_attrs.clear();self.apply_button.setEnabled(False)
+        if clear_all:
+            for field in (self.power_path,self.machine_path,self.simulation_path):field.clear()
+        self.sync_visibility();self._readouts();self.statusBar().showMessage('Recording removed. Original files and saved outputs were kept.')
 
     def merge_store(self,other,workspace=None,deduplicate_alignment=False):
         from app_actuators import interpret_channel
@@ -554,15 +608,21 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
     def save(self):
-        self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace','','Workspace (*.json)')
-        if path:save_workspace(path,self.store,[w.state() for w in self.workspaces],self.ui_state());self.statusBar().showMessage('Saved JSON and adjacent NPZ; keep both files together.')
+        self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace',str(output_path('Workspace.json','workspaces')),'Workspace (*.json)')
+        if path:
+            store=self.store;views=[w.state() for w in self.workspaces];ui=self.ui_state()
+            self.background(lambda:save_workspace(path,store,views,ui),lambda saved:self.statusBar().showMessage(f'Saved {saved} and adjacent NPZ; keep both files together.'))
 
     def restore(self):
+        self.mutate()
         path,_=QtWidgets.QFileDialog.getOpenFileName(self,'Restore workspace','','Workspace (*.json)')
-        if path:self.restore_path(path)
+        if path:self.background(lambda:load_workspace(path),lambda result:self.restore_loaded(*result))
 
     def restore_path(self,path,upgrade_defaults=False):
         store,views,ui=load_workspace(path)
+        self.restore_loaded(store,views,ui,upgrade_defaults)
+
+    def restore_loaded(self,store,views,ui,upgrade_defaults=False):
         from app_actuators import interpret_channel
         converted=set()
         for id,channel in list(store.channels.items()):
@@ -608,7 +668,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         from app_reporting import export_report
         if not any(p.ids for p in self.active_workspace.visible_panes()):raise ValueError('Check at least one channel before exporting')
         filters='PDF summary (*.pdf);;Excel interval (*.xlsx);;CSV interval (*.csv);;High-resolution PNG (*.png)'
-        path,selected=QtWidgets.QFileDialog.getSaveFileName(self,'Export Report','Signal report.pdf',filters)
+        path,selected=QtWidgets.QFileDialog.getSaveFileName(self,'Export Report',str(output_path('Signal report.pdf')),filters)
         if path:
             extensions={'PDF':'.pdf','Excel':'.xlsx','CSV':'.csv','High-resolution':'.png'}
             suffix=next((v for k,v in extensions.items() if selected.startswith(k)),'.pdf')

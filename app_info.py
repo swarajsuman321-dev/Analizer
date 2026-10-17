@@ -21,6 +21,10 @@ class InfoTab(QtWidgets.QWidget):
         super().__init__(window);self.window=window;self.manifest=None;self.download=None;self.task=None
         layout=QtWidgets.QVBoxLayout(self)
         title=QtWidgets.QLabel(f'<h2>Appliance Signal Studio {VERSION}</h2>');layout.addWidget(title)
+        from app_output import output_directory
+        output_row=QtWidgets.QHBoxLayout();output_label=QtWidgets.QLabel('Output folder: '+str(output_directory()));output_label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse);output_label.setWordWrap(True)
+        open_output=QtWidgets.QPushButton('Open output folder');open_output.clicked.connect(lambda:QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(output_directory()))))
+        output_row.addWidget(output_label,1);output_row.addWidget(open_output);layout.addLayout(output_row)
         row=QtWidgets.QHBoxLayout();self.check_button=QtWidgets.QPushButton('Check for updates');self.install_button=QtWidgets.QPushButton('Download update');self.install_button.setEnabled(False)
         self.cancel_button=QtWidgets.QPushButton('Cancel download');self.cancel_button.hide();self.offline_button=QtWidgets.QPushButton('Import offline update…')
         row.addWidget(self.check_button);row.addWidget(self.install_button);row.addWidget(self.offline_button);row.addWidget(self.cancel_button);row.addStretch();layout.addLayout(row)

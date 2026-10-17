@@ -1,5 +1,6 @@
 """Progressively disclosed tools for the single Qt frontend."""
 import json
+from app_output import output_path
 import time
 from pathlib import Path
 import numpy as np
@@ -124,7 +125,7 @@ class StudioTools(QtCore.QObject):
         workspace=w.active_workspace
         def load():
             store=ChannelStore();ingest(store,path,None if clock in ('Automatic','Sample index') else clock,None if unit=='Auto' else unit,force_sample=clock=='Sample index');return store
-        w.background(load,lambda store:w.merge_store(store,workspace))
+        w.background(load,lambda store:w.finish_import(store,workspace))
 
     def open_reference(self):
         w=self.window;w.mutate();path,_=QtWidgets.QFileDialog.getOpenFileName(w,'Open simulation reference','','Reference (*.csv *.zip *.png *.jpg *.jpeg *.bmp *.tif *.tiff)')
@@ -153,7 +154,7 @@ class StudioTools(QtCore.QObject):
         return ' &nbsp; · &nbsp; '.join(parts)
 
     def save_preset(self):
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Save reusable channel preset','','JSON (*.json)')
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Save reusable channel preset',str(output_path('Channel preset.json','presets')),'JSON (*.json)')
         if not path:return
         from app_support import atomic_output
         options={**self.options,'sync_strategy':self.window.sync.currentData() or self.window.sync.currentText(),'offset_minutes':self.window.offset.value()/60.,'reference_settings':self.reference_settings,'calibration':self.calibration,'bench_columns':self.bench_columns}
@@ -484,13 +485,13 @@ class StudioTools(QtCore.QObject):
         return self.table_dialog('Reference quality & package metadata',tables)
 
     def export_workbook(self):
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete diagnostic workbook','','Excel (*.xlsx)')
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete diagnostic workbook',str(output_path('Diagnostics.xlsx','diagnostics')),'Excel (*.xlsx)')
         if path:export_full_workbook(path,self.window.store,self.window.active_workspace.state(),getattr(self.window,'scorecard_data',None))
 
     def export_aligned_csv(self):
         dataset=next((d for d in reversed(list(self.window.store.datasets.values())) if d.frame.attrs.get('studio_sheet')=='Synchronized_Series'),None)
         if dataset is None:raise ValueError('Align recordings first')
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete synchronized series','','CSV (*.csv)')
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete synchronized series',str(output_path('Synchronized.csv')),'CSV (*.csv)')
         if path:
             from app_support import atomic_output
             with atomic_output(path) as temporary:dataset.frame.to_csv(temporary,index=False)
@@ -499,12 +500,12 @@ class StudioTools(QtCore.QObject):
         from app_workspace_io import export_processed
         ids=self.window.portal.selected() or self.pane.ids
         if not ids:raise ValueError('Select channels first')
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export full processed channels','','CSV (*.csv);;Excel (*.xlsx)')
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export full processed channels',str(output_path('Processed channels.csv')),'CSV (*.csv);;Excel (*.xlsx)')
         if path:export_processed(path,[self.window.store.channels[id] for id in ids])
 
     def export_presentation(self):
         from app_workspace_io import render_report
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export presentation','','SVG (*.svg);;HTML (*.html);;Markdown (*.md)')
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export presentation',str(output_path('Presentation.svg')),'SVG (*.svg);;HTML (*.html);;Markdown (*.md)')
         if path:render_report(path,self.window.store,self.window.active_workspace.state(),title=self.options['title'])
 
     def extensions_dialog(self):
@@ -549,7 +550,7 @@ class StudioTools(QtCore.QObject):
         dialog,layout=self.dialog('Extension plot');canvas=FigureCanvasQTAgg(fig);layout.addWidget(canvas);canvas.draw()
         save=QtWidgets.QPushButton('Export plot');layout.addWidget(save)
         def export():
-            path,_=QtWidgets.QFileDialog.getSaveFileName(dialog,'Save extension plot','','PNG (*.png);;PDF (*.pdf);;SVG (*.svg)')
+            path,_=QtWidgets.QFileDialog.getSaveFileName(dialog,'Save extension plot',str(output_path('Extension plot.png')),'PNG (*.png);;PDF (*.pdf);;SVG (*.svg)')
             if path:fig.savefig(path,dpi=300)
         save.clicked.connect(lambda:self.window.guard(export));dialog.show();return dialog
 

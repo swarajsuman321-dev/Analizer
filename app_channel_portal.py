@@ -15,6 +15,8 @@ class ChannelPortal(QtWidgets.QWidget):
     plotRequested=QtCore.Signal(list)
     selectionChanged=QtCore.Signal(list)
     organizeRequested=QtCore.Signal(str)
+    removeRequested=QtCore.Signal()
+    clearRequested=QtCore.Signal()
 
     def __init__(self,store):
         super().__init__();self.store=store;self.visible_ids=set()
@@ -41,12 +43,18 @@ class ChannelPortal(QtWidgets.QWidget):
             button=QtWidgets.QPushButton(text);actions.addWidget(button)
             button.clicked.connect(lambda checked=False,c=command:self.organizeRequested.emit(c))
         layout.addLayout(actions)
+        row=QtWidgets.QHBoxLayout();self.remove_button=QtWidgets.QPushButton('Remove recording…');self.clear_button=QtWidgets.QPushButton('Clear workspace')
+        self.remove_button.setToolTip('Unload an entire recording and its derived traces. Original files are kept.')
+        self.clear_button.setToolTip('Unload all recordings from both plot workspaces. Original files are kept.')
+        row.addWidget(self.remove_button);row.addWidget(self.clear_button);layout.addLayout(row)
+        self.remove_button.clicked.connect(self.removeRequested);self.clear_button.clicked.connect(self.clearRequested)
         self.rebuild()
 
     def selected(self):
         return [i.data(0,QtCore.Qt.ItemDataRole.UserRole) for i in self.tree.selectedItems() if i.data(0,QtCore.Qt.ItemDataRole.UserRole)]
 
     def rebuild(self,*args):
+        self.remove_button.setEnabled(bool(self.store.datasets));self.clear_button.setEnabled(bool(self.store.datasets or self.store.channels))
         selected=set(self.selected());query=self.search.text();regex=None
         try:
             if self.regex.isChecked():regex=re.compile(query,re.I)

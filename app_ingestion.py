@@ -25,7 +25,14 @@ def read_tables(path):
         return [(path.name, pd.read_parquet(path))]
     if suffix == '.json':
         return [(path.name, pd.read_json(path))]
-    return [(path.name, pd.read_csv(path, sep=None, engine='python'))]
+    try:
+        frame=pd.read_csv(path,sep=None,engine='python')
+    except (pd.errors.ParserError,UnicodeDecodeError):
+        # Bench instruments such as WT500 prepend a variable-width settings
+        # block. Reuse the lossless engineering header/unit reader for these.
+        from app_data import smart_read_file
+        frame=smart_read_file(path)
+    return [(path.name,frame)]
 
 
 def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=False):
@@ -39,8 +46,9 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             store.datasets[ds.id] = ds
             from app_unit_detection import detect_unit,projection_frame
             frame = projection_frame(frame)
-            candidates = [c for c in frame.columns if re.search(r'time|timestamp|elapsed|date', str(c), re.I)]
+            candidates = [c for c in frame.columns if re.match(r'^(?:timestamp|datetime|date[ _]time|time|elapsed|relative[ _](?:time|minutes|seconds)|date)(?:$|[ _\[(])',str(c),re.I) and not re.search(r'remain|left|countdown',str(c),re.I)]
             clock = None if force_sample else time_column or (candidates[0] if candidates else None)
+            clock_columns={clock}
             unit = coordinate_unit or ('s' if clock else 'sample')
             kind = 'time' if clock and unit!='sample' else 'sample'
             if clock:
@@ -63,7 +71,11 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                                 if first in MINUTE_FACTORS:unit=first
                         if declared:unit=declared
                 else:
-                    parsed = pd.to_datetime(frame[clock], errors='coerce')
+                    names={str(c).strip().lower():c for c in frame.columns}
+                    if not time_column and 'date' in names and 'time' in names:
+                        from app_data import extract_datetime_series
+                        parsed=extract_datetime_series(frame,fallback=False);clock_columns.update([names['date'],names['time']])
+                    else:parsed = pd.to_datetime(frame[clock], errors='coerce')
                     valid = parsed.dropna()
                     if valid.empty:
                         raise ValueError(f'Cannot interpret coordinate column {clock}')
@@ -77,7 +89,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             good = np.isfinite(x)
             order = np.flatnonzero(good)[np.argsort(x[good], kind='stable')]
             for col in frame.columns:
-                if col == clock:
+                if col in clock_columns:
                     continue
                 from app_actuators import interpret_channel
                 y = pd.to_numeric(frame[col], errors='coerce').to_numpy(dtype=float)

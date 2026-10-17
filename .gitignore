@@ -7,3 +7,4 @@ dist/
 .pytest_cache/
 patches/
 patches_config.json
+SignalStudio_Output/

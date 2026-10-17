@@ -54,6 +54,12 @@ def self_test():
             tdms_store=ChannelStore();ingest(tdms_store,tdms);tdms_channel=next(iter(tdms_store.channels.values()))
             np.testing.assert_allclose(tdms_channel.x,[0,1,2])
             if tdms_channel.unit!='°C':raise RuntimeError('Bundled TDMS reader lost engineering units')
+            from app_tdms_templates import ParameterTemplates,ParameterReview
+            templates=ParameterTemplates(root/'parameters.json');review=ParameterReview(templates.unknown(tdms_store),window)
+            templates.save(review.entries());review.close();templates.apply(tdms_store)
+            if templates.unknown(tdms_store):raise RuntimeError('Bundled TDMS template did not persist')
+            window.merge_store(tdms_store);dataset_ids=list(tdms_store.datasets);window.drop_recordings(dataset_ids)
+            if any(id in window.store.channels for id in tdms_store.channels):raise RuntimeError('Complete recording removal failed')
             hover_pane=window.dashboard.panes[0];positions=[line.value() for line in hover_pane.cursor_lines]
             hover_pane._mouse_hover((hover_pane.getViewBox().sceneBoundingRect().center(),))
             if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
@@ -64,5 +70,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','top-toolbar manual and topics','TDMS reader and units','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','top-toolbar manual and topics','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

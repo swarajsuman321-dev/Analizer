@@ -131,6 +131,19 @@ class ChannelStore:
                 self.channels.pop(id, None)
                 self.changed(id)
 
+    def remove_datasets(self, dataset_ids):
+        """Drop complete recordings and dependent derived traces, in one notification."""
+        dataset_ids=set(dataset_ids)
+        removed={c.id for c in self.channels.values() if c.dataset_id in dataset_ids}
+        while True:
+            dependent={c.id for c in self.channels.values() if removed.intersection(c.parents)}
+            if dependent<=removed:break
+            removed.update(dependent)
+        with self.batch():
+            for id in dataset_ids:self.datasets.pop(id,None)
+            self.delete(removed)
+        return removed
+
     def duplicate(self, id):
         c = self.channels[id]
         return self.add(replace(c, id=identity(), name=c.name+' copy', attributes=dict(c.attributes), masks=list(c.masks), parents=[c.id]))

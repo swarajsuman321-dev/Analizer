@@ -171,3 +171,7 @@ TDMS also works in recording alignment and bench comparison. Those workflows use
 Every View panel and Show channel kind start enabled. The first automatic update from a pre-2.1.7 session applies the new visibility default once; later recoveries retain the user's choices. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens the panels without clearing data.
 
 Maintain the manuals in `manuals/feature-guide.md` (each topic includes its first supported version), add release notes in `scripts/build_manuals.py`, then run `python scripts/build_manuals.py`. Only generated version manuals are bundled in the EXE.
+
+### Current status and future reference
+
+See [application status, user requirements, real-file audit and maintenance reference](docs/APP_STATUS_AND_REFERENCE.md) for the v2.1.9 recording-removal/TDMS-template/output-folder work, reproducible test commands, confirmed fixes, expected data limitations and release verification. Raw uploaded recordings and generated measurement outputs are not stored in this repository.
