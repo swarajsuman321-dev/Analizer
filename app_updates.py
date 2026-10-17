@@ -87,7 +87,6 @@ def _windows_system_request(url):
     fallback. It inherits corporate proxy and TLS policies: no password storage,
     custom certificate bypass or execution-policy override.
     """
-    import base64
     parsed = urlsplit(url)
     if parsed.scheme != 'https' or parsed.hostname != 'github.com' or (
             parsed.username or parsed.password):
@@ -121,10 +120,9 @@ try {
     if ($null -ne $response) { $response.Dispose() }
 }
 """ % ps_quote(url)
-    encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
     process = subprocess.Popen(
         ['powershell.exe', '-NoLogo', '-NoProfile', '-NonInteractive',
-         '-EncodedCommand', encoded],
+         '-Command', script],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
         close_fds=True)
