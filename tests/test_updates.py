@@ -7,7 +7,7 @@ import sys
 import subprocess
 import unittest
 from unittest.mock import patch
-from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote,import_offline_update
+from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote,import_offline_update,network_hint
 
 
 def manifest(body=b'example executable',version='2.1.6'):
@@ -79,6 +79,11 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
                 if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
+
+    def test_win_11001_resolution_failure_explained(self):
+        message = network_hint('<urlopen error [Errno 11001] getaddrinfo failed>')
+        self.assertIn('DNS lookup failed', message)
+        self.assertIn('offline update', message)
 
     def test_corporate_offline_import_verified_and_tampering_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
