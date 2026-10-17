@@ -23,5 +23,6 @@ def output_directory():
 def output_path(name,category='reports'):
     if category not in ('reports','workspaces','templates','diagnostics','presets'):
         raise ValueError('Unknown output category')
-    root=output_directory()/category;root.mkdir(exist_ok=True)
+    from app_lifecycle import settings_directory
+    root=(settings_directory() if category in ('templates','presets') else output_directory())/category;root.mkdir(exist_ok=True)
     return root/Path(name).name

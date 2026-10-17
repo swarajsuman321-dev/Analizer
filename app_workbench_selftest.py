@@ -26,7 +26,14 @@ def self_test():
             if (root/'report.svg').stat().st_size<100:raise RuntimeError('SVG export failed')
             from app_version import VERSION
             if VERSION not in window.info.manuals or 'Updates' not in window.info.manual.toPlainText():raise RuntimeError('Bundled Info manual is missing')
-            if window.tabs.count()!=2 or not hasattr(window,'info_action') or window.info.topics.findText('View menu and panel layout')<0:raise RuntimeError('Top-toolbar manual navigation is missing')
+            if window.tabs.count()!=2 or not hasattr(window,'help_action') or window.help.topics.findText('View menu and panel layout')<0:raise RuntimeError('Top-toolbar manual navigation is missing')
+            if not window.info_dialog.isModal() or window.help_dialog.isModal() or window.help.parentWidget() is not window.help_dialog:raise RuntimeError('About/Help window separation failed')
+            if hasattr(window.portal,'select_all') or not window.dashboard.navigation_actions:raise RuntimeError('Dataset isolation or canvas navigation is missing')
+            import sys
+            if sys.platform=='win32' and getattr(sys,'frozen',False):
+                from app_lifecycle import windows_product_version,PRODUCT
+                metadata=windows_product_version(sys.executable)
+                if not metadata or metadata['ProductName']!=PRODUCT or metadata['FileVersion']!=VERSION+'.0':raise RuntimeError('Windows product/version metadata mismatch')
             from app_reporting import export_report
             for suffix in ('pdf','png','xlsx','csv'):
                 export_report(root/('report.'+suffix),window.store,window.dashboard.state())
@@ -70,5 +77,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','top-toolbar manual and topics','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','separate About and User Manual windows','graph-corner navigation','per-file channel controls','Windows product/version identity','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

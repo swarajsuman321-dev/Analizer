@@ -14,9 +14,8 @@ from app_support import atomic_output
 class PluginManager:
     def __init__(self,directory=None):
         if directory is None:
-            base=Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).parent
-            if not os.access(base,os.W_OK):base=Path(os.environ.get('LOCALAPPDATA',Path.home()/'.local/share'))/'ApplianceSignalStudio'
-            directory=base/'patches'
+            from app_lifecycle import settings_directory
+            directory=settings_directory()/'patches'
         self.directory=Path(directory);self.config=self.directory.parent/'patches_config.json'
         self.custom_kpi_hooks=[];self.custom_plot_hooks=[];self.custom_sync_hooks={}
         self.patch_errors={};self.patch_descriptions={};self._loaded_modules={};self.patch_states={}

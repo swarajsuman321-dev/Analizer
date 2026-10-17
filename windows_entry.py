@@ -126,6 +126,7 @@ def entry_main():
     parser = argparse.ArgumentParser(description='Appliance Signal Studio')
     parser.add_argument('--self-test',action='store_true')
     parser.add_argument('--report',type=Path)
+    parser.add_argument('--restore',type=Path,help='Restore a recovery workspace after an update')
     args = parser.parse_args()
     report = args.report.resolve() if args.report else None
     if args.self_test:

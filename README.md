@@ -175,3 +175,7 @@ Maintain the manuals in `manuals/feature-guide.md` (each topic includes its firs
 ### Current status and future reference
 
 See [application status, user requirements, real-file audit and maintenance reference](docs/APP_STATUS_AND_REFERENCE.md) for the v2.1.9 recording-removal/TDMS-template/output-folder work, reproducible test commands, confirmed fixes, expected data limitations and release verification. Raw uploaded recordings and generated measurement outputs are not stored in this repository.
+
+### Desktop finalization (v2.2.0)
+
+Engineering Controls starts as the selected dock tab. Each file has independent selection/close controls; graph navigation follows the active canvas. About/Updates and the searchable User Manual are separate windows. See [desktop finalization and compatibility/cleanup details](docs/DESKTOP_FINALIZATION.md) and the [v2.2.0 manual](manuals/v2.2.0.md).

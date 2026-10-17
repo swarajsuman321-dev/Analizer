@@ -178,7 +178,7 @@ class InfoTests(unittest.TestCase):
         from PySide6 import QtCore,QtTest
         w=AdvancedStudioWindow()
         try:
-            with patch('app_info.check_latest',return_value=manifest(version='2.1.10')):
+            with patch('app_info.check_latest',return_value=manifest(version='3.0.0')):
                 w.info.check()
                 for _ in range(200):
                     self.app.processEvents();QtTest.QTest.qWait(5)
@@ -201,11 +201,11 @@ class InfoTests(unittest.TestCase):
         from app_version import VERSION
         w=AdvancedStudioWindow()
         try:
-            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'Info & manual');self.assertIn(VERSION,w.info.manuals)
+            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'About / Updates');self.assertIn(VERSION,w.info.manuals)
             self.assertIn('Updates',w.info.manual.toPlainText())
             w.tabs.setCurrentIndex(1);w.show_info();self.assertIs(w.active_workspace,w.comparison);self.assertTrue(w.info_dialog.isVisible())
             w.tabs.setCurrentIndex(0);w.show_info();self.assertIs(w.active_workspace,w.dashboard);self.assertEqual(w.ui_state()['tab'],0)
-            w.info.checked(manifest(version='2.1.10'),None);self.assertTrue(w.info.install_button.isEnabled())
+            w.info.checked(manifest(version='3.0.0'),None);self.assertTrue(w.info.install_button.isEnabled())
             w.info.checked(manifest(version=VERSION),None);self.assertIn('latest',w.info.status.text())
             w.info.checked(None,'offline');self.assertIn('Could not check',w.info.status.text())
             w.info.versions.setCurrentText('2.1.4');self.assertIn('Actuator interpretation',w.info.manual.toPlainText())

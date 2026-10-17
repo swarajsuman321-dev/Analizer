@@ -415,3 +415,30 @@ Report/export and workspace/preset save dialogs start in these folders. You can 
 If the check fails with a DNS/proxy error such as `getaddrinfo failed`, the installed app cannot reach GitHub through that connection. Starting in 2.1.8, the updater retries through Windows Internet Options' system proxy, including PAC/WPAD and signed-in proxy credentials. It keeps HTTPS verification and company policies in place. It cannot override a blocked domain or a network outage; ask IT to permit the official GitHub release download locations if needed.
 
 For an approved offline update, put the official release's `update.json` and `ApplianceSignalStudio.exe` together in one folder. Choose **Info & manual → Import offline update…** and select that manifest. The app validates the official repository URL, version, file size and SHA-256, then offers installation on the packaged Windows app. Do not rename arbitrary executables to bypass validation. The same workspace recovery, backup and rollback process applies.
+
+
+## File isolation and graph navigation | 2.2.0
+
+Each file header in Data Portal has its own Select All/Deselect All checkbox. It affects only that file, including its channels hidden by a name filter. There is no global Select All control. Files and channel groups keep their stable dataset identities. **Close Dataset** beside each file unloads it from both workspaces without changing other files; right-click the file header for Select All, Deselect All and Close Dataset. Data tables without traces can still be closed. Independently generated aligned/comparison datasets are separate entries.
+
+**Engineering Controls is the selected dock tab at a new launch**, sharing its existing area with Data Portal. No separate Engineering dock area is created. Switch to Data Portal to manage files. Explicit workspace restores retain saved dock layouts.
+
+The active graph's top-right toolbar offers **Zoom In**, **Zoom Out**, **Box Zoom**, **Pan Graph**, **Reset Scale** and **Lock Time Axes**. It follows the graph you click, and uses an overflow menu in narrow panels. With Lock Time Axes enabled, compatible time viewports share X navigation; zoom buttons also scale each independent value axis once. Reset Scale fits the synchronized group to its full combined data extent. Disable Lock Time Axes to navigate the active plot independently. Time and frequency/sample coordinates remain separate.
+
+Tools → Plot retains **Zoom Time Axis**, **Zoom Value Axes** and **Zoom Both Axes** with Ctrl+1/2/3; Pan is Ctrl+4, Reset is Ctrl+0/R. The floating HUD shows absolute |ΔY| and nonnegative ΔX even when A crosses B; signed B−A values remain available in the detailed table and export. Cursor A stays cyan and B orange.
+
+## Separate About and User Manual windows | 2.2.0
+
+**About / Updates** opens a modal window with version, build date, release notes, changelog, license information and update/offline-import controls. The project currently declares no repository distribution license; the window reports that fact and identifies third-party licenses without inventing a grant.
+
+**User Manual** (or **F1**) opens a separate nonmodal documentation window. Choose a version, jump to a topic, or search for text/Find Next. You can leave it open while working on plots. Calculation tutorials are under Formula Channels, Moving Average, Resampling, FFT and the other processing topics. Cursor locking/stepping and keyboard navigation are documented in their dedicated topics. About does not contain a second embedded copy of the manual.
+
+## Legacy configurations and installation lifecycle | 2.2.0
+
+The app still reads schema-1 JSON/NPZ workspaces, version-2/3 channel presets and unversioned channel maps. It also adapts known JSON wrappers, XML presets (`signals/channel` elements with named attributes), XML with an embedded `json` element, INI sections `channel:Name` / `signal:Name` plus `options`, and INI workspace JSON under `[workspace] payload`. Original files and unknown metadata are preserved. Unsupported future schemas or unrecognized structures produce an error before modifying the workspace; arbitrary third-party XML/INI cannot be reconstructed without its schema.
+
+Settings, reviewed TDMS templates, presets and extensions now use `%APPDATA%/ApplianceSignalStudio` (a per-user config directory on other platforms). Reports and saved workspaces keep their existing output locations. Earlier portable templates/presets/plugin settings are copied and checksum-verified before cleanup. Name conflicts are retained under `legacy-imports`, never overwritten. Migration reports remain in the settings folder.
+
+After a normal packaged Windows startup and successful recovery restore, the app discovers its exact product registry entries and previously registered installation paths. It removes obsolete executable files only after checking the product/version resources or a stored file inventory. Unchanged dependency files are removed only when a prior ownership/hash inventory exists; directories are removed only when empty. The running EXE, user data and modified/unrecognized files are retained. Older portable libraries without an inventory cannot safely be attributed to the app and are retained. Permission or migration failures leave cleanup pending; there is no elevation or execution of registry uninstall commands. The process records removed/retained paths in `lifecycle.json`.
+
+The updater retains a previous EXE while replacement is in progress. That obsolete backup is eligible for permanent removal only after the new application successfully initializes/restores. If recovery fails, it is retained. Self-tests and source launches never delete installed binaries.

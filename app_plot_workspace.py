@@ -79,6 +79,7 @@ class PlotPane(pg.PlotWidget):
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.showGrid(x=True,y=True,alpha=.2)
         self.getPlotItem().hideButtons()
+        self.getPlotItem().layout.setContentsMargins(0,36,0,0)
         self.getViewBox().sigResized.connect(self._resize)
         self.getViewBox().sigYRangeChanged.connect(self.clear_hover)
         self.getViewBox().sigXRangeChanged.connect(self._schedule)
@@ -530,18 +531,62 @@ class PlotWorkspace(QtWidgets.QWidget):
     measurementsChanged=QtCore.Signal()
 
     def __init__(self,store):
-        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False
+        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self.time_axes_locked=True
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
         self.grid=QtWidgets.QGridLayout(self.container);self.grid.setContentsMargins(0,0,0,0)
+        # A single toolbar follows the active canvas, rather than duplicating
+        # controls in every subplot. Qt supplies an overflow menu at small sizes.
+        self.navigation_bar=QtWidgets.QToolBar('Graph Navigation',self)
+        self.navigation_bar.setObjectName('graphNavigation');self.navigation_bar.setMovable(False)
+        self.navigation_actions={}
+        for label,command in [('Zoom In','in'),('Zoom Out','out'),('Box Zoom','box'),('Pan Graph','pan'),('Reset Scale','reset')]:
+            action=self.navigation_bar.addAction(label);action.triggered.connect(lambda checked=False,c=command:self.navigate(c));self.navigation_actions[command]=action
+        self.time_lock_action=self.navigation_bar.addAction('Lock Time Axes');self.time_lock_action.setCheckable(True);self.time_lock_action.setChecked(True)
+        self.time_lock_action.toggled.connect(self.set_time_lock)
+        self.activeChanged.connect(lambda *_:self.place_navigation())
         self.set_layout('Single')
+
+    def place_navigation(self):
+        if not self.active:return
+        canvas=self.active.viewport()
+        self.navigation_bar.setParent(canvas)
+        width=min(self.navigation_bar.sizeHint().width(),max(1,canvas.width()-16))
+        self.navigation_bar.setGeometry(max(0,canvas.width()-width-8),6,width,32)
+        self.navigation_bar.show();self.navigation_bar.raise_()
+
+    def navigate(self,command,factor=None):
+        """Scale synchronized X once, and every independent Y axis once."""
+        active=self.active
+        targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and active.coordinate and p.coordinate==active.coordinate)]
+        if command in ('box','pan'):
+            for pane in targets:
+                view=pane.getViewBox();view.setMouseMode(view.RectMode if command=='box' else view.PanMode);view.setMouseEnabled(x=True,y=True)
+        elif command=='reset':
+            for pane in targets:pane.fit()
+            channels=[self.store.channels[id] for pane in targets for id in pane.ids if len(self.store.channels[id].x)]
+            if channels:active.setXRange(min(c.values()[0][0] for c in channels),max(c.values()[0][-1] for c in channels),padding=.02)
+        elif command in ('in','out'):
+            factor=factor if factor is not None else (.8 if command=='in' else 1.25)
+            active.zoom_all(factor)
+            if active.getViewBox().state['mouseEnabled'][1]:
+                for pane in targets:
+                    if pane is active:continue
+                    pane.remember_view()
+                    for view in pane.y_views():view.scaleBy(y=factor)
+                    pane.remember_view()
+        self.measurementsChanged.emit()
+
+    def set_time_lock(self,locked):
+        self.time_axes_locked=bool(locked);self.link()
 
     def set_layout(self,name):
         rows,cols=LAYOUTS[name];required=rows*cols
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
             pane=PlotPane(self.store);pane.installEventFilter(self)
+            pane.getViewBox().sigResized.connect(self.place_navigation)
             pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
             self.panes.append(pane)
         for i,pane in enumerate(self.panes):
@@ -565,6 +610,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         groups={}
         for pane in self.visible_panes():
             pane.setXLink(None)
+            if not self.time_axes_locked:continue
             if pane.coordinate in groups and pane.coordinate:
                 pane.setXLink(groups[pane.coordinate])
             elif pane.coordinate:
@@ -646,10 +692,12 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.link()
 
     def state(self):
-        return {'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
+        return {'time_axes_locked':self.time_axes_locked,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
                 'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        self.time_axes_locked=bool(state.get('time_axes_locked',True))
+        blocker=QtCore.QSignalBlocker(self.time_lock_action);self.time_lock_action.setChecked(self.time_axes_locked);del blocker
         self.statistics_scope=state.get('statistics_scope','Cursor interval')
         # Restoring into fresh panes avoids stale channel bindings.
         for pane in self.panes:self.grid.removeWidget(pane);pane.deleteLater()

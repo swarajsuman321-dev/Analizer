@@ -2,7 +2,9 @@
 
 Updated: **17 October 2026 (India time)**. Maintained in `swarajsuman321-dev/Analizer`.
 
-## Current status and release evidence
+The newer [v2.2.0 desktop finalization reference](DESKTOP_FINALIZATION.md) records the current layout, per-file controls, Help/About separation and lifecycle behavior. The audit below remains the historical v2.1.9 evidence.
+
+## Historical v2.1.9 status and release evidence
 
 The baseline at the start of this audit was GitHub `main` commit `e3b3367` and **published v2.1.8**. The official latest-release `update.json` was fetched successfully: version `2.1.8`, EXE size `154165843`, SHA-256 `9621fc57818b3a20dd3e9db0eaa2f856da762f05db382846c61108c26ea21d26`. This confirms publication, not connectivity from a particular user's corporate network.
 

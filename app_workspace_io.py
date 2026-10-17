@@ -56,7 +56,8 @@ def save_workspace(path,store,views,ui=None):
 
 def load_workspace(path):
     path=Path(path)
-    record=json.loads(path.read_text(encoding='utf-8'))
+    from app_config_migration import read_configuration
+    record=read_configuration(path)
     if record.get('version')!=1:raise ValueError('Unsupported workspace version')
     companion=Path(record['arrays'])
     if companion.name!=str(companion):raise ValueError('Workspace arrays must be an adjacent NPZ file')
@@ -74,7 +75,21 @@ def load_workspace(path):
         store.datasets[d['id']]=Dataset(d['name'],frame,d['source'],d['id'])
     for c in store.channels.values():
         if c.dataset_id and c.dataset_id not in store.datasets:raise ValueError('Channel references a missing dataset')
-    return store,record['views'],record.get('ui',{})
+    views=record['views'];ui=record.get('ui',{})
+    if not isinstance(views,list) or not isinstance(ui,dict):raise ValueError('Invalid workspace layout/settings')
+    from app_plot_workspace import LAYOUTS
+    for view in views:
+        if not isinstance(view,dict) or view.get('layout') not in LAYOUTS or not isinstance(view.get('panes'),list):raise ValueError('Unsupported workspace layout')
+        for pane in view['panes']:
+            if not isinstance(pane,dict) or not isinstance(pane.get('ids',[]),list) or any(id not in store.channels for id in pane.get('ids',[])):raise ValueError('Layout references an unknown channel')
+            if not isinstance(pane.get('bindings',{}),dict):raise ValueError('Invalid axis bindings')
+            for key,shape in [('range',(2,2)),('cursors',(2,))]:
+                if key in pane:
+                    values=np.asarray(pane[key],dtype=float)
+                    if values.shape!=shape or not np.isfinite(values).all():raise ValueError('Invalid saved '+key)
+            locks=pane.get('cursor_locks',[None,None])
+            if not isinstance(locks,list) or len(locks)!=2 or any(lock is not None and (not isinstance(lock,dict) or lock.get('channel') not in store.channels or not isinstance(lock.get('index'),int)) for lock in locks):raise ValueError('Invalid saved cursor locks')
+    return store,views,ui
 
 
 def export_processed(path,channels):

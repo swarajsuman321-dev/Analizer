@@ -124,6 +124,7 @@ class HoverTests(unittest.TestCase):
         position=p.getViewBox().mapViewToScene(QtCore.QPointF(2.05,20));state=p.hover_values(position)
         self.assertAlmostEqual(state['x'],2.05);self.assertAlmostEqual(state['axes'][0]['y'],20);self.assertAlmostEqual(state['axes'][1]['y'],200,delta=1) # Independent view geometry can differ by a subpixel.
         self.assertEqual(state['nearest']['channel'],self.b.id);self.assertAlmostEqual(state['nearest']['x'],2.05);self.assertAlmostEqual(state['nearest']['y'],200)
+        p.activateWindow();p.raise_();self.app.processEvents();QtTest.QTest.mouseMove(p.viewport(),QtCore.QPoint(0,0));QtTest.QTest.qWait(20)
         QtTest.QTest.mouseMove(p.viewport(),p.mapFromScene(position));QtTest.QTest.qWait(150);self.app.processEvents()
         self.assertIsNotNone(p.hover_state);self.assertTrue(p.hover_label.isVisible());self.assertIn('Pa',p.hover_label.text());self.assertIn('Mouse X',p.hover_label.text())
         self.assertEqual([line.value() for line in p.cursor_lines],cursors)

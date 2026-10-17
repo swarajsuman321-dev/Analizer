@@ -16,7 +16,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):cls.app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     def setUp(self):
-        self.window=AdvancedStudioWindow();self.window.resize(1280,850);self.window.show();self.app.processEvents()
+        self.window=AdvancedStudioWindow();self.window.resize(1280,850);self.window.show();self.window.show_dock('Data Portal');self.app.processEvents()
         self.errors=[];self.warning=patch.object(QtWidgets.QMessageBox,'warning',side_effect=lambda *args:self.errors.append(args[-1]));self.warning.start()
     def tearDown(self):
         self.window.close();self.app.processEvents();self.warning.stop();self.assertEqual(self.errors,[])
@@ -45,9 +45,10 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         QtTest.QTest.mouseClick(tree.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=indicator.center());self.app.processEvents()
         self.assertIn(a.id,w.dashboard.active.ids,f'Indicator {indicator}, column {option.rect}, check state {item.checkState(0)}')
         def click_master():
-            button=w.portal.select_all;option=QtWidgets.QStyleOptionButton();button.initStyleOption(option)
-            rect=button.style().subElementRect(QtWidgets.QStyle.SubElement.SE_CheckBoxIndicator,option,button)
-            QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton,pos=rect.center());self.app.processEvents()
+            root=w.portal.dataset_roots[''];index=tree.indexFromItem(root,0);option=QtWidgets.QStyleOptionViewItem();option.initFrom(tree)
+            tree.itemDelegate().initStyleOption(option,index);option.rect=tree.visualRect(index)
+            rect=tree.style().subElementRect(QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,option,tree)
+            QtTest.QTest.mouseClick(tree.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=rect.center());self.app.processEvents()
         w.set_channel_visibility([b.id],True);self.assertEqual(len(w.dashboard.active.axes),1)
         click_master()
         self.assertEqual(w.dashboard.active.ids,[]);self.assertEqual(w.dashboard.active.axes,{})
@@ -59,8 +60,8 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         w=self.window;a=self.add();b=self.add('Power','W');w.set_channel_visibility([a.id],True)
         w.portal.search.setText('Power');self.assertEqual(self.item(b.id).checkState(0),QtCore.Qt.CheckState.Unchecked)
         w.set_channel_visibility(list(w.store.channels),True)
-        w.tabs.setCurrentIndex(1);self.app.processEvents();self.assertEqual(w.portal.select_all.checkState(),QtCore.Qt.CheckState.Unchecked)
-        w.tabs.setCurrentIndex(0);self.app.processEvents();self.assertEqual(w.portal.select_all.checkState(),QtCore.Qt.CheckState.Checked)
+        w.tabs.setCurrentIndex(1);self.app.processEvents();self.assertEqual(w.portal.dataset_roots[''].checkState(0),QtCore.Qt.CheckState.Unchecked)
+        w.tabs.setCurrentIndex(0);self.app.processEvents();self.assertEqual(w.portal.dataset_roots[''].checkState(0),QtCore.Qt.CheckState.Checked)
         self.assertEqual(w.layout_combo.currentText(),w.dashboard.layout_name)
     def test_import_uses_active_workspace_without_truncating_channels(self):
         w=self.window;other=ChannelStore()

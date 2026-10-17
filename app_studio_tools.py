@@ -43,7 +43,7 @@ class StudioTools(QtCore.QObject):
     def build_menu(self):
         w=self.window;menu=w.menuBar().addMenu('Tools');self.menu=menu
         groups={'Data': [('Open simulation reference…',self.open_reference),('Import with coordinate settings…',self.import_settings),('Save channel preset…',self.save_preset),('Load channel preset…',self.load_preset),('Reset workspace',self.reset)],
-                'Plot': [('Channel mapping & appearance…',self.channel_settings),('Display options…',self.display_options),('Playback & recorded phases…',self.playback),('Subsystem view…',self.subsystem),('Normalized stacked tracks',self.toggle_normalized),('Back',lambda:self.pane.navigate_history(-1)),('Forward',lambda:self.pane.navigate_history(1)),('Fit',lambda:self.pane.fit()),('Zoom in',lambda:self.zoom(.8)),('Zoom out',lambda:self.zoom(1.25)),('Pan',lambda:self.navigation('pan')),('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Lock cursors to channel…',self.cursor_lock_dialog),('Move cursors…',self.cursor_positions),('Copy cursor readout',self.copy_readout)],
+                'Plot': [('Channel mapping & appearance…',self.channel_settings),('Display options…',self.display_options),('Playback & recorded phases…',self.playback),('Subsystem view…',self.subsystem),('Normalized stacked tracks',self.toggle_normalized),('Back',lambda:self.pane.navigate_history(-1)),('Forward',lambda:self.pane.navigate_history(1)),('Fit',lambda:self.window.active_workspace.navigate('reset')),('Zoom in',lambda:self.zoom(.8)),('Zoom out',lambda:self.zoom(1.25)),('Pan',lambda:self.navigation('pan')),('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Lock cursors to channel…',self.cursor_lock_dialog),('Move cursors…',self.cursor_positions),('Copy cursor readout',self.copy_readout)],
                 'Processing': [('Channel math & filters',lambda:w.show_dock('Channel Math')),('Preview selected operation…',self.preview_processing)],
                 'Engineering': [('Recording controls',lambda:w.show_dock('Engineering Controls')),('KPIs & data quality…',self.diagnostics),('Comparison signal mapping…',self.comparison_mapping),('Reference units…',self.reference_units),('Image reference calibration…',self.image_calibration),('Reference details…',self.reference_details)],
                 'Export': [('Full diagnostic workbook…',self.export_workbook),('Full synchronized CSV…',self.export_aligned_csv),('Complete processed channels…',self.export_channels),('SVG / HTML / Markdown…',self.export_presentation)],
@@ -53,21 +53,12 @@ class StudioTools(QtCore.QObject):
         for name,items in groups.items():
             submenu=menu.addMenu(name);self.submenus[name]=submenu
             for text,fn in items:
-                action=submenu.addAction(text)
+                display={'Zoom X':'Zoom Time Axis','Zoom Y':'Zoom Value Axes','Zoom XY':'Zoom Both Axes','Fit':'Reset Scale','Pan':'Pan Graph','Back':'Previous View','Forward':'Next View','KPIs & data quality…':'Measurements and Data Quality…','Channel math & filters':'Calculate Channels and Apply Filters','ROI':'Mark Interval'}.get(text,text)
+                action=submenu.addAction(display)
                 shortcut={'Back':'Alt+Left','Forward':'Alt+Right','Zoom in':'Ctrl+=','Zoom out':'Ctrl+-','Fit':'Ctrl+0','Pan':'Ctrl+4','Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Lock cursors to channel…':'Ctrl+L'}.get(text)
                 if shortcut:action.setShortcut(shortcut)
                 action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
 
-        w.addToolBarBreak()
-        toolbar=w.addToolBar('Plot navigation');toolbar.setObjectName('plotNavigation');toolbar.setMovable(False)
-        for title,fn in [('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Pan',lambda:self.navigation('pan')),('Reset zoom',lambda:self.pane.fit()),('Lock cursors…',self.cursor_lock_dialog),('Add note',self.add_plot_note)]:
-            action=toolbar.addAction(title)
-            hint={'Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Pan':'Ctrl+4 or Escape','Reset zoom':'Ctrl+0 or R','Lock cursors…':'Ctrl+L','Add note':'Ctrl+Shift+N'}[title]
-            action.setToolTip(title+' ('+hint+')')
-            if title=='Add note':action.setShortcut('Ctrl+Shift+N')
-            action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
-        help_action=menu.addAction('Keyboard shortcuts…');help_action.setShortcut('F1')
-        help_action.triggered.connect(lambda:QtWidgets.QMessageBox.information(w,'Keyboard shortcuts','Ctrl+1 / 2 / 3: Zoom X / Y / XY\nCtrl+4 or Escape: Pan\nCtrl+= / Ctrl+-: Zoom in / out\nCtrl+0 or R on plot: Reset zoom / fit\nAlt+Left / Right: Previous / next view\nCtrl+L: Lock cursors to channel\nLeft / Right on plot: Step cursor A\nShift+Left / Right: Step cursor B\nCtrl+P: Export Report'))
         from app_version import VERSION
         about=menu.addAction(f'About version {VERSION}')
         about.triggered.connect(w.show_info)
@@ -162,10 +153,14 @@ class StudioTools(QtCore.QObject):
         with atomic_output(path) as temporary:Path(temporary).write_text(json.dumps(record,indent=2,allow_nan=False),encoding='utf-8')
 
     def load_preset(self):
-        path,_=QtWidgets.QFileDialog.getOpenFileName(self.window,'Load channel preset','','JSON (*.json)')
-        if path:self.apply_preset(json.loads(Path(path).read_text(encoding='utf-8')))
+        path,_=QtWidgets.QFileDialog.getOpenFileName(self.window,'Load channel preset','','Configurations (*.json *.xml *.ini *.cfg)')
+        if path:
+            from app_config_migration import read_configuration
+            self.apply_preset(read_configuration(path))
 
     def apply_preset(self,record):
+        from app_config_migration import migrate_configuration
+        record=migrate_configuration(record)
         w=self.window;w.mutate();signals,options=validate_preset(record)
         if not w.store.channels:self.pending_preset=record;w.statusBar().showMessage('Preset validated; import data to apply it.');return 0
         changes=[];panels={};matched=0
@@ -306,7 +301,7 @@ class StudioTools(QtCore.QObject):
         active=(np.isfinite(y)&(y>0)&known_inlet)[:-1]
         transitions=np.diff(np.r_[False,active,False].astype(int));starts=np.flatnonzero(transitions==1);ends=np.flatnonzero(transitions==-1)
         for start,end in zip(starts,ends):
-            pane.annotations.append({'kind':'ROI','start':float(x[start]),'end':float(x[end]),'text':'Inlet / drain overlap','axis':None,'studio_generated':True})
+            pane.annotations.append({'kind':'Mark interval','start':float(x[start]),'end':float(x[end]),'text':'Inlet / drain overlap','axis':None,'studio_generated':True})
         for record in pane.annotations:
             if record.get('text')=='Inlet / drain overlap':pane._annotation(record)
 
@@ -318,7 +313,7 @@ class StudioTools(QtCore.QObject):
         if ok and text.strip():self.pane.annotate('Marker',point,text=text.strip())
 
     def zoom(self,factor):
-        self.pane.zoom_all(factor)
+        self.window.active_workspace.navigate('in' if factor<1 else 'out',factor)
 
     def navigation(self,mode):
         import pyqtgraph as pg

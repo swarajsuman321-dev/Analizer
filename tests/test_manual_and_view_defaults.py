@@ -18,11 +18,11 @@ class ManualAndViewTests(unittest.TestCase):
         w=self.window
         self.assertEqual([w.tabs.tabText(i) for i in range(w.tabs.count())],['Analysis','Comparison'])
         toolbar=next(t for t in w.findChildren(QtWidgets.QToolBar) if t.objectName()=='Workbench')
-        self.assertIn(w.info_action,toolbar.actions());w.tabs.setCurrentIndex(1);w.info_action.trigger();self.app.processEvents()
-        self.assertTrue(w.info_dialog.isVisible());self.assertIs(w.active_workspace,w.comparison)
-        self.assertEqual(w.info.parentWidget(),w.info_dialog)
-        w.info_dialog.close();self.assertTrue(w.isVisible());self.assertEqual(w.tabs.currentIndex(),1)
-        w.info_action.trigger();self.assertTrue(w.info_dialog.isVisible())
+        self.assertIn(w.help_action,toolbar.actions());w.tabs.setCurrentIndex(1);w.help_action.trigger();self.app.processEvents()
+        self.assertTrue(w.help_dialog.isVisible());self.assertIs(w.active_workspace,w.comparison)
+        self.assertEqual(w.help.parentWidget(),w.help_dialog)
+        w.help_dialog.close();self.assertTrue(w.isVisible());self.assertEqual(w.tabs.currentIndex(),1)
+        w.help_action.trigger();self.assertTrue(w.help_dialog.isVisible())
 
     def test_every_view_panel_enabled_by_default_and_saved_layout_wins(self):
         w=self.window
@@ -39,7 +39,7 @@ class ManualAndViewTests(unittest.TestCase):
             self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()));self.assertFalse(w.portal.tree.isColumnHidden(2))
 
     def test_manual_topic_navigation_search_wrap_and_no_match(self):
-        w=self.window;w.show_info();info=w.info;self.app.processEvents()
+        w=self.window;w.show_help();info=w.help;self.app.processEvents()
         index=info.topics.findText('Butterworth low-pass');self.assertGreaterEqual(index,0);info.topics.setCurrentIndex(index)
         self.assertEqual(info.manual.textCursor().block().text(),'Butterworth low-pass')
         info.search.setText('MissingManualTerm_98765');info.find_manual()
