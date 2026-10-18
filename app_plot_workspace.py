@@ -350,7 +350,7 @@ class PlotPane(pg.PlotWidget):
                 if j==0:axis.setPen(color);axis.setTextPen(color)
                 if c.unit=='min':axis.enableAutoSIPrefix(False)
                 vb.addItem(curve);self.curves[id]=(vb,curve)
-                if hasattr(self,'legend'):self.legend.addItem(pg.PlotDataItem(pen=curve.pen),c.name)
+                if hasattr(self,'legend') and len(self.ids)<=12:self.legend.addItem(pg.PlotDataItem(pen=curve.pen),c.name)
                 key=(id,c.revision)
                 if key not in self.cache:
                     self.cache={k:v for k,v in self.cache.items() if k[0]!=id}
@@ -372,8 +372,12 @@ class PlotPane(pg.PlotWidget):
         self._render()
         if hasattr(self,'legend'):
             self.legend.setLabelTextColor('#e3eaf5' if self.dark else '#182033')
-            self.legend.setBrush(pg.mkBrush(21,27,38,225) if self.dark else pg.mkBrush(255,255,255,230))
-            self.legend.setVisible(self.show_legends and bool(self.ids))
+            self.legend.setBrush(pg.mkBrush(21,27,38,145) if self.dark else pg.mkBrush(255,255,255,170))
+            self.legend.setPen(pg.mkPen('#637084',width=.5))
+            self.legend.layout.setContentsMargins(4,2,4,2)
+            self.legend.layout.setVerticalSpacing(0)
+            self.legend.setColumnCount(max(1,min(4,(len(self.ids)+5)//6)))
+            self.legend.setVisible(self.show_legends and bool(self.ids) and len(self.ids)<=12)
         self.showGrid(x=self.show_grid,y=self.show_grid,alpha=.2)
         for unit in units:
             bounds=next((self.store.channels[id].attributes.get('plot_style',{}) for id in self.ids if self.bindings[id]==unit),{})
@@ -579,31 +583,24 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.hover_readout.setFixedHeight(48);self.hover_readout.setContentsMargins(8,2,8,2)
         self.hover_readout.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Fixed)
         strip_layout.addWidget(self.hover_readout,1)
-        # Share QAction instances with the header so shortcuts, mode constraints
-        # and linked-axis behavior cannot diverge between the two locations.
-        self.quick_controls=QtWidgets.QWidget(self)
-        quick_layout=QtWidgets.QHBoxLayout(self.quick_controls);quick_layout.setContentsMargins(0,0,0,0);quick_layout.setSpacing(4)
-        self.quick_zoom_bar=QtWidgets.QToolBar('Quick Zoom',self.quick_controls)
-        self.quick_zoom_bar.setObjectName('quickZoom');self.quick_zoom_bar.setMovable(False)
-        self.quick_zoom_bar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,QtWidgets.QSizePolicy.Policy.Fixed)
-        for command in ('in','out','reset'):self.quick_zoom_bar.addAction(self.navigation_actions[command])
-        # Compact labels belong to these buttons only; shared actions retain
-        # their explicit Zoom In/Out names in the header and overflow menu.
-        for command,label in (('in','+'),('out','−')):
-            button=self.quick_zoom_bar.widgetForAction(self.navigation_actions[command])
-            button.setText(label);button.setFixedWidth(32)
-            button.setAccessibleName(self.navigation_actions[command].text())
-            button.setToolTip(self.navigation_actions[command].text())
-        self.quick_mode_button=QtWidgets.QToolButton(self.quick_controls)
-        self.quick_mode_button.setAccessibleName('Zoom and pan mode');self.quick_mode_button.setAutoRaise(True)
-        self.quick_mode_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-        menu=QtWidgets.QMenu(self.quick_mode_button)
-        for command in ('x','y','xy','pan'):menu.addAction(self.navigation_actions[command])
-        self.quick_mode_button.setMenu(menu);self.quick_mode_button.setDefaultAction(self.navigation_actions['pan'])
-        quick_layout.addWidget(self.quick_zoom_bar);quick_layout.addWidget(self.quick_mode_button)
-        outer.insertWidget(1,self.quick_controls)
         outer.insertWidget(1,self.hover_strip)
+        self.channel_legend=QtWidgets.QListWidget(self);self.channel_legend.setObjectName('compactChannelLegend')
+        self.channel_legend.setViewMode(QtWidgets.QListView.ViewMode.IconMode);self.channel_legend.setMovement(QtWidgets.QListView.Movement.Static)
+        self.channel_legend.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust);self.channel_legend.setMaximumHeight(70)
+        self.channel_legend.setToolTip('Active graph channels · scroll to inspect all legend entries');self.channel_legend.hide()
+        outer.insertWidget(1,self.channel_legend)
+        self.activeChanged.connect(lambda *_:self.update_channel_legend());self.measurementsChanged.connect(self.update_channel_legend)
         self.set_layout('Single')
+
+    def update_channel_legend(self):
+        if not hasattr(self,'channel_legend') or self.active is None:return
+        pane=self.active;visible=pane.show_legends and len(pane.ids)>12
+        self.channel_legend.setVisible(visible)
+        signature=tuple((id,pane.curves[id][1].pen.color().name(),self.store.channels[id].name) for id in pane.ids if id in pane.curves and id in self.store.channels)
+        if signature==getattr(self,'_legend_signature',None):return
+        self._legend_signature=signature;self.channel_legend.clear()
+        for id,color,name in signature:
+            item=QtWidgets.QListWidgetItem('━ '+name);item.setForeground(QtGui.QColor(color));item.setToolTip(name+' · '+self.store.channels[id].unit);self.channel_legend.addItem(item)
 
     def _hover_changed(self,pane,state):
         if state is None and pane is not self._hover_pane:return
@@ -623,14 +620,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         super().resizeEvent(event)
         # Leave room for coordinates even with both sidebars open. QToolBar
         # exposes its existing overflow menu when the center column is narrow.
-        self._size_quick_controls()
         if self._hover_pane:self._hover_changed(self._hover_pane,self._hover_pane.hover_state)
-
-    def _size_quick_controls(self):
-        if not hasattr(self,'quick_mode_button'):return
-        reserve=min(220,max(140,self.hover_readout.fontMetrics().horizontalAdvance('X 000.00 min | Y 000.00 °C')))
-        available=self.width()-reserve-self.quick_mode_button.sizeHint().width()-16
-        self.quick_zoom_bar.setMaximumWidth(max(100,min(int(self.width()*.5),available)))
 
     def navigate(self,command,factor=None):
         """Scale synchronized X once, and every independent Y axis once."""
@@ -639,8 +629,6 @@ class PlotWorkspace(QtWidgets.QWidget):
         if command in ('x','y','xy','box','pan'):
             self.navigation_mode='xy' if command=='box' else command
             self.navigation_actions[self.navigation_mode].setChecked(True)
-            self.quick_mode_button.setDefaultAction(self.navigation_actions[self.navigation_mode])
-            self._size_quick_controls()
             for pane in self.visible_panes():
                 view=pane.getViewBox();view.setMouseMode(view.PanMode if command=='pan' else view.RectMode)
                 view.setMouseEnabled(x=command!='y',y=command!='x')
@@ -774,9 +762,10 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def state(self):
         return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
-                'active':self.panes.index(self.active)}
+                'display_options':getattr(self,'display_options',{}),'playback_speed':getattr(self,'playback_speed',10),'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        self.display_options=dict(state.get('display_options',{}));self.playback_speed=float(np.clip(state.get('playback_speed',10),.1,128))
         mode=state.get('navigation_mode','pan');self.navigation_mode=mode if mode in ('x','y','xy','pan') else 'pan'
         if self._hover_pane:self._hover_changed(self._hover_pane,None)
         self.time_axes_locked=bool(state.get('time_axes_locked',True))

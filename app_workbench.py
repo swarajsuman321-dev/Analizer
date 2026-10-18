@@ -40,8 +40,12 @@ class FrameModel(QtCore.QAbstractTableModel):
     def data(self,index,role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role==QtCore.Qt.ItemDataRole.DisplayRole:
             value=self.frame.iat[index.row(),index.column()]
+            if 'accent' in self.frame and self.frame.columns[index.column()]=='percent':return f'{value:+.4g}%' if pd.notna(value) else '—'
             if self.frame.columns[index.column()]=='match_percent':return f'{value:.1f}%' if pd.notna(value) else '—'
             return str(value)
+        if role==QtCore.Qt.ItemDataRole.BackgroundRole and 'accent' in self.frame and self.frame.columns[index.column()] in ('delta','percent'):
+            color=self.frame.iloc[index.row()]['accent']
+            if isinstance(color,str) and color.startswith('#'):return QtGui.QColor(color)
         if role==QtCore.Qt.ItemDataRole.BackgroundRole and 'match_percent' in self.frame:
             color=match_color(self.frame.iloc[index.row()]['match_percent'])
             if color:return QtGui.QColor(color)
@@ -63,11 +67,6 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.tabs=QtWidgets.QTabWidget();self.setCentralWidget(self.tabs)
         self.dashboard=PlotWorkspace(self.store);self.comparison=PlotWorkspace(self.store)
         self.tabs.addTab(self.dashboard,'Analysis');self.tabs.addTab(self.comparison,'Comparison')
-        # Reuse the active workspace actions in the unused graph-tab row.
-        self.quick_navigation=QtWidgets.QStackedWidget(self.tabs)
-        self.quick_navigation.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum,QtWidgets.QSizePolicy.Policy.Fixed)
-        for workspace in self.workspaces:self.quick_navigation.addWidget(workspace.quick_controls)
-        self.tabs.setCornerWidget(self.quick_navigation,QtCore.Qt.Corner.TopRightCorner)
         for workspace in self.workspaces:
             workspace.measurementsChanged.connect(self.readouts)
             workspace.activeChanged.connect(self.workspace_changed)
@@ -76,16 +75,23 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
         from app_studio_tools import StudioTools
         self.studio=StudioTools(self)
+        from app_compact_controls import CompactControls
+        self.compact=CompactControls(self)
+        from app_engineering_ui import EngineeringTools
+        self.engineering=EngineeringTools(self)
         self.about_menu=self.menuBar().addMenu('About')
         self.about_menu.addAction(self.help_action);self.about_menu.addAction(self.info_action)
+        from app_adaptive_ui import ContentDialog
         from app_info import InfoTab
-        self.info_dialog=QtWidgets.QDialog(self);self.info_dialog.setWindowTitle(f'About Appliance Signal Studio · {VERSION}');self.info_dialog.setModal(True);self.info_dialog.resize(1050,760)
+        self.info_dialog=ContentDialog(self);self.info_dialog.setWindowTitle(f'About Appliance Signal Studio · {VERSION}');self.info_dialog.setModal(True);self.info_dialog.resize(1050,760)
         info_layout=QtWidgets.QVBoxLayout(self.info_dialog);self.info=InfoTab(self);info_layout.addWidget(self.info)
-        self.help_dialog=QtWidgets.QDialog(self);self.help_dialog.setWindowTitle('User Manual');self.help_dialog.resize(1050,760)
+        self.help_dialog=ContentDialog(self);self.help_dialog.setWindowTitle('User Manual');self.help_dialog.resize(1050,760)
         help_layout=QtWidgets.QVBoxLayout(self.help_dialog);self.help=self.info.help;help_layout.addWidget(self.help)
         self.store.observe(self.store_changed)
         self.statusBar().showMessage('Open a recording to begin. Check channels to show them; drag A and B to inspect an interval.')
         self.readout_timer=QtCore.QTimer(self);self.readout_timer.setSingleShot(True);self.readout_timer.timeout.connect(self._readouts)
+        from app_adaptive_ui import DialogBounds
+        self.dialog_bounds=DialogBounds(self);QtWidgets.QApplication.instance().installEventFilter(self.dialog_bounds)
         self.resizeDocks([self.docks['Data Portal'],self.docks['Properties']],[260,280],QtCore.Qt.Orientation.Horizontal)
         self.resizeDocks([self.docks['Readout']],[180],QtCore.Qt.Orientation.Vertical)
         self.enable_all_panels()
@@ -171,6 +177,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         def number(key):return f"{abs(stats[key]) if key in ('ΔX','ΔY') else stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
         anchors=self.locked_cursor_texts(pane)
         summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; |ΔY| {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}"
+        if not c.attributes.get('actuator_binary'):
+            summary+=f"<br>Interval RMS {number('RMS')} · Slope {number('Slope')} {html.escape(c.unit)}/{html.escape(c.coordinate_unit)}<br>Integral {number('Integral')} {html.escape(c.unit)}·{html.escape(c.coordinate_unit)} · Coverage {stats['Coverage']:.1%}"
+            if c.unit in ('W','kW') and c.coordinate_kind=='time':
+                factor={'s':1/3600,'min':1/60,'h':1}.get(c.coordinate_unit)
+                if factor is not None:summary+=f"<br>Interval energy {stats['Integral']*factor*(1000 if c.unit=='kW' else 1):.5g} Wh"
         if c.attributes.get('actuator_binary'):
             from app_actuators import state_text
             a,b=[line.value() for line in pane.cursor_lines]
@@ -241,11 +252,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.export_button.setToolTip('Save a PDF summary, interval CSV/Excel, or high-resolution PNG')
         report_action=QtGui.QAction(self);report_action.setShortcut('Ctrl+P');report_action.triggered.connect(lambda:self.guard(self.report));self.addAction(report_action)
         action('Calculate Channel',lambda:self.show_dock('Channel Math'),'Ctrl+M')
-        self.layout_combo=QtWidgets.QComboBox();self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
+        self.layout_combo=QtWidgets.QComboBox();self.layout_combo.setToolTip('Choose the graph panel layout');self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
         self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.active_workspace.set_layout(text)))
-        self.cursor_combo=QtWidgets.QComboBox();[self.cursor_combo.addItem(label,mode) for label,mode in [('Two Cursors','dual'),('One Cursor','point'),('Hide Cursors','off')]];toolbar.addWidget(self.cursor_combo)
+        self.cursor_combo=QtWidgets.QComboBox();self.cursor_combo.setToolTip('Show two cursors, one cursor or hide cursors');[self.cursor_combo.addItem(label,mode) for label,mode in [('Two Cursors','dual'),('One Cursor','point'),('Hide Cursors','off')]];toolbar.addWidget(self.cursor_combo)
         self.cursor_combo.currentIndexChanged.connect(lambda index:[p.set_cursor_mode(self.cursor_combo.currentData()) for p in self.active_workspace.visible_panes()])
-        self.snap_checkbox=QtWidgets.QCheckBox('Snap to Samples');self.snap_checkbox.setChecked(True);toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
+        self.snap_checkbox=QtWidgets.QCheckBox('Snap to Samples');self.snap_checkbox.setChecked(True);self.snap_checkbox.setToolTip('Snap cursors to recorded sample timestamps');toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
         view=self.menuBar().addMenu('View')
         view.addAction('Show all panels',self.enable_all_panels);view.addSeparator()
         for dock in self.docks.values():view.addAction(dock.toggleViewAction())
@@ -316,6 +327,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.background(load,lambda other:self.finish_import(other,workspace))
 
     def finish_import(self,other,workspace=None):
+        if not other.channels:raise ValueError('No numeric measurement channels were found. Check the file format, coordinate column and unit settings.')
         if self.review_tdms_import(other):self.merge_store(other,workspace)
 
     def review_tdms_import(self,other):
@@ -661,7 +673,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         return {'app_version':VERSION,'show_channel_kind':not self.portal.tree.isColumnHidden(2),'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
                 'stats_scope':self.stats_scope.currentText(),'tab':getattr(self,'_plot_tab_index',0),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
-                'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
+                'focus_graph':{'enabled':self.compact.focus_action.isChecked(),'normal':bytes(self.compact.focus_state.toBase64()).decode() if self.compact.focus_state is not None else ''},'engineering_session':self.engineering.state(),'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
     def save(self):
         self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace',str(output_path('Workspace.json','workspaces')),'Workspace (*.json)')
@@ -679,6 +691,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.restore_loaded(store,views,ui,upgrade_defaults)
 
     def restore_loaded(self,store,views,ui,upgrade_defaults=False):
+        if ui.get('engineering_session'):
+            from app_engineering_session import validate_session
+            validate_session(ui['engineering_session'])
         from app_actuators import interpret_channel
         converted=set()
         for id,channel in list(store.channels.items()):
@@ -723,7 +738,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         engineering=ui.get('engineering',{})
         for key,field in [('power',self.power_path),('machine',self.machine_path),('simulation',self.simulation_path)]:field.setText(engineering.get(key,''))
         self.studio.select_sync(engineering.get('strategy',self.sync.currentData() or self.sync.currentText()));self.offset.setValue(engineering.get('offset',0))
-        self.studio.restore(ui.get('studio',{}));self.readouts()
+        self.compact.restore_focus(ui.get('focus_graph',{}))
+        self.studio.restore(ui.get('studio',{}));self.engineering.restore(ui.get('engineering_session'));self.readouts()
 
     def report(self):
         from app_reporting import export_report
@@ -746,13 +762,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def workspace_changed(self,*args):
         if self.tabs.currentIndex()<2:
             self._plot_tab_index=self.tabs.currentIndex()
-            self.quick_navigation.setCurrentIndex(self._plot_tab_index)
         if hasattr(self,'layout_combo'):
             for workspace in self.workspaces:workspace.navigation_bar.setVisible(workspace is self.active_workspace)
             pane=self.active_workspace.active
             for widget,value in ((self.layout_combo,self.active_workspace.layout_name),(self.cursor_combo,pane.cursor_mode)):
                 blocker=QtCore.QSignalBlocker(widget);widget.setCurrentIndex(widget.findData(value)) if widget is self.cursor_combo else widget.setCurrentText(value);del blocker
             blocker=QtCore.QSignalBlocker(self.snap_checkbox);self.snap_checkbox.setChecked(pane.snap);del blocker
+        if hasattr(self,'compact'):self.compact.sync()
         self.sync_visibility();self.readouts()
 
     def show_dock(self,name):
@@ -770,6 +786,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def closeEvent(self,event):
         if hasattr(self,'info') and not self.info.prepare_close():event.ignore();return
         self.generation+=1
+        if hasattr(self,'engineering'):self.engineering.cancel_token.set();self.engineering.watch.stop()
         if hasattr(self,'studio'):self.studio.pause()
         self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
         if self.busy:

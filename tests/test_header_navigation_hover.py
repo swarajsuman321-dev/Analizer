@@ -77,36 +77,27 @@ class HeaderNavigationTests(unittest.TestCase):
 
     def test_quick_zoom_shares_actions_and_respects_axis_mode(self):
         ws=self.w.dashboard;ws.set_layout('Vertical split');p,q=ws.visible_panes();q.bind([self.c.id]);ws.link();self.app.processEvents()
-        self.assertEqual(ws.quick_zoom_bar.actions(),[ws.navigation_actions[key] for key in ('in','out','reset')])
-        self.assertEqual(ws.navigation_actions['in'].text(),'Zoom In');self.assertEqual(ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['in']).accessibleName(),'Zoom In')
-        self.assertEqual(ws.quick_mode_button.menu().actions(),[ws.navigation_actions[key] for key in ('x','y','xy','pan')])
-        ws.navigate('x');self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['x'])
+        self.assertFalse(hasattr(ws,'quick_zoom_bar'))
+        ws.navigate('x');self.assertTrue(ws.navigation_actions['x'].isChecked())
         beforex=np.diff(p.viewRange()[0])[0];beforey=[list(pane.viewRange()[1]) for pane in (p,q)]
-        button=ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['in'])
+        button=ws.navigation_bar.widgetForAction(ws.navigation_actions['in'])
         self.assertTrue(button.isVisible());QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton);self.app.processEvents()
         self.assertAlmostEqual(np.diff(p.viewRange()[0])[0]/beforex,.8)
         np.testing.assert_allclose(p.viewRange()[0],q.viewRange()[0])
         for pane,expected in zip((p,q),beforey):np.testing.assert_allclose(pane.viewRange()[1],expected)
-        ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['out']).click();self.app.processEvents()
+        ws.navigation_bar.widgetForAction(ws.navigation_actions['out']).click();self.app.processEvents()
         self.assertAlmostEqual(np.diff(p.viewRange()[0])[0],beforex)
-        ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['reset']).click();self.app.processEvents()
+        ws.navigation_bar.widgetForAction(ws.navigation_actions['reset']).click();self.app.processEvents()
         self.assertLessEqual(p.viewRange()[0][0],0);self.assertGreaterEqual(p.viewRange()[0][1],2)
-        ws.navigation_actions['y'].trigger();self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['y'])
+        ws.navigation_actions['y'].trigger();self.assertTrue(ws.navigation_actions['y'].isChecked())
 
-    def test_quick_controls_stay_outside_canvas_and_track_workspace(self):
-        w=self.w;w.resize(1024,768);self.app.processEvents()
+    def test_only_primary_navigation_is_visible_and_icons_are_accessible(self):
+        w=self.w
         for index,ws in enumerate(w.workspaces):
             w.tabs.setCurrentIndex(index);self.app.processEvents()
-            bar=ws.quick_zoom_bar;strip=ws.hover_strip
-            self.assertTrue(bar.isVisible());self.assertTrue(ws.quick_mode_button.isVisible())
-            self.assertEqual(strip.height(),48);self.assertEqual(ws.hover_readout.height(),48)
-            self.assertLess(strip.mapToGlobal(strip.rect().bottomLeft()).y(),ws.active.mapToGlobal(ws.active.rect().topLeft()).y())
-            self.assertIs(w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner),w.quick_navigation)
-            self.assertIs(w.quick_navigation.currentWidget(),ws.quick_controls)
-            self.assertLess(bar.mapToGlobal(bar.rect().bottomLeft()).y(),strip.mapToGlobal(strip.rect().topLeft()).y())
-            self.assertLessEqual(abs(bar.mapToGlobal(bar.rect().center()).y()-w.tabs.tabBar().mapToGlobal(w.tabs.tabBar().rect().center()).y()),16)
-            self.assertLessEqual(bar.width(),max(100,int(ws.width()*.5)))
-            for command in ('in','out'):self.assertTrue(bar.widgetForAction(ws.navigation_actions[command]).isVisible())
-            ws.quick_mode_button.menu().actions()[2].trigger();self.assertEqual(ws.navigation_mode,'xy')
-            self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['xy'])
-        w.tabs.setCurrentIndex(0);self.assertTrue(w.dashboard.quick_zoom_bar.isVisible());self.assertFalse(w.comparison.quick_zoom_bar.isVisible())
+            self.assertIsNone(w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner))
+            self.assertFalse(hasattr(ws,'quick_zoom_bar'))
+            for key in ('in','out','reset','pan'):
+                action=ws.navigation_actions[key];self.assertFalse(action.icon().isNull());self.assertTrue(action.toolTip())
+                self.assertEqual(ws.navigation_bar.widgetForAction(action).accessibleName(),action.text())
+            self.assertFalse(w.workspaces[1-index].navigation_bar.isVisible())

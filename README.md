@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.1.7
+# Appliance Signal Studio 2.3.0
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
@@ -23,8 +23,8 @@ On Windows use `.venv\Scripts\python.exe`, or build a portable executable with
    Recognized simulator exports already in minutes are kept in minutes.
    Axes, cursor intervals, playback and processed reports use minutes; original
    source tables keep their recorded values. Data without a clock remains sample-indexed.
-2. Check a channel to plot it; uncheck it to hide its trace. The master checkbox
-   selects or deselects all channels, including those hidden by the search filter.
+2. Check a channel to plot it; uncheck it to hide its trace. Each file checkbox
+   selects or deselects only that file’s channels, including those hidden by its search filter.
    Checks reflect the visible panes of the current workspace. Selecting a tree
    row inspects its properties without changing visibility.
 3. Drag cyan **A** and amber **B**, or click / Shift-click the plot. Snap uses real
@@ -195,3 +195,9 @@ The unused right side of the Analysis/Comparison tab row now offers Zoom In, Zoo
 The top **About** menu beside **Tools** contains **User Manual** and **Updates**. Same-unit channels, including valves, receive distinct stable colors with matching legends enabled for new workspaces; saved styles and visibility preferences are retained.
 
 Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_REVIEW_V2.2.3.md). Native Windows release verification: [record](docs/validation/release-v2.2.3.json).
+
+## Engineering analytics and compact workbench (v2.3.0)
+
+One primary navigation toolbar, direct Legend/Grid controls, inline playback, adaptive dialogs and per-workspace appearance settings preserve the existing workbench. Engineering Setup provides configurable appliance profiles, reviewed channel mappings/units, run roles, phase rules, calibration and explicit limits. Analyze Engineering Data adds quality-aware KPIs and run comparisons; Generate Engineering Report creates traceable paginated PDF and nine-sheet Excel reports. No manufacturer phase meanings, calibrations or acceptance limits are invented.
+
+Read the [v2.3.0 manual](manuals/v2.3.0.md) before configuring an engineering evaluation. Native Windows release evidence is published only after verification completes.

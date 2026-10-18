@@ -8,6 +8,7 @@ if mode not in ('onedir', 'onefile', 'debug'):
     raise ValueError('Unknown analyzer build mode.')
 assets = [(str(project / name), '.') for name in ('app_icon.ico', 'app_logo.png')]
 assets.extend((str(path),'manuals') for path in sorted((project/'manuals').glob('v*.md')))
+assets.extend((str(path),'profiles') for path in sorted((project/'profiles').glob('*.json')))
 analysis = Analysis(
     [str(project / 'windows_entry.py')],
     pathex=[str(project)],

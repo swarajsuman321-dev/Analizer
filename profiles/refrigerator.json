@@ -1,0 +1,369 @@
+{
+  "schema_version": 1,
+  "id": "refrigerator",
+  "category": "Refrigerator",
+  "metadata": {
+    "manufacturer": "",
+    "model": "",
+    "test_scenario": "",
+    "measurement_context": "",
+    "boundary_conditions": {}
+  },
+  "domains": [
+    "thermal",
+    "fluidic",
+    "electrical",
+    "kinematic",
+    "actuator_state",
+    "firmware_state"
+  ],
+  "channels": [
+    {
+      "id": "voltage",
+      "name": "Line RMS voltage",
+      "domain": "electrical",
+      "unit": "V",
+      "aliases": [
+        "voltage",
+        "line voltage",
+        "rms voltage"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "current",
+      "name": "Line RMS current",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "current",
+        "line current",
+        "rms current"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power",
+      "name": "Active power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "power",
+        "active power",
+        "real power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power_factor",
+      "name": "Power factor",
+      "domain": "electrical",
+      "unit": "",
+      "aliases": [
+        "power factor"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "energy",
+      "name": "Total energy counter",
+      "domain": "electrical",
+      "unit": "kWh",
+      "aliases": [
+        "energy",
+        "total energy"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "ambient_temperature",
+      "name": "Ambient temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "ambient temperature",
+        "lab temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "humidity",
+      "name": "Ambient humidity",
+      "domain": "thermal",
+      "unit": "%",
+      "aliases": [
+        "humidity",
+        "relative humidity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "cycle_state",
+      "name": "Cycle state",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "cycle state",
+        "wash stage",
+        "program progress state",
+        "current step number"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "fault",
+      "name": "Fault code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "fault code",
+        "last stored error",
+        "registered fault codes"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "error",
+      "name": "Program error code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "program error code",
+        "motor error code"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "compartment_temperature",
+      "name": "Fresh-food temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "compartment temperature",
+        "fresh food temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "freezer_temperature",
+      "name": "Freezer temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "freezer temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "evaporator_temperature",
+      "name": "Evaporator temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "evaporator temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "condenser_temperature",
+      "name": "Condenser temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "condenser temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "compressor",
+      "name": "Compressor command",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "compressor",
+        "compressor on"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "defrost_power",
+      "name": "Defrost heater power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "defrost heater power",
+        "defrost power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "door_state",
+      "name": "Door state",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "door state"
+      ],
+      "data_type": "code"
+    }
+  ],
+  "phases": [
+    {
+      "name": "Pull-down",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Stable operation",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Defrost",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Recovery",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    }
+  ],
+  "kpis": [
+    {
+      "id": "cycle_duration",
+      "name": "Cycle duration (recorded span)",
+      "channel": "power",
+      "op": "duration",
+      "unit": "min",
+      "group": "Electrical",
+      "allow_any_time": true
+    },
+    {
+      "id": "total_energy",
+      "name": "Integrated energy",
+      "channel": "power",
+      "op": "integral",
+      "unit": "kWh",
+      "group": "Electrical"
+    },
+    {
+      "id": "average_power",
+      "name": "Average power",
+      "channel": "power",
+      "op": "mean",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "peak_power",
+      "name": "Peak power",
+      "channel": "power",
+      "op": "max",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "voltage_variation",
+      "name": "Voltage standard deviation",
+      "channel": "voltage",
+      "op": "std",
+      "unit": "V",
+      "group": "Electrical"
+    },
+    {
+      "id": "power_factor",
+      "name": "Average power factor",
+      "channel": "power_factor",
+      "op": "mean",
+      "unit": "",
+      "group": "Electrical"
+    },
+    {
+      "id": "compartment_mean",
+      "name": "Mean fresh-food temperature",
+      "channel": "compartment_temperature",
+      "op": "mean",
+      "unit": "°C",
+      "group": "Refrigeration"
+    },
+    {
+      "id": "freezer_mean",
+      "name": "Mean freezer temperature",
+      "channel": "freezer_temperature",
+      "op": "mean",
+      "unit": "°C",
+      "group": "Refrigeration"
+    },
+    {
+      "id": "temperature_stability",
+      "name": "Stable-phase temperature stability",
+      "channel": "compartment_temperature",
+      "op": "std",
+      "unit": "°C",
+      "group": "Refrigeration",
+      "phase": "Stable operation"
+    },
+    {
+      "id": "compressor_duration",
+      "name": "Compressor active duration",
+      "channel": "compressor",
+      "op": "on_duration",
+      "unit": "min",
+      "group": "Refrigeration"
+    },
+    {
+      "id": "defrost_energy",
+      "name": "Defrost heater energy",
+      "channel": "defrost_power",
+      "op": "integral",
+      "unit": "Wh",
+      "group": "Refrigeration"
+    }
+  ],
+  "tolerances": {},
+  "acceptance": {},
+  "anomalies": [
+    {
+      "name": "Line RMS voltage missing samples / long gaps",
+      "type": "dropout",
+      "channel": "voltage"
+    },
+    {
+      "name": "Line RMS current missing samples / long gaps",
+      "type": "dropout",
+      "channel": "current"
+    },
+    {
+      "name": "Active power missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power"
+    },
+    {
+      "name": "Power factor missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power_factor"
+    },
+    {
+      "name": "Total energy counter missing samples / long gaps",
+      "type": "dropout",
+      "channel": "energy"
+    },
+    {
+      "name": "Ambient temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "ambient_temperature"
+    },
+    {
+      "name": "Ambient humidity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "humidity"
+    }
+  ],
+  "calibrations": {},
+  "extensions": {}
+}

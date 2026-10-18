@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "id": "generic_appliance",
+  "category": "Generic Appliance",
+  "metadata": {
+    "manufacturer": "",
+    "model": "",
+    "test_scenario": "",
+    "measurement_context": "",
+    "boundary_conditions": {}
+  },
+  "domains": [
+    "thermal",
+    "fluidic",
+    "electrical",
+    "kinematic",
+    "actuator_state",
+    "firmware_state"
+  ],
+  "channels": [
+    {
+      "id": "flow",
+      "name": "Inlet flow",
+      "domain": "fluidic",
+      "unit": "L/min",
+      "aliases": [
+        "flow",
+        "flow rate",
+        "dynamic flow rate"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "water_volume",
+      "name": "Water volume",
+      "domain": "fluidic",
+      "unit": "L",
+      "aliases": [
+        "water volume",
+        "water quantity",
+        "water amount"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "voltage",
+      "name": "Line RMS voltage",
+      "domain": "electrical",
+      "unit": "V",
+      "aliases": [
+        "voltage",
+        "line voltage",
+        "rms voltage"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "current",
+      "name": "Line RMS current",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "current",
+        "line current",
+        "rms current"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power",
+      "name": "Active power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "power",
+        "active power",
+        "real power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power_factor",
+      "name": "Power factor",
+      "domain": "electrical",
+      "unit": "",
+      "aliases": [
+        "power factor"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "energy",
+      "name": "Total energy counter",
+      "domain": "electrical",
+      "unit": "kWh",
+      "aliases": [
+        "energy",
+        "total energy"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "temperature",
+      "name": "Temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "water temperature",
+        "water temp",
+        "sump temperature",
+        "current temperature",
+        "current temp",
+        "temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "ambient_temperature",
+      "name": "Ambient temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "ambient temperature",
+        "lab temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "humidity",
+      "name": "Ambient humidity",
+      "domain": "thermal",
+      "unit": "%",
+      "aliases": [
+        "humidity",
+        "relative humidity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "cycle_state",
+      "name": "Cycle state",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "cycle state",
+        "wash stage",
+        "program progress state",
+        "current step number"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "fault",
+      "name": "Fault code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "fault code",
+        "last stored error",
+        "registered fault codes"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "error",
+      "name": "Program error code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "program error code",
+        "motor error code"
+      ],
+      "data_type": "code"
+    }
+  ],
+  "phases": [],
+  "kpis": [
+    {
+      "id": "cycle_duration",
+      "name": "Cycle duration (recorded span)",
+      "channel": "power",
+      "op": "duration",
+      "unit": "min",
+      "group": "Electrical",
+      "allow_any_time": true
+    },
+    {
+      "id": "total_energy",
+      "name": "Integrated energy",
+      "channel": "power",
+      "op": "integral",
+      "unit": "kWh",
+      "group": "Electrical"
+    },
+    {
+      "id": "average_power",
+      "name": "Average power",
+      "channel": "power",
+      "op": "mean",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "peak_power",
+      "name": "Peak power",
+      "channel": "power",
+      "op": "max",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "voltage_variation",
+      "name": "Voltage standard deviation",
+      "channel": "voltage",
+      "op": "std",
+      "unit": "V",
+      "group": "Electrical"
+    },
+    {
+      "id": "power_factor",
+      "name": "Average power factor",
+      "channel": "power_factor",
+      "op": "mean",
+      "unit": "",
+      "group": "Electrical"
+    },
+    {
+      "id": "total_water",
+      "name": "Integrated inlet volume",
+      "channel": "flow",
+      "op": "integral",
+      "unit": "L",
+      "group": "Water"
+    },
+    {
+      "id": "average_flow",
+      "name": "Average inlet flow",
+      "channel": "flow",
+      "op": "mean",
+      "unit": "L/min",
+      "group": "Water"
+    },
+    {
+      "id": "start_temperature",
+      "name": "Start temperature",
+      "channel": "temperature",
+      "op": "first",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "end_temperature",
+      "name": "End temperature",
+      "channel": "temperature",
+      "op": "last",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "peak_temperature",
+      "name": "Peak temperature",
+      "channel": "temperature",
+      "op": "max",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "temperature_stability",
+      "name": "Temperature standard deviation",
+      "channel": "temperature",
+      "op": "std",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "heating_rate",
+      "name": "Heating rate",
+      "channel": "temperature",
+      "op": "slope",
+      "unit": "°C/min",
+      "group": "Heating"
+    },
+    {
+      "id": "water_counter",
+      "name": "Recorded water-volume increase",
+      "channel": "water_volume",
+      "op": "counter",
+      "unit": "L",
+      "group": "Water"
+    }
+  ],
+  "tolerances": {},
+  "acceptance": {},
+  "anomalies": [
+    {
+      "name": "Inlet flow missing samples / long gaps",
+      "type": "dropout",
+      "channel": "flow"
+    },
+    {
+      "name": "Water volume missing samples / long gaps",
+      "type": "dropout",
+      "channel": "water_volume"
+    },
+    {
+      "name": "Line RMS voltage missing samples / long gaps",
+      "type": "dropout",
+      "channel": "voltage"
+    },
+    {
+      "name": "Line RMS current missing samples / long gaps",
+      "type": "dropout",
+      "channel": "current"
+    },
+    {
+      "name": "Active power missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power"
+    },
+    {
+      "name": "Power factor missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power_factor"
+    },
+    {
+      "name": "Total energy counter missing samples / long gaps",
+      "type": "dropout",
+      "channel": "energy"
+    },
+    {
+      "name": "Water temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "temperature"
+    },
+    {
+      "name": "Ambient temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "ambient_temperature"
+    },
+    {
+      "name": "Ambient humidity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "humidity"
+    }
+  ],
+  "calibrations": {},
+  "extensions": {}
+}

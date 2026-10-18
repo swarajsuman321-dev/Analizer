@@ -34,7 +34,7 @@ class ThemeController(QtCore.QObject):
             QToolButton { padding: 5px 8px; }
             QPushButton { padding: 5px 9px; }
             QLineEdit, QComboBox, QDoubleSpinBox { padding: 4px; }
-            QDockWidget::title { padding: 7px; font-weight: 600; }
+            QDockWidget::title { padding: 3px; font-weight: 600; }
             QTreeView::item { min-height: 27px; }
             QHeaderView::section { padding: 6px; border: none; }
             QTabBar::tab { padding: 8px 18px; }

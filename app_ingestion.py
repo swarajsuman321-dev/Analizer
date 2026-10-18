@@ -47,6 +47,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             from app_unit_detection import detect_unit,projection_frame
             frame = projection_frame(frame)
             candidates = [c for c in frame.columns if re.match(r'^(?:timestamp|datetime|date[ _]time|time|elapsed|relative[ _](?:time|minutes|seconds)|date)(?:$|[ _\[(])',str(c),re.I) and not re.search(r'remain|left|countdown',str(c),re.I)]
+            time_origin=None
             clock = None if force_sample else time_column or (candidates[0] if candidates else None)
             clock_columns={clock}
             unit = coordinate_unit or ('s' if clock else 'sample')
@@ -79,6 +80,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                     valid = parsed.dropna()
                     if valid.empty:
                         raise ValueError(f'Cannot interpret coordinate column {clock}')
+                    time_origin=valid.iloc[0].isoformat()
                     x = (parsed-valid.iloc[0]).dt.total_seconds().to_numpy();unit='s'
             else:
                 x = np.arange(len(frame), dtype=float)
@@ -100,7 +102,7 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                 channel = Channel(str(col), x[order], y[order], unit=detected_unit,
                                   kind='discrete' if state else 'analog', coordinate_unit=unit,
                                   coordinate_kind=kind, dataset_id=ds.id, source=str(path),
-                                  attributes={'unit_detection':unit_source,'original_coordinate_unit':source_unit,'source_column':str(col), 'source_rows':len(frame), 'projection_rows':len(order)})
+                                  attributes={'time_origin':time_origin,'unit_detection':unit_source,'original_coordinate_unit':source_unit,'source_column':str(col), 'source_rows':len(frame), 'projection_rows':len(order)})
                 channel=interpret_channel(channel,raw_series=frame[col].iloc[order].to_numpy())
                 if not np.isfinite(channel.y).any() and not channel.attributes.get('actuator_binary'):continue
                 ids.append(store.add(channel).id)

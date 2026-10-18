@@ -39,6 +39,8 @@ def validate_preset(record):
 
 
 def channel_preset(store,workspace,options):
+    from app_trace_colors import channel_colors
+    colors=channel_colors(store)
     signals={};visible={id for pane in workspace.visible_panes() for id in pane.ids}
     for c in store.channels.values():
         source=c.attributes.get('source_column',c.name);key=source
@@ -47,7 +49,7 @@ def channel_preset(store,workspace,options):
         signals[key]={'value_interpretation':c.attributes.get('value_interpretation','auto'),'source_col':source,'source_path':c.source,'name':c.name,'unit':c.unit,'enabled':c.id in visible,
                       'panel':f'Panel {next((i+1 for i,p in enumerate(workspace.panes) if c.id in p.ids),1)}',
                       'twin':style.get('side','left')=='right','style':style.get('style','solid'),'width':style.get('width',1),
-                      'color':style.get('color','#58b6ff'),'ymin':style.get('ymin',''),'ymax':style.get('ymax','')}
+                      'color':colors[c.id],'ymin':style.get('ymin',''),'ymax':style.get('ymax','')}
     return {'version':3,'signals':signals,'options':options}
 
 

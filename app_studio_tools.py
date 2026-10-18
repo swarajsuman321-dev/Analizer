@@ -15,7 +15,7 @@ from app_studio_state import (STYLES,channel_preset,validate_preset,recorded_pha
 class PhaseStrip(QtWidgets.QWidget):
     seekRequested=QtCore.Signal(float)
     def __init__(self,spans,bounds,parent=None):
-        super().__init__(parent);self.spans=spans;self.bounds=bounds;self.setMinimumHeight(42)
+        super().__init__(parent);self.spans=spans;self.bounds=bounds;self.setMinimumHeight(42);self.setMouseTracking(True)
         self.setToolTip('Observed state/code intervals. Click to seek; no phase names are inferred.')
     def paintEvent(self,event):
         painter=QtGui.QPainter(self);low,high=self.bounds;span=max(high-low,1e-12)
@@ -25,6 +25,12 @@ class PhaseStrip(QtWidgets.QWidget):
             painter.fillRect(rect,QtGui.QColor(('#3487bb','#9d77c8','#318a70','#b67e24')[i%4]))
             painter.setPen(QtGui.QColor('white'))
             if width>35:painter.drawText(rect,QtCore.Qt.AlignmentFlag.AlignCenter,record['label'])
+    def mouseMoveEvent(self,event):
+        low,high=self.bounds;point=low+(high-low)*event.position().x()/max(1,self.width())
+        record=next((r for r in self.spans if r['start']<=point<=r['end']),None)
+        self.setToolTip(f"{record['label']}: {record['start']:.6g}–{record['end']:.6g} {record['unit']} · duration {record['end']-record['start']:.6g} {record['unit']}" if record else 'No phase evidence at this time')
+        super().mouseMoveEvent(event)
+
     def mousePressEvent(self,event):
         low,high=self.bounds;self.seekRequested.emit(low+(high-low)*np.clip(event.position().x()/max(1,self.width()),0,1))
 
@@ -68,7 +74,8 @@ class StudioTools(QtCore.QObject):
     def pane(self):return self.window.active_workspace.active
 
     def dialog(self,title):
-        dialog=QtWidgets.QDialog(self.window);dialog.setWindowTitle(title);dialog.resize(820,580)
+        from app_adaptive_ui import ContentDialog
+        dialog=ContentDialog(self.window);dialog.setWindowTitle(title)
         dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose);self.dialogs.append(dialog)
         dialog.destroyed.connect(lambda *_:self.dialogs.remove(dialog) if dialog in self.dialogs else None)
         layout=QtWidgets.QVBoxLayout(dialog);return dialog,layout
@@ -77,7 +84,9 @@ class StudioTools(QtCore.QObject):
         from app_workbench import FrameModel
         dialog,layout=self.dialog(title);tabs=QtWidgets.QTabWidget();layout.addWidget(tabs)
         for name,frame in tables.items():
-            view=QtWidgets.QTableView();view.setModel(FrameModel(frame));view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+            view=QtWidgets.QTableView();view.setModel(FrameModel(frame))
+            if 'accent' in frame:view.setColumnHidden(list(frame.columns).index('accent'),True)
+            view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
             tabs.addTab(view,name)
         dialog.show();return dialog
 
@@ -86,10 +95,12 @@ class StudioTools(QtCore.QObject):
 
     def restore(self,state):
         self.pause()
+        if self.play_context:self.play_context['dialog'].close()
         self.options={**self.options,**state.get('options',{})}
         for key in ('reference_settings','calibration','bench_columns','tolerances','pending_preset'):
             setattr(self,key,state.get(key,{} if key!='pending_preset' else None))
         self.apply_display()
+        if hasattr(self.window,'compact'):self.window.compact.sync()
 
     def refresh_sync(self):
         from app_data import BUILTIN_SYNC_STRATEGIES
@@ -255,6 +266,9 @@ class StudioTools(QtCore.QObject):
         w.background(lambda:transform(source,operation,**parameters),complete)
 
     def display_options(self):
+        self.options={**self.options,**getattr(self.window.active_workspace,'display_options',{})}
+        for workspace in self.window.workspaces:
+            if not getattr(workspace,'display_options',None):workspace.display_options=dict(self.options)
         dialog,layout=self.dialog('Plot display options');form=QtWidgets.QFormLayout();layout.addLayout(form)
         title=QtWidgets.QLineEdit(self.options['title']);form.addRow('Report / plot title',title)
         font=QtWidgets.QSpinBox();font.setRange(7,20);font.setValue(int(self.options['font_size']));form.addRow('Plot font size',font);checks={}
@@ -262,28 +276,39 @@ class StudioTools(QtCore.QObject):
             check=QtWidgets.QCheckBox(label);check.setChecked(self.options[key]);form.addRow(check);checks[key]=check
         apply=QtWidgets.QPushButton('Apply');layout.addWidget(apply)
         def save():
-            self.options.update(title=title.text(),font_size=font.value(),**{key:check.isChecked() for key,check in checks.items()});self.apply_display();dialog.accept()
-        apply.clicked.connect(lambda:self.window.guard(save));dialog.show();return dialog
+            self.options.update(title=title.text(),font_size=font.value(),**{key:check.isChecked() for key,check in checks.items()});self.window.active_workspace.display_options=dict(self.options);self.apply_display([self.window.active_workspace],rebind=False);dialog.accept()
+        apply.clicked.connect(lambda:self.window.guard(save))
+        for check in checks.values():check.toggled.connect(lambda *_:save_live())
+        def save_live():
+            self.options.update(title=title.text(),font_size=font.value(),**{key:check.isChecked() for key,check in checks.items()});self.window.active_workspace.display_options=dict(self.options);self.apply_display([self.window.active_workspace],rebind=False)
+        title.editingFinished.connect(save_live);font.valueChanged.connect(lambda *_:save_live())
+        dialog.show();return dialog
 
-    def apply_display(self):
+    def apply_display(self,workspaces=None,rebind=True):
         w=self.window
-        for workspace in w.workspaces:
+        for workspace in (workspaces or w.workspaces):
+            options={**self.options,**getattr(workspace,'display_options',{})}
             for pane in workspace.panes:
-                pane.show_grid=self.options['show_grid'];pane.show_legends=self.options['show_legends']
-                pane.getPlotItem().setTitle(self.options['title']);font=QtGui.QFont();font.setPointSize(int(self.options['font_size']))
+                pane.show_grid=options['show_grid'];pane.show_legends=options['show_legends']
+                pane.getPlotItem().setTitle(options['title']);font=QtGui.QFont();font.setPointSize(int(options['font_size']))
                 for axis in [pane.getAxis('left'),pane.getAxis('bottom'),*[a for a,_ in pane.axes.values()]]:axis.setStyle(tickFont=font)
-                pane.bind(pane.ids,pane.bindings,fit=False)
+                if rebind:pane.bind(pane.ids,pane.bindings,fit=False)
+                else:
+                    pane.showGrid(x=pane.show_grid,y=pane.show_grid,alpha=.2);pane.legend.setVisible(pane.show_legends and bool(pane.ids) and len(pane.ids)<=12)
                 pane.annotations=[a for a in pane.annotations if not a.get('studio_generated')]
                 for vb,item in pane.annotation_items:vb.removeItem(item)
                 pane.annotation_items=[]
                 for record in pane.annotations:pane._annotation(record)
-                if self.options['annotate_peak']:
+                if options['annotate_peak']:
                     power=next((w.store.channels[id] for id in pane.ids if w.store.channels[id].unit in ('W','kW') and len(w.store.channels[id].x)),None)
                     if power:
                         x,y=power.values()
                         if np.isfinite(y).any():
                             record={'kind':'Marker','start':float(x[np.nanargmax(y)]),'end':0.,'text':'Peak power','axis':None,'studio_generated':True};pane.annotations.append(record);pane._annotation(record)
-                if self.options['highlight_overlap']:self.highlight_overlap(pane)
+                if options['highlight_overlap']:self.highlight_overlap(pane)
+
+        for workspace in (workspaces or w.workspaces):workspace.update_channel_legend()
+        if hasattr(w,'compact'):w.compact.sync()
 
     def highlight_overlap(self,pane):
         from app_channel_store import Channel
@@ -380,20 +405,7 @@ class StudioTools(QtCore.QObject):
             self.play_context['label'].setText(f'{point:.6g} {pane.coordinate[1]}')
 
     def playback(self):
-        self.pause();pane=self.pane;low,high=self.bounds(pane);channels=[self.window.store.channels[id] for id in pane.ids]
-        dialog,layout=self.dialog('Recording playback & observed phases');controls=QtWidgets.QHBoxLayout();layout.addLayout(controls)
-        play=QtWidgets.QPushButton('Play');controls.addWidget(play);speed=QtWidgets.QDoubleSpinBox();speed.setRange(.1,128);speed.setValue(10);speed.setSuffix('×');controls.addWidget(speed)
-        label=QtWidgets.QLabel();controls.addWidget(label);slider=QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal);slider.setRange(0,1000);layout.addWidget(slider)
-        spans=recorded_phases(channels);strip=PhaseStrip(spans,(low,high),dialog);layout.addWidget(strip)
-        if not spans:layout.addWidget(QtWidgets.QLabel('No recorded phase/state channel is selected.'))
-        table=QtWidgets.QTableView();from app_workbench import FrameModel
-        table.setModel(FrameModel(pd.DataFrame(spans)));layout.addWidget(table)
-        self.play_context={'pane':pane,'slider':slider,'speed':speed,'label':label,'button':play,'dialog':dialog}
-        def toggle():
-            if self.play_timer.isActive():self.pause()
-            else:self._last_tick=time.monotonic();self.play_timer.start();play.setText('Pause')
-        play.clicked.connect(toggle);slider.valueChanged.connect(lambda value:self.seek(low+(high-low)*value/1000));strip.seekRequested.connect(self.seek)
-        dialog.finished.connect(lambda *_:self.close_playback(dialog));self.seek(pane.cursor_lines[0].value());dialog.show();return dialog
+        return self.window.compact.playback()
 
     def tick(self):
         if not self.play_context:self.pause();return

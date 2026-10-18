@@ -201,7 +201,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
                 if color:cell.set_facecolor(color)
     draw_table(fig.add_subplot(grid[rows,:]),summary,['channel','unit','A','B','ΔX','ΔY','Min','Max','Mean','match_percent'])
     if score_height:
-        columns=[c for c in ('parameter','sim_val','raw_val','diff','percent','match_percent') if c in scorecard]
+        columns=[c for c in ('parameter','sim_val','raw_val','delta','percent','match_percent') if c in scorecard]
         draw_table(fig.add_subplot(grid[rows+1,:]),scorecard,columns)
     if path.suffix.lower() in ('.html','.md'):
         image=path.with_suffix('.png');fig.savefig(image,dpi=160)

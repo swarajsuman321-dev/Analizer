@@ -34,19 +34,24 @@ def strict_clock(channel):
     return x,y,float(np.median(d))*scale
 
 
+def interval_moments(x,y,kind='analog'):
+    """Shared integration kernel for cursor and appliance measurements.
+
+    Gap policies remain with the caller; this kernel preserves the established
+    linear-analog / held-discrete definitions and positive finite intervals.
+    """
+    d=np.diff(x);a,b=y[:-1],y[1:];valid=np.isfinite(a)&np.isfinite(b)&(d>0)
+    if kind=='analog':area=d*(a+b)/2;square=d*(a*a+a*b+b*b)/3
+    else:area=d*a;square=d*a*a
+    return area,square,d,valid
+
+
 class IntervalSummary:
     """Prefix integrals for span-weighted statistics, with no unknown-gap bridging."""
     def __init__(self, c):
         self.channel = c
         self.x, self.y = c.values()
-        d = np.diff(self.x)
-        a,b = self.y[:-1], self.y[1:]
-        self.valid = np.isfinite(a)&np.isfinite(b)&(d>0)
-        if c.kind == 'analog':
-            area = d*(a+b)/2
-            square = d*(a*a+a*b+b*b)/3
-        else:
-            area, square = d*a, d*a*a
+        area,square,d,self.valid=interval_moments(self.x,self.y,c.kind)
         self.prefix = [np.r_[0,np.cumsum(np.where(self.valid,v,0))] for v in (area,square,d)]
         # Block extrema avoid full-channel scans while dragging cursors.
         self.block = 256

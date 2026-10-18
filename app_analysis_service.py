@@ -157,7 +157,7 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
                 template_attrs=tdms_columns.get(column,{})
                 store.add(Channel(f'{spec["label"]} · {source}',x,y,source=machine if source=='bench' else simulation,unit=unit,kind='analog' if kind=='analog' else 'discrete',coordinate_unit='min',
                                   dataset_id=reference.id if source=='sim' else bench.id,group='Comparison',
-                                  attributes={**template_attrs,'source_column':column or spec['key'],'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital'}))
+                                  attributes={**template_attrs,'source_column':column or spec['key'],'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital',**({'reference_calibration_verified':ComparisonEngine._calibration_flags(curves.get(spec['key']))['calibration_verified'],'values_estimated_from_pixels':image} if source=='sim' else {})}))
             if spec['key'] in curves:add_table(store,spec['label']+' reference',curves[spec['key']],simulation,'Sim_'+spec['key'])
         from app_reporting import match_scorecard
         add_table(store,'Comparison scorecard',match_scorecard(score),sheet='Scorecard_Summary')

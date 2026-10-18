@@ -490,3 +490,86 @@ Mouse X/Y keeps its separate full-width readout below the tabs; no popup covers 
 Choose **About → User Manual** beside Tools, or press **F1**, to open searchable help. Choose **About → Updates** for the version, build date, changelog, license and update controls. Both features remain available in their existing windows.
 
 Every newly plotted channel receives its own stable trace color, including valves sharing a state axis. Legend swatches match their traces. Legends are enabled for new workspaces; **Tools → Plot → Display options → Legends** controls visibility. Saved visibility and custom channel colors remain respected. Automatic colors are saved with channel metadata and used by reports.
+
+## Compact controls and workspace focus | 2.3.0
+
+The **top application toolbar** is the only primary navigation control set. Magnifier +/− zoom, fit/reset and hand/pan icons have tooltips, keyboard access and checked mode state. Zoom X/Y/XY remain explicit. Duplicate graph-tab quick controls were removed with approval; functions and shortcuts remain. **Legend**, **Grid** and **Peak Power Marker** apply immediately to the active workspace without a dialog. Analysis and Comparison save their own display choices. Advanced title/font/overlap controls remain under **More → Plot Appearance / Layout → Display options**; changing checkboxes applies immediately. The retained Apply button closes after applying the complete form.
+
+Small dialogs fit their content. Larger forms/tables remain resizable and use scrolling when a screen is small. Opening geometry is clamped to the current available screen; native 100%, 125% and 150% scaling checks are part of release validation. More shares the existing Tools menu actions: Import/Export, Appearance/Layout, Processing/Derived Channels, Engineering, Channel Management, Presets/Extensions and Preferences. Existing menu paths and shortcuts remain accessible.
+
+**Playback** opens an inline strip, not a large popup. Play/Pause, speed, Previous/Next Sample, seek slider, current time and Close Playback remain visible. Observed phase details expand only when a selected discrete phase/code channel exists; otherwise a compact message is shown. Playback uses the existing clock service and stops on close/end. Speed is saved per workspace; playback pauses and closes before a workspace restore so controls cannot retain old channel references. Engineering named phases require confirmed configuration; raw firmware codes are not assigned invented names.
+
+**More → Application Preferences → Focus Graph** (Ctrl+Shift+F) temporarily hides docks only when explicitly selected. Turn it off or choose Restore Normal Workspace to restore the saved previous dock layout, refitted by Qt when display geometry changes. The normal-layout snapshot is also retained when a focused workspace is saved. Engineering Controls remains the default dock tab on fresh launch. For more than twelve active graph channels, a scrollable legend strip above the canvas retains every entry without covering traces; smaller legends use compact translucent theme-aware styling. Custom colors are preserved; automatic colors survive presets and copied channels receive distinct automatic colors.
+
+## Engineering Setup and appliance profiles | 2.3.0
+
+Choose **Engineering Setup**. Select Washing Machine, Refrigerator, Dishwasher, HVAC or Generic Appliance. Each profile has a schema version, canonical channel definitions, physical domains, aliases, units, phases, KPI operations, calibration references, tolerance and acceptance configuration. Default phase names are available but have no guessed firmware mappings. Appliance-specific profiles provide appropriate starting measurements/KPIs; no profile constitutes standards certification.
+
+Choose the **Analysis Run**, or **Reference Run** and **Candidate Run**, with an optional **Golden Run**. Roles refer to separate datasets; multiple files are never combined or chosen by first-file accident. A single dataset can be selected automatically for a single-run analysis. Close Dataset and per-file channel checkboxes keep their existing behavior.
+
+On **Review Channel Mapping**, inspect each source name, source unit, recognition method and canonical parameter. Confirm or change the mapping. The source-unit column is editable: only confirm a unit you know the logger recorded. Editing metadata does not rescale raw samples. A blank/unknown unit must not be replaced based on magnitude. Explicit user choices take priority over previous templates, source canonical metadata, profile aliases and validated anchored patterns. Ambiguous or duplicate canonical matches are not silently chosen; they remain unavailable until reviewed. Full original source names remain in metadata and engineering synchronization.
+
+Save Engineering Setup to retain configuration in the workspace and canonical mapping templates in the per-user templates folder. Confirmed source-unit choices can be reused without changing original samples. Import Profile and Save Profile manage reusable JSON configurations. Corrupt/future schemas and invalid rules are rejected before active configuration changes. The machine-readable schema is `profiles/profile.schema.json`; runtime validation additionally checks cross-references and finite numerical rules. Advanced edits use Profile Configuration; Refresh Mapping Review applies edited definitions to the review table.
+
+## Phases, calibrations and acceptance configuration | 2.3.0
+
+**Add Phase Rule** provides a named phase, canonical parameter, condition, value and minimum duration. For example, a known Cycle State code can be assigned to Wash only after its meaning is confirmed. Advanced rules can combine conditions, use `off_threshold` hysteresis, `debounce_seconds`, minimum duration and independently overlapping phases. Heating start/end/rate and spin stability/acceleration KPIs require their configured Heat/Spin phases; a whole-cycle slope is not substituted for a phase-specific performance metric. Drain evacuation rate requires a calibrated tub-volume channel, not a cumulative inlet counter. Named phase ribbons follow the active time graph and show start/end/duration tooltips; they stay outside the canvas. No observed configured phase means Not Available, rather than an invented cycle breakdown.
+
+Example confirmed phase configuration (code 4 is illustrative, not a supplied manufacturer mapping):
+
+```json
+{"name":"Wash","conditions":[{"channel":"cycle_state","op":"eq","value":4}],"minimum_seconds":5,"debounce_seconds":2}
+```
+
+**Set Acceptance Limit** creates an explicit minimum/maximum with a KPI unit. Only these limits can produce Pass or Fail, and only when supporting coverage is complete. Blank limits, missing inputs and incomplete data produce Not Evaluated. **Set Tolerance** adds an absolute or relative comparison band; it is not formal acceptance.
+
+Units include °C/K/°F, Pa/kPa/bar/mbar/mm H₂O, L/s/L/min/L, Hz/kHz, RPM, acceleration g, displacement mm, torque N·m, V/A/W/Wh/kWh, %, conductivity μS/cm and time units. Temperature conversion includes offsets. Sensor-frequency/pulse calibration requires an explicit verified calibration ID. Never label frequency as pressure or water volume by scaling an unverified value.
+
+Example advanced calibration structure (replace every illustrative point with approved calibration data):
+
+```json
+{"id":"YOUR-CALIBRATION-ID","verified":true,"input_unit":"kHz","output_unit":"L","x":[1,2],"y":[0,10]}
+```
+
+Place it under `calibrations` and set the canonical channel definition's `calibration` key to its configuration name. Calibration never extrapolates beyond its supplied points. Pulse-volume KPIs instead require a verified `volume_per_pulse`, calibration ID and output unit. Unknown calibration stays unavailable. Standards/test-method names are metadata, not automatic compliance assertions.
+
+## Engineering calculations and quality | 2.3.0
+
+Choose **Analyze Engineering Data**, then Engineering Results under More/Tools → Engineering Diagnostics. Optional subsystem tabs show Water, Heating, Motor/Spin and Electrical results for washing-machine profiles. Other appliance profiles provide appropriate groups. Missing channels remain Not Available; zero remains a valid measured result. The generic profile can load unknown telemetry without inventing canonical meaning.
+
+KPI definitions use whitelisted declarative operations, not unrestricted expressions or eval: duration, integral, mean, minimum/maximum, RMS, standard deviation, first/last, slope, counter increase, ON duration, calibrated pulse volume, difference and ratio. Required channels, units and phase scope are checked. Definitions are exported with results. Existing Calculate Channel arithmetic, filters and FFT remain unchanged.
+
+Power integration uses seconds internally: `Wh = integral(W, seconds) / 3600`. Flow integration uses `L = integral(L/min, seconds) / 60`. Heating rate uses °C/min. Standard deviations use stable centered calculations. Counter resets are reported as unavailable rather than silently counted as a valid increase. Actuator mapping applies 0 OFF / nonzero finite integer ON conditionally; fractional/missing values remain unknown and raw command codes are preserved.
+
+Continuous analog traces interpolate only within supported intervals; codes, states and counts use held values. Last duplicate timestamp is the established timing-analysis convention; all original rows and recorded peaks remain preserved. Duplicate timing is disclosed and cannot produce a formal Pass. No extrapolation is performed. By default intervals exceeding three times the median positive sampling interval are treated as unsupported gaps; set `extensions.max_gap_seconds` to an approved explicit gap limit. Existing heater/drum synchronization retains its separate five-second causal policy.
+
+Detailed cursor statistics are reused. The compact readout adds RMS, slope, integral, coverage and interval power energy in Wh; signed B−A remains in detailed/export results, while the established crossed-cursor HUD uses absolute deltas. The original sample clocks, masks and locking behavior remain available.
+
+Configured anomaly rules support explicit fault values, OOB thresholds, dropout gaps, temperature stalls and confirmed actuator-transition sequences. A stall requires a fully supported lookback window. Sequence rules specify ordered conditions and a `within_seconds` window; matching a forbidden configured sequence is evidence, not a guessed manufacturer fault. Results distinguish Detected, Not detected and Not evaluated. Default profiles provide data-gap quality rules; unspecified fault meanings remain unevaluated.
+
+## Reference comparison and tolerance envelopes | 2.3.0
+
+Select Reference/Candidate/Golden datasets in Engineering Setup and switch to Comparison before analysis. **Set Timeline Anchor** supports recorded coordinates, first confirmed actuator activation, configured phase transition or a cursor/event/manual time in seconds. Original heater/drum/raw/manual alignment remains under Engineering Controls. Source timestamps stay immutable; alignment is a separate transformation.
+
+Recorded absolute origins are compared when available. Naive timestamps require a confirmed profile metadata `recorded_timezone` (for example UTC); absent/unknown origins preserve existing numeric coordinates and produce a warning. No timezone is guessed. Cursor/event fields use seconds in the configuration; plots continue to show minutes.
+
+**Plot Engineering Comparison** creates explicit derived aligned traces in the existing Comparison workspace; original channels remain unchanged. **Toggle Tolerance Envelope** shows/hides configured envelopes and breach highlights. Rules may combine absolute width, relative percentage and uncertainty, or supply finite ordered `times_s`, `lower`, `upper` arrays. Different native sample rates stay intact; comparison projections use supported analog interpolation/held states and preserve gaps.
+
+Breach results include intervals/count, supported comparison duration, total breach duration, maximum deviation, defined percentage deviation and first/last breach. Crossings are calculated within supported segments. Zero-reference percentages are neutral/undefined, never divided by zero. KPI delta tables show Reference, Candidate, signed Δ and Δ%; optional Golden-versus-Candidate results remain separate.
+
+New KPI deviation accents use absolute deviation ≤5%, >5%–10%, >10%, and neutral undefined. These are visual deviation indicators, not acceptance verdicts. Existing simulation match-percentage scoring and its established colors remain a separate metric.
+
+## Generate Engineering Report | 2.3.0
+
+Choose **Generate Engineering Report**, select PDF or Excel and save. It recomputes the current configured session in a background task; no wizard is required. Use Cancel Engineering Task to stop analysis/report creation. Cancellation and errors retain the previous complete output and valid workspace. Existing Export Report, raw/processed exports and full diagnostic workbook remain available.
+
+PDF uses four main sections with readable continuation pages and traceability appendices:
+
+1. Executive summary: identification, appliance/model/scenario/date/boundary metadata, primary KPIs, configured limits and Pass/Fail/Not Evaluated.
+2. Phase breakdown: only observed configured phases, durations and supported water/energy/temperature/speed/actuator metrics.
+3. Graphical evidence: vector plots, engineering units, selected channels, cursor markers, phase annotations, reference/candidate/Golden overlays, tolerance bands and breaches.
+4. Anomaly/fault analysis: timestamps, supporting rule definitions, quality limitations and distinct evaluated/unevaluated outcomes.
+
+Excel contains Executive Summary, Test Metadata, KPI Results, Phase Breakdown, Comparison Results, Tolerance Breaches, Fault & Anomaly Log, Channel Mapping and Calculation Definitions. Long metadata is split into numbered cells rather than truncated. PDFs embed full generation metadata in the first-page annotation, with readable metadata and formula appendices. Source file hashes are included when files exist; otherwise preserved channel-array hashes are labelled explicitly. Reports include app/profile/schema version, generation timestamp, alignment, processing/masks/normalization, mappings, calibration, tolerances and unavailable-data limitations.
+
+For repeatability, save the workspace and engineering profile with the report. Engineering results are invalidated when source channels change; analyze again after edits. Source-only data in an unrecognized physical unit can still appear as measured graphical evidence, but does not gain an invented engineering KPI. All work remains local; no cloud service is required.

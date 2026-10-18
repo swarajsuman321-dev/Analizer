@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "id": "hvac",
+  "category": "Hvac",
+  "metadata": {
+    "manufacturer": "",
+    "model": "",
+    "test_scenario": "",
+    "measurement_context": "",
+    "boundary_conditions": {}
+  },
+  "domains": [
+    "thermal",
+    "fluidic",
+    "electrical",
+    "kinematic",
+    "actuator_state",
+    "firmware_state"
+  ],
+  "channels": [
+    {
+      "id": "inlet_pressure",
+      "name": "Inlet pressure",
+      "domain": "fluidic",
+      "unit": "bar",
+      "aliases": [
+        "inlet pressure"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "flow",
+      "name": "Inlet flow",
+      "domain": "fluidic",
+      "unit": "L/min",
+      "aliases": [
+        "flow",
+        "flow rate",
+        "dynamic flow rate"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "voltage",
+      "name": "Line RMS voltage",
+      "domain": "electrical",
+      "unit": "V",
+      "aliases": [
+        "voltage",
+        "line voltage",
+        "rms voltage"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "current",
+      "name": "Line RMS current",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "current",
+        "line current",
+        "rms current"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power",
+      "name": "Active power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "power",
+        "active power",
+        "real power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power_factor",
+      "name": "Power factor",
+      "domain": "electrical",
+      "unit": "",
+      "aliases": [
+        "power factor"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "energy",
+      "name": "Total energy counter",
+      "domain": "electrical",
+      "unit": "kWh",
+      "aliases": [
+        "energy",
+        "total energy"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "ambient_temperature",
+      "name": "Ambient temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "ambient temperature",
+        "lab temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "humidity",
+      "name": "Ambient humidity",
+      "domain": "thermal",
+      "unit": "%",
+      "aliases": [
+        "humidity",
+        "relative humidity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "cycle_state",
+      "name": "Cycle state",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "cycle state",
+        "wash stage",
+        "program progress state",
+        "current step number"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "fault",
+      "name": "Fault code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "fault code",
+        "last stored error",
+        "registered fault codes"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "error",
+      "name": "Program error code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "program error code",
+        "motor error code"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "supply_temperature",
+      "name": "Supply air temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "supply temperature",
+        "supply air temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "return_temperature",
+      "name": "Return air temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "return temperature",
+        "return air temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "compressor",
+      "name": "Compressor command",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "compressor",
+        "compressor on"
+      ],
+      "data_type": "state"
+    }
+  ],
+  "phases": [
+    {
+      "name": "Startup",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Stable operation",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Defrost",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Shutdown",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    }
+  ],
+  "kpis": [
+    {
+      "id": "cycle_duration",
+      "name": "Cycle duration (recorded span)",
+      "channel": "power",
+      "op": "duration",
+      "unit": "min",
+      "group": "Electrical",
+      "allow_any_time": true
+    },
+    {
+      "id": "total_energy",
+      "name": "Integrated energy",
+      "channel": "power",
+      "op": "integral",
+      "unit": "kWh",
+      "group": "Electrical"
+    },
+    {
+      "id": "average_power",
+      "name": "Average power",
+      "channel": "power",
+      "op": "mean",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "peak_power",
+      "name": "Peak power",
+      "channel": "power",
+      "op": "max",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "voltage_variation",
+      "name": "Voltage standard deviation",
+      "channel": "voltage",
+      "op": "std",
+      "unit": "V",
+      "group": "Electrical"
+    },
+    {
+      "id": "power_factor",
+      "name": "Average power factor",
+      "channel": "power_factor",
+      "op": "mean",
+      "unit": "",
+      "group": "Electrical"
+    },
+    {
+      "id": "supply_temperature_mean",
+      "name": "Mean supply air temperature",
+      "channel": "supply_temperature",
+      "op": "mean",
+      "unit": "°C",
+      "group": "HVAC"
+    },
+    {
+      "id": "return_temperature_mean",
+      "name": "Mean return air temperature",
+      "channel": "return_temperature",
+      "op": "mean",
+      "unit": "°C",
+      "group": "HVAC"
+    },
+    {
+      "id": "temperature_delta",
+      "name": "Supply minus return temperature",
+      "channel": "supply_temperature",
+      "other_channel": "return_temperature",
+      "op": "difference",
+      "unit": "°C",
+      "group": "HVAC"
+    }
+  ],
+  "tolerances": {},
+  "acceptance": {},
+  "anomalies": [
+    {
+      "name": "Inlet pressure missing samples / long gaps",
+      "type": "dropout",
+      "channel": "inlet_pressure"
+    },
+    {
+      "name": "Inlet flow missing samples / long gaps",
+      "type": "dropout",
+      "channel": "flow"
+    },
+    {
+      "name": "Line RMS voltage missing samples / long gaps",
+      "type": "dropout",
+      "channel": "voltage"
+    },
+    {
+      "name": "Line RMS current missing samples / long gaps",
+      "type": "dropout",
+      "channel": "current"
+    },
+    {
+      "name": "Active power missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power"
+    },
+    {
+      "name": "Power factor missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power_factor"
+    },
+    {
+      "name": "Total energy counter missing samples / long gaps",
+      "type": "dropout",
+      "channel": "energy"
+    },
+    {
+      "name": "Ambient temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "ambient_temperature"
+    },
+    {
+      "name": "Ambient humidity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "humidity"
+    }
+  ],
+  "calibrations": {},
+  "extensions": {}
+}

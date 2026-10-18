@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Appliance Signal Studio profile schema 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "category",
+    "channels",
+    "phases",
+    "kpis"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "actuator_state",
+          "electrical",
+          "firmware_state",
+          "fluidic",
+          "kinematic",
+          "thermal"
+        ]
+      }
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/channel"
+      }
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/phase"
+      }
+    },
+    "kpis": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/kpi"
+      }
+    },
+    "tolerances": {
+      "type": "object"
+    },
+    "acceptance": {
+      "type": "object"
+    },
+    "anomalies": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "calibrations": {
+      "type": "object"
+    },
+    "extensions": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "required": [
+        "channel",
+        "op"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "ge",
+            "lt",
+            "le",
+            "in",
+            "on",
+            "off"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "off_threshold": {
+          "type": "number"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "channel": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "domain",
+        "unit",
+        "aliases",
+        "data_type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "actuator_state",
+            "electrical",
+            "firmware_state",
+            "fluidic",
+            "kinematic",
+            "thermal"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "",
+            "%",
+            "1",
+            "A",
+            "Hz",
+            "J",
+            "K",
+            "L",
+            "L/min",
+            "L/s",
+            "Nm",
+            "N·m",
+            "Pa",
+            "RPM",
+            "RPM/s",
+            "V",
+            "W",
+            "Wh",
+            "bar",
+            "code",
+            "count",
+            "degC",
+            "g",
+            "h",
+            "kHz",
+            "kPa",
+            "kW",
+            "kWh",
+            "m",
+            "m/s²",
+            "mA",
+            "mL",
+            "mV",
+            "mbar",
+            "min",
+            "mm",
+            "mm H2O",
+            "mm H₂O",
+            "mmH2O",
+            "ms",
+            "rpm",
+            "rps",
+            "s",
+            "state",
+            "uS/cm",
+            "us",
+            "°C",
+            "°C/min",
+            "°F",
+            "µS/cm",
+            "µs",
+            "μS/cm"
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "calibration": {
+          "type": "string"
+        },
+        "data_type": {
+          "enum": [
+            "analog",
+            "state",
+            "code",
+            "count"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "kpi": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "channel",
+        "op",
+        "unit"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "absmax",
+            "counter",
+            "difference",
+            "duration",
+            "first",
+            "integral",
+            "last",
+            "max",
+            "mean",
+            "min",
+            "on_duration",
+            "pulse_volume",
+            "ratio",
+            "rms",
+            "slope",
+            "std"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "",
+            "%",
+            "1",
+            "A",
+            "Hz",
+            "J",
+            "K",
+            "L",
+            "L/min",
+            "L/s",
+            "Nm",
+            "N·m",
+            "Pa",
+            "RPM",
+            "RPM/s",
+            "V",
+            "W",
+            "Wh",
+            "bar",
+            "code",
+            "count",
+            "degC",
+            "g",
+            "h",
+            "kHz",
+            "kPa",
+            "kW",
+            "kWh",
+            "m",
+            "m/s²",
+            "mA",
+            "mL",
+            "mV",
+            "mbar",
+            "min",
+            "mm",
+            "mm H2O",
+            "mm H₂O",
+            "mmH2O",
+            "ms",
+            "rpm",
+            "rps",
+            "s",
+            "state",
+            "uS/cm",
+            "us",
+            "°C",
+            "°C/min",
+            "°F",
+            "µS/cm",
+            "µs",
+            "μS/cm"
+          ]
+        },
+        "group": {
+          "type": "string"
+        },
+        "other_channel": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "allow_any_time": {
+          "type": "boolean"
+        },
+        "calibration": {
+          "type": "string"
+        },
+        "scale": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "phase": {
+      "type": "object",
+      "required": [
+        "name",
+        "conditions"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "minimum_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "debounce_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$comment": "Runtime validation also checks referenced channels, finite values, units, supported pattern grammar, calibration points, ordered limits and operation semantics."
+}

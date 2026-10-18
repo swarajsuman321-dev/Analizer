@@ -13,7 +13,7 @@ def channel_colors(store):
     result={};used=set()
     for id,channel in store.channels.items():
         color=channel.attributes.get('plot_style',{}).get('color') or channel.attributes.get('trace_color')
-        if color:result[id]=color;used.add(color.lower())
+        if color and (channel.attributes.get('plot_style',{}).get('color') or color.lower() not in used):result[id]=color;used.add(color.lower())
     index=0
     for id,channel in store.channels.items():
         if id in result:continue

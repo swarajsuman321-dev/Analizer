@@ -1,0 +1,981 @@
+{
+  "schema_version": 1,
+  "id": "washing_machine",
+  "category": "Washing Machine",
+  "metadata": {
+    "manufacturer": "",
+    "model": "",
+    "test_scenario": "",
+    "measurement_context": "",
+    "boundary_conditions": {}
+  },
+  "domains": [
+    "thermal",
+    "fluidic",
+    "electrical",
+    "kinematic",
+    "actuator_state",
+    "firmware_state"
+  ],
+  "channels": [
+    {
+      "id": "inlet_pressure",
+      "name": "Inlet pressure",
+      "domain": "fluidic",
+      "unit": "bar",
+      "aliases": [
+        "inlet pressure"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "flow",
+      "name": "Inlet flow",
+      "domain": "fluidic",
+      "unit": "L/min",
+      "aliases": [
+        "flow",
+        "flow rate",
+        "dynamic flow rate"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "water_volume",
+      "name": "Water volume",
+      "domain": "fluidic",
+      "unit": "L",
+      "aliases": [
+        "water volume",
+        "water quantity",
+        "water amount"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "water_pressure",
+      "name": "Water-level pressure",
+      "domain": "fluidic",
+      "unit": "Pa",
+      "aliases": [
+        "water pressure",
+        "water level pressure"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "water_frequency",
+      "name": "Water sensor frequency",
+      "domain": "fluidic",
+      "unit": "kHz",
+      "aliases": [
+        "water frequency",
+        "water level frequency"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "turbidity",
+      "name": "Turbidity",
+      "domain": "fluidic",
+      "unit": "%",
+      "aliases": [
+        "turbidity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "conductivity",
+      "name": "Conductivity",
+      "domain": "fluidic",
+      "unit": "μS/cm",
+      "aliases": [
+        "conductivity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "voltage",
+      "name": "Line RMS voltage",
+      "domain": "electrical",
+      "unit": "V",
+      "aliases": [
+        "voltage",
+        "line voltage",
+        "rms voltage"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "current",
+      "name": "Line RMS current",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "current",
+        "line current",
+        "rms current"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power",
+      "name": "Active power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "power",
+        "active power",
+        "real power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "power_factor",
+      "name": "Power factor",
+      "domain": "electrical",
+      "unit": "",
+      "aliases": [
+        "power factor"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "energy",
+      "name": "Total energy counter",
+      "domain": "electrical",
+      "unit": "kWh",
+      "aliases": [
+        "energy",
+        "total energy"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "heater_power",
+      "name": "Heater power",
+      "domain": "electrical",
+      "unit": "W",
+      "aliases": [
+        "heater power"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "temperature",
+      "name": "Water temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "water temperature",
+        "water temp",
+        "sump temperature",
+        "current temperature",
+        "current temp"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "drum_temperature",
+      "name": "Drum / air temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "drum temperature",
+        "air temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "inlet_temperature",
+      "name": "Inlet temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "inlet temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "ambient_temperature",
+      "name": "Ambient temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "ambient temperature",
+        "lab temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "humidity",
+      "name": "Ambient humidity",
+      "domain": "thermal",
+      "unit": "%",
+      "aliases": [
+        "humidity",
+        "relative humidity"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "inverter_temperature",
+      "name": "Inverter temperature",
+      "domain": "thermal",
+      "unit": "°C",
+      "aliases": [
+        "inverter heatsink temperature",
+        "inverter temperature"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "phase_current_u",
+      "name": "Motor current U",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "motor current u",
+        "phase current u"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "phase_current_v",
+      "name": "Motor current V",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "motor current v",
+        "phase current v"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "phase_current_w",
+      "name": "Motor current W",
+      "domain": "electrical",
+      "unit": "A",
+      "aliases": [
+        "motor current w",
+        "phase current w"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "bus_voltage",
+      "name": "DC bus voltage",
+      "domain": "electrical",
+      "unit": "V",
+      "aliases": [
+        "dc bus voltage",
+        "vbus"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "target_speed",
+      "name": "Target drum speed",
+      "domain": "kinematic",
+      "unit": "RPM",
+      "aliases": [
+        "target drum speed",
+        "target motor speed",
+        "target speed"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "speed",
+      "name": "Actual drum speed",
+      "domain": "kinematic",
+      "unit": "RPM",
+      "aliases": [
+        "drum speed",
+        "drump speed",
+        "actual drum speed",
+        "actual motor speed",
+        "drum speed feedback"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "vibration_x",
+      "name": "Vibration X",
+      "domain": "kinematic",
+      "unit": "g",
+      "aliases": [
+        "accelerometer x",
+        "vibration x"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "vibration_y",
+      "name": "Vibration Y",
+      "domain": "kinematic",
+      "unit": "g",
+      "aliases": [
+        "accelerometer y",
+        "vibration y"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "vibration_z",
+      "name": "Vibration Z",
+      "domain": "kinematic",
+      "unit": "g",
+      "aliases": [
+        "accelerometer z",
+        "vibration z"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "displacement",
+      "name": "Tub displacement",
+      "domain": "kinematic",
+      "unit": "mm",
+      "aliases": [
+        "tub displacement"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "torque",
+      "name": "Motor torque",
+      "domain": "kinematic",
+      "unit": "N·m",
+      "aliases": [
+        "motor torque"
+      ],
+      "data_type": "analog"
+    },
+    {
+      "id": "cold_valve",
+      "name": "Cold inlet valve",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "cold valve",
+        "inlet valve"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "hot_valve",
+      "name": "Hot inlet valve",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "hot valve"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "prewash_valve",
+      "name": "Pre-wash valve",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "prewash valve",
+        "pre wash valve"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "softener_valve",
+      "name": "Softener valve",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "softener valve"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "drain",
+      "name": "Drain pump",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "drain pump",
+        "drain valve"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "recirculation",
+      "name": "Recirculation pump",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "recirculation pump"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "door_lock",
+      "name": "Door lock",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "door lock"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "dosing",
+      "name": "Detergent dosing pump",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "dosing pump",
+        "detergent dosing pump"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "heater",
+      "name": "Heater command",
+      "domain": "actuator_state",
+      "unit": "state",
+      "aliases": [
+        "heater",
+        "heater on"
+      ],
+      "data_type": "state"
+    },
+    {
+      "id": "cycle_state",
+      "name": "Cycle state",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "cycle state",
+        "wash stage",
+        "program progress state",
+        "current step number"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "unbalance",
+      "name": "Unbalance index",
+      "domain": "firmware_state",
+      "unit": "count",
+      "aliases": [
+        "unbalance",
+        "measured imbalance",
+        "unbalance index"
+      ],
+      "data_type": "count"
+    },
+    {
+      "id": "oob_retries",
+      "name": "OOB retries",
+      "domain": "firmware_state",
+      "unit": "count",
+      "aliases": [
+        "oob retries",
+        "oob retry attempts"
+      ],
+      "data_type": "count"
+    },
+    {
+      "id": "fault",
+      "name": "Fault code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "fault code",
+        "last stored error",
+        "registered fault codes"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "error",
+      "name": "Program error code",
+      "domain": "firmware_state",
+      "unit": "code",
+      "aliases": [
+        "program error code",
+        "motor error code"
+      ],
+      "data_type": "code"
+    },
+    {
+      "id": "water_level_volume",
+      "name": "Water held in tub (calibrated volume)",
+      "domain": "fluidic",
+      "unit": "L",
+      "aliases": [
+        "tub water volume",
+        "water level volume"
+      ],
+      "data_type": "analog"
+    }
+  ],
+  "phases": [
+    {
+      "name": "Fill",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Heat",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Wash",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Rinse",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Drain",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    },
+    {
+      "name": "Spin",
+      "conditions": [],
+      "minimum_seconds": 0,
+      "debounce_seconds": 0
+    }
+  ],
+  "kpis": [
+    {
+      "id": "cycle_duration",
+      "name": "Cycle duration (recorded span)",
+      "channel": "power",
+      "op": "duration",
+      "unit": "min",
+      "group": "Electrical",
+      "allow_any_time": true
+    },
+    {
+      "id": "total_energy",
+      "name": "Integrated energy",
+      "channel": "power",
+      "op": "integral",
+      "unit": "kWh",
+      "group": "Electrical"
+    },
+    {
+      "id": "average_power",
+      "name": "Average power",
+      "channel": "power",
+      "op": "mean",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "peak_power",
+      "name": "Peak power",
+      "channel": "power",
+      "op": "max",
+      "unit": "W",
+      "group": "Electrical"
+    },
+    {
+      "id": "voltage_variation",
+      "name": "Voltage standard deviation",
+      "channel": "voltage",
+      "op": "std",
+      "unit": "V",
+      "group": "Electrical"
+    },
+    {
+      "id": "power_factor",
+      "name": "Average power factor",
+      "channel": "power_factor",
+      "op": "mean",
+      "unit": "",
+      "group": "Electrical"
+    },
+    {
+      "id": "total_water",
+      "name": "Integrated inlet volume",
+      "channel": "flow",
+      "op": "integral",
+      "unit": "L",
+      "group": "Water"
+    },
+    {
+      "id": "average_flow",
+      "name": "Average inlet flow",
+      "channel": "flow",
+      "op": "mean",
+      "unit": "L/min",
+      "group": "Water"
+    },
+    {
+      "id": "fill_duration",
+      "name": "Cold inlet active duration",
+      "channel": "cold_valve",
+      "op": "on_duration",
+      "unit": "min",
+      "group": "Water"
+    },
+    {
+      "id": "drain_duration",
+      "name": "Drain active duration",
+      "channel": "drain",
+      "op": "on_duration",
+      "unit": "min",
+      "group": "Water"
+    },
+    {
+      "id": "start_temperature",
+      "name": "Start temperature",
+      "channel": "temperature",
+      "op": "first",
+      "unit": "°C",
+      "group": "Heating",
+      "phase": "Heat"
+    },
+    {
+      "id": "end_temperature",
+      "name": "End temperature",
+      "channel": "temperature",
+      "op": "last",
+      "unit": "°C",
+      "group": "Heating",
+      "phase": "Heat"
+    },
+    {
+      "id": "peak_temperature",
+      "name": "Peak temperature",
+      "channel": "temperature",
+      "op": "max",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "temperature_stability",
+      "name": "Temperature standard deviation",
+      "channel": "temperature",
+      "op": "std",
+      "unit": "°C",
+      "group": "Heating"
+    },
+    {
+      "id": "heating_rate",
+      "name": "Heating rate",
+      "channel": "temperature",
+      "op": "slope",
+      "unit": "°C/min",
+      "group": "Heating",
+      "phase": "Heat"
+    },
+    {
+      "id": "heating_energy",
+      "name": "Heater energy",
+      "channel": "heater_power",
+      "op": "integral",
+      "unit": "Wh",
+      "group": "Heating"
+    },
+    {
+      "id": "peak_speed",
+      "name": "Peak drum speed",
+      "channel": "speed",
+      "op": "max",
+      "unit": "RPM",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "speed_stability",
+      "name": "Speed standard deviation",
+      "channel": "speed",
+      "op": "std",
+      "unit": "RPM",
+      "group": "Motor / Spin",
+      "phase": "Spin"
+    },
+    {
+      "id": "spin_acceleration",
+      "name": "Mean drum acceleration",
+      "channel": "speed",
+      "op": "slope",
+      "unit": "RPM/s",
+      "group": "Motor / Spin",
+      "phase": "Spin"
+    },
+    {
+      "id": "target_speed",
+      "name": "Target speed mean",
+      "channel": "target_speed",
+      "op": "mean",
+      "unit": "RPM",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_rms",
+      "name": "Vibration X RMS",
+      "channel": "vibration_x",
+      "op": "rms",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_peak",
+      "name": "Vibration X peak magnitude",
+      "channel": "vibration_x",
+      "op": "absmax",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "oob_retries",
+      "name": "Recorded OOB retry increase",
+      "channel": "oob_retries",
+      "op": "counter",
+      "unit": "count",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "water_counter",
+      "name": "Recorded water-volume increase",
+      "channel": "water_volume",
+      "op": "counter",
+      "unit": "L",
+      "group": "Water"
+    },
+    {
+      "id": "drain_rate",
+      "name": "Drain evacuation rate",
+      "channel": "water_level_volume",
+      "op": "slope",
+      "unit": "L/min",
+      "group": "Water",
+      "phase": "Drain",
+      "scale": -1
+    },
+    {
+      "id": "speed_error",
+      "name": "Mean actual minus target speed",
+      "channel": "speed",
+      "op": "difference",
+      "other_channel": "target_speed",
+      "unit": "RPM",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_y_rms",
+      "name": "Vibration Y RMS",
+      "channel": "vibration_y",
+      "op": "rms",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_y_peak",
+      "name": "Vibration Y peak magnitude",
+      "channel": "vibration_y",
+      "op": "absmax",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_z_rms",
+      "name": "Vibration Z RMS",
+      "channel": "vibration_z",
+      "op": "rms",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "vibration_z_peak",
+      "name": "Vibration Z peak magnitude",
+      "channel": "vibration_z",
+      "op": "absmax",
+      "unit": "g",
+      "group": "Motor / Spin"
+    },
+    {
+      "id": "phase_fill_duration",
+      "name": "Configured fill-phase duration",
+      "channel": "flow",
+      "op": "duration",
+      "unit": "min",
+      "group": "Water",
+      "phase": "Fill",
+      "allow_any_time": true
+    }
+  ],
+  "tolerances": {},
+  "acceptance": {},
+  "anomalies": [
+    {
+      "name": "Inlet pressure missing samples / long gaps",
+      "type": "dropout",
+      "channel": "inlet_pressure"
+    },
+    {
+      "name": "Inlet flow missing samples / long gaps",
+      "type": "dropout",
+      "channel": "flow"
+    },
+    {
+      "name": "Water volume missing samples / long gaps",
+      "type": "dropout",
+      "channel": "water_volume"
+    },
+    {
+      "name": "Water-level pressure missing samples / long gaps",
+      "type": "dropout",
+      "channel": "water_pressure"
+    },
+    {
+      "name": "Water sensor frequency missing samples / long gaps",
+      "type": "dropout",
+      "channel": "water_frequency"
+    },
+    {
+      "name": "Turbidity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "turbidity"
+    },
+    {
+      "name": "Conductivity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "conductivity"
+    },
+    {
+      "name": "Line RMS voltage missing samples / long gaps",
+      "type": "dropout",
+      "channel": "voltage"
+    },
+    {
+      "name": "Line RMS current missing samples / long gaps",
+      "type": "dropout",
+      "channel": "current"
+    },
+    {
+      "name": "Active power missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power"
+    },
+    {
+      "name": "Power factor missing samples / long gaps",
+      "type": "dropout",
+      "channel": "power_factor"
+    },
+    {
+      "name": "Total energy counter missing samples / long gaps",
+      "type": "dropout",
+      "channel": "energy"
+    },
+    {
+      "name": "Heater power missing samples / long gaps",
+      "type": "dropout",
+      "channel": "heater_power"
+    },
+    {
+      "name": "Water temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "temperature"
+    },
+    {
+      "name": "Drum / air temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "drum_temperature"
+    },
+    {
+      "name": "Inlet temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "inlet_temperature"
+    },
+    {
+      "name": "Ambient temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "ambient_temperature"
+    },
+    {
+      "name": "Ambient humidity missing samples / long gaps",
+      "type": "dropout",
+      "channel": "humidity"
+    },
+    {
+      "name": "Inverter temperature missing samples / long gaps",
+      "type": "dropout",
+      "channel": "inverter_temperature"
+    },
+    {
+      "name": "Motor current U missing samples / long gaps",
+      "type": "dropout",
+      "channel": "phase_current_u"
+    },
+    {
+      "name": "Motor current V missing samples / long gaps",
+      "type": "dropout",
+      "channel": "phase_current_v"
+    },
+    {
+      "name": "Motor current W missing samples / long gaps",
+      "type": "dropout",
+      "channel": "phase_current_w"
+    },
+    {
+      "name": "DC bus voltage missing samples / long gaps",
+      "type": "dropout",
+      "channel": "bus_voltage"
+    },
+    {
+      "name": "Target drum speed missing samples / long gaps",
+      "type": "dropout",
+      "channel": "target_speed"
+    },
+    {
+      "name": "Actual drum speed missing samples / long gaps",
+      "type": "dropout",
+      "channel": "speed"
+    },
+    {
+      "name": "Vibration X missing samples / long gaps",
+      "type": "dropout",
+      "channel": "vibration_x"
+    },
+    {
+      "name": "Vibration Y missing samples / long gaps",
+      "type": "dropout",
+      "channel": "vibration_y"
+    },
+    {
+      "name": "Vibration Z missing samples / long gaps",
+      "type": "dropout",
+      "channel": "vibration_z"
+    },
+    {
+      "name": "Tub displacement missing samples / long gaps",
+      "type": "dropout",
+      "channel": "displacement"
+    },
+    {
+      "name": "Motor torque missing samples / long gaps",
+      "type": "dropout",
+      "channel": "torque"
+    },
+    {
+      "name": "Tub volume missing samples / long gaps",
+      "type": "dropout",
+      "channel": "water_level_volume"
+    }
+  ],
+  "calibrations": {},
+  "extensions": {}
+}
