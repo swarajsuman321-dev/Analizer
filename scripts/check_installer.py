@@ -125,6 +125,13 @@ def check(legacy_only=False):
             assert not shortcut.exists() and not desktop.exists()
             checks.append('uninstall removes app files and retains user settings, reports and unowned file')
             if legacy_only:
+                # Exercise the hard pre-install gate in the short feedback loop.
+                install_package(setup);runtime_check(version);preserved()
+                bad=compile_installer(root/'ApplianceSignalStudio','2.3.3','ci-legacy-bad',fail_health=True,legacy=True)
+                assert install_package(bad,False)!=0,'Health gate did not stop Setup'
+                assert registration()['DisplayVersion']==version
+                runtime_check(version);preserved();remove();assert not registration()
+                checks.append('failed health gate leaves the previous installation intact')
                 print(json.dumps({'ok':True,'scope':'Installer engine on actual v2.3.1 runtime; not final v2.3.2 validation','checks':checks}),flush=True)
                 return
             old=compile_installer(previous_runtime(root),'2.3.1','ci-old-setup',legacy=True)
@@ -136,7 +143,7 @@ def check(legacy_only=False):
             code=install_package(bad,False);assert code!=0,'Failed health check incorrectly reported installation success'
             assert registration()['DisplayVersion']==VERSION,'Failed upgrade replaced active registration'
             assert shortcut_target()==(install/'versions'/VERSION/'ApplianceSignalStudio.exe').resolve()
-            runtime_check(VERSION);preserved();checks.append('failed-runtime upgrade rollback keeps current version runnable')
+            runtime_check(VERSION);preserved();checks.append('failed-runtime upgrade blocked before changes; current version remains runnable')
             remove();assert not registration();preserved();checks.append('uninstall after upgrade')
         except BaseException:
             import traceback

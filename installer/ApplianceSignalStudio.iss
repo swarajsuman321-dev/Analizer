@@ -44,8 +44,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Check the newly copied runtime before shortcuts and installation registration.
-Source: "installed-layout.json"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion; AfterInstall: VerifyRuntime
+; The marker is installed with the payload and also included in staging.
+Source: "installed-layout.json"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Appliance Signal Studio"; Filename: "{app}\versions\{#AppVersion}\ApplianceSignalStudio.exe"; AppUserModelID: "ApplianceSignalStudio.Workbench"
@@ -55,21 +55,33 @@ Name: "{autodesktop}\Appliance Signal Studio"; Filename: "{app}\versions\{#AppVe
 Filename: "{app}\versions\{#AppVersion}\ApplianceSignalStudio.exe"; Description: "Launch Appliance Signal Studio"; Flags: nowait postinstall skipifsilent
 
 [Code]
-procedure VerifyRuntime;
+function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
   Runtime, ReportPath: String;
 begin
-  Runtime := ExpandConstant('{app}\versions\{#AppVersion}\ApplianceSignalStudio.exe');
-  ReportPath := ExpandConstant('{localappdata}\ApplianceSignalStudio\InstallerLogs\check-{#AppVersion}.json');
-  ForceDirectories(ExtractFileDir(ReportPath));
-  DeleteFile(ReportPath);
+  Result := '';
   #ifdef FailHealthCheck
-  RaiseException('Simulated runtime failure for the isolated upgrade test.');
+  Result := 'Simulated runtime failure for the isolated upgrade test.';
+  Exit;
   #endif
-  if not Exec(Runtime, '{#HealthArguments} --report "' + ReportPath + '"',
-    ExtractFileDir(Runtime), SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    RaiseException('The installed runtime could not start. Previous versions and your data are retained.');
-  if (ResultCode <> 0) or not FileExists(ReportPath) then
-    RaiseException('Runtime verification failed. Previous versions and your data are retained. See ' + ReportPath);
+  try
+    { Extract a private complete copy before Setup modifies any installed files.
+      ExtractTemporaryFiles retains the unexpanded {app} component below {tmp}.
+      A nonempty PrepareToInstall result is a hard stop, unlike AfterInstall
+      callback exceptions, which Inno Setup intentionally catches and ignores. }
+    ExtractTemporaryFiles('*');
+    Runtime := ExpandConstant('{tmp}\') + '{app}\versions\{#AppVersion}\ApplianceSignalStudio.exe';
+    ReportPath := ExpandConstant('{localappdata}\ApplianceSignalStudio\InstallerLogs\check-{#AppVersion}.json');
+    ForceDirectories(ExtractFileDir(ReportPath));
+    DeleteFile(ReportPath);
+    if not Exec(Runtime, '{#HealthArguments} --report "' + ReportPath + '"',
+      ExtractFileDir(Runtime), SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      Result := 'The staged runtime could not start. The existing installation is unchanged.'
+    else if (ResultCode <> 0) or not FileExists(ReportPath) then
+      Result := 'Runtime verification failed. The existing installation is unchanged. See ' + ReportPath;
+  except
+    Result := 'Could not verify the complete runtime: ' + GetExceptionMessage;
+  end;
+  if Result <> '' then Log(Result);
 end;
