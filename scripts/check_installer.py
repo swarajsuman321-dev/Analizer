@@ -99,7 +99,9 @@ def check(legacy_only=False):
             print('PHASE: install/repair',flush=True)
             install_package(setup);runtime_check(version);preserved()
             assert registration()['DisplayVersion']==version
-            assert desktop.is_file() and shortcut_target()==(install/'versions'/version/'ApplianceSignalStudio.exe').resolve()
+            assert desktop.is_file(),f'Desktop shortcut missing: {desktop}; Start shortcut exists: {shortcut.exists()}'
+            actual_target=shortcut_target();expected_target=(install/'versions'/version/'ApplianceSignalStudio.exe').resolve()
+            assert actual_target==expected_target,f'Shortcut target={actual_target!s}; expected={expected_target!s}; shortcut={shortcut!s}'
             import winreg
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,UNINSTALL_KEY):raise AssertionError('Unexpected machine-wide installation')
