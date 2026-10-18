@@ -1,0 +1,18 @@
+{
+  "version": "2.2.2",
+  "source_commit": "2e633b0ae98bd05558909ac7c6f1fdfaefb9fe56",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39095566797",
+  "workflow_conclusion": "success",
+  "native_regression_tests": 214,
+  "native_regression_skipped": 0,
+  "native_cursor_drag_and_updater_preflight": "passed",
+  "portable_and_single_file_smoke_checks": "passed",
+  "independent_onefile_restart_smoke": "passed",
+  "public_manifest": {
+    "version": "2.2.2",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.2.2/ApplianceSignalStudio.exe",
+    "size": 154309326,
+    "sha256": "ff687da4867512afc0f2c93d35742512df72d9c97129b3201967a9e1ff66f831",
+    "notes": "Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas."
+  }
+}

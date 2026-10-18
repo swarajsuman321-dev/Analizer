@@ -1,5 +1,7 @@
 # Appliance Signal Studio: status, decisions and validation reference
 
+**Latest verified release: v2.2.2.** See [current header/hover and release verification](HEADER_NAVIGATION_AND_HOVER.md) and [download the Windows release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.2.2). The audit below preserves its original version context.
+
 Updated: **17 October 2026 (India time)**. Maintained in `swarajsuman321-dev/Analizer`.
 
 The newer [v2.2.0 desktop finalization reference](DESKTOP_FINALIZATION.md) records the current layout, per-file controls, Help/About separation and lifecycle behavior. The audit below remains the historical v2.1.9 evidence.
