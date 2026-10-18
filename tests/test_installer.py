@@ -94,5 +94,9 @@ class InstallerTests(unittest.TestCase):
                 restart=root/'restart.txt';wrapper=root/'exercise.ps1'
                 wrapper.write_text("function Wait-Process {}\nfunction Start-Process { param($FilePath,$ArgumentList,[switch]$Wait,[switch]$PassThru)\nif ($Wait) { return [pscustomobject]@{ExitCode="+('1' if fail else '0')+"} }\nSet-Content -LiteralPath "+ps_quote(restart)+" -Value $FilePath\n}\n. "+ps_quote(root/'install-setup-update.ps1'),encoding='utf-8-sig')
                 result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30)
-                self.assertEqual(result.returncode,0,result.stderr);self.assertTrue(Path(restart.read_text(encoding='utf-8-sig').strip()).samefile(old if fail else new))
+                self.assertEqual(result.returncode,0,result.stderr)
+                started=Path(restart.read_text(encoding='utf-8-sig').strip())
+                transaction=root/'setup-update.log'
+                details=transaction.read_text(encoding='utf-16',errors='replace')[-2400:] if transaction.exists() else 'No transaction error log'
+                self.assertTrue(started.samefile(old if fail else new),f'fail={fail}; started={started}; expected={old if fail else new}; transaction={details}; stderr={result.stderr}')
                 self.assertEqual(old.read_bytes(),b'runtime')
