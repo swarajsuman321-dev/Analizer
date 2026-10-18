@@ -1,0 +1,163 @@
+{
+  "source_commit": "1b8fe712e471e9c11156205f8262a8321956061c",
+  "date_utc": "2026-10-18",
+  "platform": "Linux / Qt offscreen",
+  "regression": {
+    "discovered": 266,
+    "passed": 265,
+    "skipped": 1,
+    "skip_reason": "Windows-only replacement/rollback test",
+    "seconds": 148.364
+  },
+  "focused_after_pdf_wrapping": {
+    "engineering_tests": 33,
+    "passed": 33
+  },
+  "source_gui_smoke": {
+    "passed": true,
+    "checks": 25,
+    "includes": [
+      "TDMS template review",
+      "whole dataset removal",
+      "legacy workspace",
+      "existing exports",
+      "profiles",
+      "known 1000 W x 120 s energy",
+      "engineering PDF",
+      "nine-sheet Excel"
+    ]
+  },
+  "scaling": {
+    "factors": [
+      1,
+      1.25,
+      1.5
+    ],
+    "themes": [
+      "Dark",
+      "Light"
+    ],
+    "mode": "fresh Qt subprocesses"
+  },
+  "visual_checks": [
+    "synthetic dark workbench",
+    "synthetic PDF executive cover",
+    "dense KPI table wrapping"
+  ],
+  "private_recording_audit": {
+    "profile": "washing_machine",
+    "inputs": [
+      {
+        "file": "Cotton 60 label with IEC load 9kg T-3.CSV",
+        "channels": 6,
+        "canonical_channels": 0,
+        "available_kpis": [
+          "cycle_duration"
+        ],
+        "warnings": [],
+        "seconds": 2.368
+      },
+      {
+        "file": "SB30LF0_Cottons_VT0022_var4_7000g_20260731_1332_800RPM_40deg_Standard_R027_0000002_simulated_values.csv",
+        "channels": 29,
+        "canonical_channels": 4,
+        "available_kpis": [
+          "cycle_duration",
+          "peak_temperature",
+          "temperature_stability",
+          "heating_energy",
+          "peak_speed"
+        ],
+        "warnings": [
+          "drum_speed: 88456 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "heater_power: 88456 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "water_temp: 88456 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "water_pressure: 88456 duplicate timestamps retained in source; analysis uses the last sample at each timestamp"
+        ],
+        "seconds": 3.877
+      },
+      {
+        "file": "Cotton 60 label with 9kg IEC load T-3.csv",
+        "channels": 24,
+        "canonical_channels": 3,
+        "available_kpis": [
+          "cycle_duration",
+          "fill_duration",
+          "drain_duration",
+          "peak_speed"
+        ],
+        "warnings": [
+          "Drump Speed: 87 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "Inlet Valve: 87 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "Drain Valve: 87 duplicate timestamps retained in source; analysis uses the last sample at each timestamp",
+          "vbus: No verified conversion from unitless to V",
+          "Wash Stage: No verified conversion from unitless to code",
+          "Current Temperature: No verified conversion from unitless to \u00b0C"
+        ],
+        "seconds": 1.451
+      },
+      {
+        "file": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+        "channels": 27,
+        "canonical_channels": 0,
+        "available_kpis": [
+          "cycle_duration"
+        ],
+        "warnings": [],
+        "seconds": 0.838
+      }
+    ],
+    "pairs": [
+      {
+        "a": 0,
+        "b": 1,
+        "score_rows": 31,
+        "finite_deltas": 1
+      },
+      {
+        "a": 0,
+        "b": 2,
+        "score_rows": 31,
+        "finite_deltas": 1
+      },
+      {
+        "a": 0,
+        "b": 3,
+        "score_rows": 31,
+        "finite_deltas": 1
+      },
+      {
+        "a": 1,
+        "b": 2,
+        "score_rows": 31,
+        "finite_deltas": 2
+      },
+      {
+        "a": 1,
+        "b": 3,
+        "score_rows": 31,
+        "finite_deltas": 1
+      },
+      {
+        "a": 2,
+        "b": 3,
+        "score_rows": 31,
+        "finite_deltas": 1
+      }
+    ],
+    "xlsx_all_four": "passed",
+    "pdf": "passed",
+    "scope": "Raw imports; no manufacturer calibration, phase or acceptance mapping invented. This checks controlled partial availability, not domain validation of every metric."
+  },
+  "limits": [
+    "Not every possible user scenario or monitor configuration was tested.",
+    "No manufacturer phase mappings, sensor calibrations or acceptance limits were invented.",
+    "Native Windows release evidence is recorded separately."
+  ],
+  "publication_regression": {
+    "source_commit": "c12751d",
+    "tests": 2,
+    "passed": 2,
+    "purpose": "Bounded release summary with complete manual retained as attachment"
+  }
+}

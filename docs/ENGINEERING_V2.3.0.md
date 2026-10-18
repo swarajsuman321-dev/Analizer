@@ -44,7 +44,7 @@ Naive recorded timestamps need a declared `metadata.recorded_timezone` for absol
 
 ## Verification status
 
-The final local regression discovered **266 tests: 265 passed and one Windows-only test skipped** (148.364 seconds). This includes 33 engineering numerical/report tests, 14 compact-workbench GUI tests and fresh-process Qt scale checks at 1×, 1.25× and 1.5× in both themes. Native Windows packaging and release verification remain pending; native results will be recorded separately.
+The final local regression discovered **266 tests: 265 passed and one Windows-only test skipped** (148.364 seconds). This includes 33 engineering numerical/report tests, 14 compact-workbench GUI tests and fresh-process Qt scale checks at 1×, 1.25× and 1.5× in both themes. The final Windows workflow passed **268 tests with no skips**, native updater/cursor preflight, both packaged smoke checks and the independent onefile update-restart check. The corrected publication workflow succeeded. The public v2.3.1 EXE was downloaded (154,501,578 bytes) and its SHA-256 matched the official manifest. See [native release evidence](validation/release-v2.3.1.json) and [bounded local/supplied-file evidence](validation/engineering-v2.3.1-local.json).
 
 Source GUI/frozen-workflow smoke now exercises profile loading, a known 1000 W × 120 s energy calculation, engineering PDF, all nine workbook sheets, existing exports, TDMS templates, legacy workspace and update identity. Synthetic dark UI and PDF executive-cover renders were visually inspected. No actual measurement is included in those images.
 

@@ -3,6 +3,8 @@
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
+**Latest verified Windows release: [v2.3.1 downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.1)** · [User manual](manuals/v2.3.1.md) · [Implementation and validation](docs/ENGINEERING_V2.3.0.md).
+
 ![Current workbench with synthetic signals](docs/images/workbench.png)
 
 ```sh
@@ -200,7 +202,7 @@ Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_RE
 
 One primary navigation toolbar, direct Legend/Grid controls, inline playback, adaptive dialogs and per-workspace appearance settings preserve the existing workbench. Engineering Setup provides configurable appliance profiles, reviewed channel mappings/units, run roles, phase rules, calibration and explicit limits. Analyze Engineering Data adds quality-aware KPIs and run comparisons; Generate Engineering Report creates traceable paginated PDF and nine-sheet Excel reports. No manufacturer phase meanings, calibrations or acceptance limits are invented.
 
-Read the [v2.3.0 manual](manuals/v2.3.0.md) before configuring an engineering evaluation. Native Windows release evidence is published only after verification completes.
+Read the [v2.3.0 manual](manuals/v2.3.0.md) before configuring an engineering evaluation. The [v2.3.1 manual](manuals/v2.3.1.md) includes the final legend/report corrections. [Native Windows release verification](docs/validation/release-v2.3.1.json) passed, and the public EXE size/checksum was independently verified.
 
 ## UI/UX audit
 

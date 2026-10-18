@@ -1,10 +1,10 @@
 # Appliance Signal Studio: status, decisions and validation reference
 
-**Latest verified release: v2.2.3.** See the [complete requirements review](REQUIREMENTS_REVIEW_V2.2.3.md), [quick controls and UI changes](QUICK_ZOOM_CONTROLS.md), [release evidence](validation/release-v2.2.3.json) and [Windows downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.2.3). The audit below preserves its original version context.
+**Latest verified release: v2.3.1.** The [approved implementation map](ENGINEERING_V2.3.0.md) covers all 36 selected UI, engineering analytics, comparison and reporting items. See the [complete manual](../manuals/v2.3.1.md), [local/supplied-file evidence](validation/engineering-v2.3.1-local.json), [native release evidence](validation/release-v2.3.1.json) and [Windows downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.1). Native Windows validation passed 268 tests with no skips, both packaged startup checks and the independent update restart. The public EXE was downloaded and its size/SHA-256 matched the updater manifest. Manufacturer phase mappings, calibration curves and acceptance limits remain configurable; none were invented. Historical references below retain their original version context.
 
 Updated: **18 October 2026 (India time)**. Maintained in `swarajsuman321-dev/Analizer`.
 
-The [v2.2.0 desktop finalization reference](DESKTOP_FINALIZATION.md) preserves the earlier layout, per-file controls, Help/About separation and lifecycle changes. Use the v2.2.3 references above for current menu, legend, navigation and hover behavior. The audit below remains the historical v2.1.9 evidence.
+The [v2.2.0 desktop finalization reference](DESKTOP_FINALIZATION.md) preserves the earlier layout, per-file controls, Help/About separation and lifecycle changes. Use the v2.3.1 manual and implementation map above for current behavior. The audit below remains the historical v2.1.9 evidence.
 
 ## Historical v2.1.9 status and release evidence
 

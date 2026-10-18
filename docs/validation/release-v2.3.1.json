@@ -1,0 +1,27 @@
+{
+  "version": "2.3.1",
+  "source_commit": "c12751d8ea87a3872f25cfacb788ffdb749411d7",
+  "application_change_commit": "1b8fe712e471e9c11156205f8262a8321956061c",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39115767497",
+  "job_id": 117641120279,
+  "workflow_conclusion": "success",
+  "native_regression_tests": 268,
+  "native_regression_skipped": 0,
+  "native_cursor_drag_and_updater_preflight": "passed",
+  "portable_and_single_file_smoke_checks": "passed",
+  "independent_onefile_restart_smoke": "passed",
+  "public_manifest": {
+    "version": "2.3.1",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.1/ApplianceSignalStudio.exe",
+    "size": 154501578,
+    "sha256": "b663ccd180edb811647d1e1db5f6ea5ee89a1f5063f5c4676dd5fef53307eb5c",
+    "notes": "Repaint rendered legend labels immediately on theme changes and prevent report table text clipping; includes all v2.3.0 engineering and compact-workbench features."
+  },
+  "public_exe_download_verification": {
+    "size": 154501578,
+    "sha256": "b663ccd180edb811647d1e1db5f6ea5ee89a1f5063f5c4676dd5fef53307eb5c",
+    "matches_manifest": true
+  },
+  "publication_fix": "Bounded release summary; complete version manual remains attached. Prior two builds passed native validation but failed publication.",
+  "local_evidence": "engineering-v2.3.1-local.json"
+}
