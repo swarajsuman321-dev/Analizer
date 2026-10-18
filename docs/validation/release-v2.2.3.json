@@ -1,0 +1,18 @@
+{
+  "version": "2.2.3",
+  "source_commit": "37a191972b7007c1fa617079e6c4c1ccd2f2c210",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39098315071",
+  "workflow_conclusion": "success",
+  "native_regression_tests": 218,
+  "native_regression_skipped": 0,
+  "native_cursor_drag_and_updater_preflight": "passed",
+  "portable_and_single_file_smoke_checks": "passed",
+  "independent_onefile_restart_smoke": "passed",
+  "public_manifest": {
+    "version": "2.2.3",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.2.3/ApplianceSignalStudio.exe",
+    "size": 154331638,
+    "sha256": "baa13e317d3b6778bcc84645018eb686e305288d17941eefe958768b83dd72f2",
+    "notes": "Quick zoom controls beside Analysis/Comparison, distinct stable channel colors and visible legends, and About menu access to User Manual and Updates."
+  }
+}

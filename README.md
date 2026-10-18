@@ -193,3 +193,5 @@ Zoom X, Zoom Y, Zoom XY, Pan, Reset View and Lock Cursors are in the upper appli
 The unused right side of the Analysis/Comparison tab row now offers Zoom In, Zoom Out, Reset View, and an X/Y/XY/Pan selector. These reuse the existing actions, maintain synchronized navigation, and keep text and controls outside the graph. See [quick zoom verification](docs/QUICK_ZOOM_CONTROLS.md) and the [v2.2.3 manual](manuals/v2.2.3.md).
 
 The top **About** menu beside **Tools** contains **User Manual** and **Updates**. Same-unit channels, including valves, receive distinct stable colors with matching legends enabled for new workspaces; saved styles and visibility preferences are retained.
+
+Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_REVIEW_V2.2.3.md). Native Windows release verification: [record](docs/validation/release-v2.2.3.json).

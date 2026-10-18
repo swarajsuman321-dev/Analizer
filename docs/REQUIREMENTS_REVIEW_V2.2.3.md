@@ -29,7 +29,7 @@ Reviewed 18 October 2026 (India time). This separates implemented behavior, test
 
 ## Verification and scope
 
-Final local regression: **218 tests run, 217 passed, one Windows-only transaction test skipped**. The focused post-review legend checks and source GUI/workspace/export smoke also passed. Native Windows packaging, full regression, one-folder/one-file smoke, independent restart and publication must be verified separately; see `validation/release-v2.2.3.json` when available.
+Final local regression: **218 tests run, 217 passed, one Windows-only transaction test skipped**. The focused post-review legend checks and source GUI/workspace/export smoke also passed. **Native Windows verification and publication also passed**: all 218 regression tests, updater/channel/cursor preflight, one-folder and one-file builds/smoke, and independent one-file restart. [Release evidence](validation/release-v2.2.3.json) records source commit, workflow and public manifest. [Download v2.2.3](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.2.3).
 
 Earlier real-file tests cover the supplied TDMS and three CSV recordings; their channel counts, imports and scenario results are retained in `validation/four-file-audit-v2.1.9.json` and `validation/tdms-engineering-v2.2.1.json`. Private recordings are not bundled or committed. This UI change does not claim a new exhaustive run of every possible data combination. Automated tests cannot guarantee a bug-free application on every PC.
 
