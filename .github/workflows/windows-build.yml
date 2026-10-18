@@ -87,13 +87,21 @@ jobs:
           .venv-exe\Scripts\python.exe scripts/release_manifest.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $version = .venv-exe\Scripts\python.exe -c "from app_version import VERSION; print(VERSION)"
+          .venv-exe\Scripts\python.exe scripts/release_notes.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $draft = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft' 2>$null
           if ($LASTEXITCODE -eq 0) {
             if ($draft -eq 'false') { Write-Output "Version already published; keeping immutable release."; exit 0 }
-            gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md"
+            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md" 2>&1
           } else {
-            gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file "manuals/v$version.md" dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md"
+            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md" 2>&1
           }
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $publishCode = $LASTEXITCODE
+          $publication | Write-Output
+          if ($publishCode -ne 0) {
+            $detail = (($publication | Select-Object -Last 12) -join "`n").Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Release publication failure::$detail"
+            exit $publishCode
+          }
           gh release edit "v$version" --repo $env:GITHUB_REPOSITORY --draft=false --latest
           exit $LASTEXITCODE
