@@ -96,11 +96,18 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         scene=view.mapViewToScene(QtCore.QPointF(before,float(np.mean(view.viewRange()[1]))));start=pane.mapFromScene(scene)
         self.assertTrue(view.sceneBoundingRect().contains(scene));self.assertFalse(w.dashboard.navigation_bar.rect().contains(w.dashboard.navigation_bar.mapFromGlobal(pane.viewport().mapToGlobal(start))))
         end=start+QtCore.QPoint(100,0)
+        QtTest.QTest.mouseMove(pane.viewport(),QtCore.QPoint(0,0))
+        QtTest.QTest.qWait(20)
         QtTest.QTest.mouseMove(pane.viewport(),start)
-        QtTest.QTest.qWait(40)  # Let the scene process hover before the drag starts.
+        QtTest.QTest.qWait(60)
+        self.app.processEvents();self.assertTrue(line.mouseHovering,'Cursor must receive hover/hit priority')
+        self.assertGreater(line.zValue(),max(item.zValue() for item in pane.hover_lines))
         QtTest.QTest.mousePress(pane.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=start)
-        QtTest.QTest.mouseMove(pane.viewport(),start+QtCore.QPoint(30,0),delay=30)
-        QtTest.QTest.mouseMove(pane.viewport(),end,delay=30)
+        # QTest.mouseMove uses native pointer state on Windows. Supply the held
+        # button explicitly to test the Qt drag pipeline without OS coalescing.
+        for point in (start+QtCore.QPoint(30,0),end):
+            event=QtGui.QMouseEvent(QtCore.QEvent.Type.MouseMove,QtCore.QPointF(point),QtCore.QPointF(pane.viewport().mapToGlobal(point)),QtCore.Qt.MouseButton.NoButton,QtCore.Qt.MouseButton.LeftButton,QtCore.Qt.KeyboardModifier.NoModifier)
+            QtWidgets.QApplication.sendEvent(pane.viewport(),event);self.app.processEvents()
         QtTest.QTest.mouseRelease(pane.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=end)
         self.app.processEvents();self.assertNotEqual(line.value(),before);self.assertGreaterEqual(line.value(),0);self.assertLessEqual(line.value(),10)
     def test_missing_empty_and_mixed_frequency_channels(self):

@@ -91,6 +91,9 @@ class PlotPane(pg.PlotWidget):
         self.empty_label.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.empty_label.setStyleSheet('font-size:16px; color:#8293a9; background:transparent;')
         for line in self.cursor_lines:
+            # Measurement handles must win hit testing over passive hover
+            # crosshairs/markers, including when both share a timestamp.
+            line.setZValue(1100)
             line.addMarker('v',position=.98,size=9)
             self.addItem(line,ignoreBounds=True);line.sigPositionChanged.connect(self._cursor_changed)
         self.cursor_markers=[pg.ScatterPlotItem(size=11,brush=color,pen=pg.mkPen('#182033',width=1.5)) for color in CURSOR_COLORS]
