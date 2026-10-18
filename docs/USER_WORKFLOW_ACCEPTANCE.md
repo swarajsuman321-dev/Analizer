@@ -24,7 +24,13 @@ A locked cursor identifies one actual source sample. Its marker, readout and int
 
 ## Dialogs, density and recovery
 
-Simple forms should fit their fields, wrap help and keep Apply/Cancel reachable. Long channel names must not force excessive window width. Tables may need larger resizable dialogs; preserve readable columns with scrolling. Verify minimum supported screen size and Windows scaling independently. Split panes must remain usable or scroll rather than collapse to tiny traces. The audit's 150 logical-pixel drawing-height threshold is an explicit diagnostic heuristic, not a claimed external standard.
+**Applies to every dialog, popup, configuration form and similar transient window, including future features.** Size the initial window around the required fields and action buttons. Optional descriptions, usage instructions and keyboard guidance belong in accessible tooltips or collapsed Help; they must not determine the initial window width or height. Wrap text inside expanded Help rather than stretching the window. Keep essential labels, required choices and actionable validation messages visible.
+
+The user's Lock Cursors screenshot is the concrete example: keep Cursor A, Cursor B and Apply visible; move the sentence about panning, dragging and arrow-key stepping into Help or tooltips. Apply the same rule to Reference Units and every other form with explanatory prose. Elide long channel/source names in compact selectors and expose the complete value on hover and through accessible text. Help must also be reachable by keyboard; essential instructions cannot depend solely on hover.
+
+Acceptance checks for each such window: open with default and longest realistic values; verify optional prose does not enlarge the collapsed form; open and close Help; verify long values remain discoverable; verify keyboard access and reachable actions at the minimum supported size and Windows scaling. A wrapped always-visible paragraph alone does not satisfy the request to remove unnecessary descriptions from the initial form.
+
+Simple forms should keep Apply/Cancel reachable. Long channel names must not force excessive window width. Tables may need larger resizable dialogs; preserve readable columns with scrolling. Verify minimum supported screen size and Windows scaling independently. Split panes must remain usable or scroll rather than collapse to tiny traces. The audit's 150 logical-pixel drawing-height threshold is an explicit diagnostic heuristic, not a claimed external standard.
 
 Before Apply, explain valid filter ranges in the signal's units and sample rate. Label missing physical units instead of implying energy/derivative units. Show source and selected/visible/all scope before processing or export. Long save/export work needs visible progress, safe cancellation where possible and an unchanged recoverable workspace after failure. Preserve original source cells and numerical clocks.
 

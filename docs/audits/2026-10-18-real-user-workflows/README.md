@@ -34,7 +34,7 @@ The import/persistence/export diagnostic has **18 passing scenarios**, including
 | P2 — Context menu does not match chart tasks | User sees View All / axes / Mouse Mode / Plot Options instead of familiar Hand, Cursor and Zoom actions | Provide the requested pane-scoped chart menu with previous zoom, comments and copy/export |
 | P2 — Minimum-size split panes become unusable | At 1024×680 drawing heights were only 65.1 and 66.1 logical pixels | Give panes usable minimum drawing space or scrolling; never crush them to strips |
 | P2 — Filter default is invalid for loaded data | Default 1 Hz cutoff fails on approximately 1 Hz samples (Nyquist 0.5 Hz) with a SciPy error | Show sample rate and valid cutoff range before Apply; choose a valid default |
-| P2 — Some simple forms are too wide | Cursor-lock form is 768×136, with an unwrapped explanatory sentence | Wrap help and size to fields; retain readable long names and reachable buttons |
+| P2 — Some simple forms are too wide | Cursor-lock form is 768×136, with an unwrapped explanatory sentence | Move optional prose to tooltips/collapsed Help; size to fields and buttons across all similar windows |
 | P2 — Physical units need confirmation | Generic PD channels have no declared units; integral is shown as `·min` | Clearly identify unknown units, request/allow confirmation, never imply Wh without confirmed W |
 | P2 — Large persistence needs visible progress | Exact mixed snapshot produced 231,755,668 bytes of JSON; save/load/equality sequence took 28.115 s | Show progress and recovery for long operations; consider a compact exact-preserving representation |
 
@@ -65,7 +65,13 @@ The right-click menu should act on the clicked pane: Hand/Pan (Esc), Cursor, Zoo
 
 ### Dialog inventory and density
 
-[All 16 inspected dialogs and measured sizes](dialogs.csv) are published, with relevant screenshots below. Small dialogs already include Plot Display 238×210, Move Cursors 227×259, and Tolerance 362×154. Keep them compact. Cursor Locks 768×136 and Reference Units 577×169 have unwrapped explanatory labels. Anchor configuration 747×219 is affected by long source names. Wrap explanatory text and elide long selections with full tooltip access rather than widening the entire form.
+[All 16 inspected dialogs and measured sizes](dialogs.csv) are published, with relevant screenshots below. Small dialogs already include Plot Display 238×210, Move Cursors 227×259, and Tolerance 362×154. Keep them compact. Cursor Locks 768×136 and Reference Units 577×169 have unwrapped explanatory labels. Anchor configuration 747×219 is affected by long source names. Move optional explanatory text into accessible tooltips or collapsed Help; elide long selections with full-value access rather than widening the entire form.
+
+**User clarification — applies application-wide:** the instruction sentence below Cursor B in the supplied Lock Cursors screenshot is unnecessary in the initial form and makes the window too wide. Keep the two selectors and Apply button visible; move panning, dragging and keyboard instructions into tooltips or expandable Help. This is a common acceptance rule for **all dialogs, popups, configuration forms and future similar windows**, not a one-dialog exception. Reference Units and other explanatory forms must follow it too.
+
+Optional prose must not set the collapsed window's width or height. Expanded Help should wrap within available space. Keep essential labels and actionable validation visible, and make Help keyboard-accessible. Long channel names should be elided with full text available on hover and through accessible text. Merely wrapping an always-visible paragraph is insufficient when the description is optional.
+
+For each affected form, acceptance requires opening it with default and long realistic values, checking compact initial size, expanding/collapsing Help, keyboard access, and verifying that required fields/actions remain reachable at minimum size and Windows DPI settings. These are required follow-up checks, not newly measured passes. No application layout change is included in this report update.
 
 Large tables need a different criterion: Channel Mapping and Measurements 720×420, Engineering Setup 768×420, and TDMS review 776×650 have substantial tabular content. They need resizable layouts, readable columns, scrolling and reachable buttons, not an arbitrary small width. The offscreen screen is 800×800; these are Qt logical dimensions, not a native Windows DPI certification. At 1536×912 the exercised split sequence had usable 189.1/188.1 drawing heights; at 1024×680 it collapsed. Earlier sequence-dependent collapse remains relevant: one good large-window screenshot does not prove robust resizing.
 
