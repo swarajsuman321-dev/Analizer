@@ -126,5 +126,5 @@ class NavigationLockTests(unittest.TestCase):
         w=AdvancedStudioWindow();w.show();self.app.processEvents()
         actions=[a for submenu in w.studio.submenus.values() for a in submenu.actions()]
         shortcuts={a.text():a.shortcut().toString() for a in actions}
-        self.assertEqual(shortcuts['Reset Scale'],'Ctrl+0');self.assertEqual(shortcuts['Zoom Time Axis'],'Ctrl+1');self.assertEqual(shortcuts['Lock cursors to channel…'],'Ctrl+L')
+        self.assertEqual(shortcuts['Reset View'],'Ctrl+0');self.assertEqual(shortcuts['Zoom Time Axis'],'Ctrl+1');self.assertEqual(shortcuts['Lock cursors to channel…'],'Ctrl+L')
         w.close();self.app.processEvents()

@@ -13,7 +13,16 @@ BUILD = PROJECT / 'build'
 DIST = PROJECT / 'dist'
 
 
+def configure_console():
+    # Windows redirected consoles otherwise default to cp1252. Build output and
+    # test failures contain channel units and labels that must survive intact.
+    for stream in (sys.stdout,sys.stderr):
+        if hasattr(stream,'reconfigure'):stream.reconfigure(encoding='utf-8',errors='backslashreplace')
+
+
 def run(command, *, env=None):
+    configure_console()
+    env={**os.environ,**(env or {}),'PYTHONIOENCODING':'utf-8','PYTHONUTF8':'1'}
     BUILD.mkdir(exist_ok=True)
     print('\nRunning: ' + subprocess.list2cmdline([str(v) for v in command]), flush=True)
     with (BUILD / 'build.log').open('a', encoding='utf-8') as log:
@@ -31,7 +40,7 @@ def check_bundle(executable, mode, *, env=None):
     report = BUILD / f'{mode}_smoke_report.json'
     report.unlink(missing_ok=True)
     process = subprocess.run([str(executable), '--self-test', '--report', str(report)],
-                             cwd=executable.parent, timeout=180, capture_output=True, text=True, env=env)
+                             cwd=executable.parent, timeout=180, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)
     if not report.exists():
         raise RuntimeError(f'{mode} EXE did not write its self-test report (exit {process.returncode}). '
                            'Run build_debug.bat to diagnose the startup error.')
@@ -68,6 +77,7 @@ def build(mode):
 
 
 def main():
+    configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('both', 'onedir', 'onefile', 'debug'), default='both')
     parser.add_argument('--skip-install', action='store_true', help='Use already-installed build dependencies.')
