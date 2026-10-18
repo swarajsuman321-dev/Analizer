@@ -27,7 +27,7 @@ def compile_installer(payload=None,version=VERSION,output=None,fail_health=False
     if not (payload/'ApplianceSignalStudio.exe').is_file() or not (payload/'_internal').is_dir():
         raise ValueError('Build and test the complete one-folder runtime first')
     output=output or f'ApplianceSignalStudio-Setup-{version}'
-    command=[str(compiler()),f'/DAppVersion={version}',f'/DPayloadDir={payload}',f'/DOutputBase={output}']
+    command=[str(compiler()),'/Q',f'/DAppVersion={version}',f'/DPayloadDir={payload}',f'/DOutputBase={output}']
     if fail_health:command.append('/DFailHealthCheck=1')
     if legacy:command.append('/DHealthArguments=--self-test')
     command.append(str(ROOT/'installer/ApplianceSignalStudio.iss'))

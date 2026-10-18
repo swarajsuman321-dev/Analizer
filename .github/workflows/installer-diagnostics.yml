@@ -1,0 +1,37 @@
+name: Installer engine diagnostics
+on:
+  push:
+    branches: [main]
+    paths:
+      - installer/**
+      - scripts/check_installer.py
+      - scripts/build_installer.py
+      - .github/workflows/installer-diagnostics.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer-engine:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check scripting with digest-pinned real previous runtime
+        shell: pwsh
+        run: |
+          $output = & python -u scripts/check_installer.py --legacy-smoke 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 40) -join "`n"
+            if ($tail.Length -gt 2600) { $tail = $tail.Substring($tail.Length - 2600) }
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Installer engine diagnostics::$tail"
+          }
+          exit $code

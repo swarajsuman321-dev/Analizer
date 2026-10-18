@@ -58,12 +58,14 @@ def previous_runtime(destination):
     return destination/'ApplianceSignalStudio'
 
 
-def check():
+def check(legacy_only=False):
+    version='2.3.1' if legacy_only else VERSION
     if sys.platform!='win32':raise RuntimeError('Use an isolated native Windows CI runner')
     if registration():raise RuntimeError('Refusing to modify an existing user installation')
-    checks=[];setup=ROOT/'dist'/f'ApplianceSignalStudio-Setup-{VERSION}.exe'
+    checks=[];setup=ROOT/'dist'/f'ApplianceSignalStudio-Setup-{version}.exe'
     with tempfile.TemporaryDirectory(prefix="Signal Studio O'Brien Ω ",ignore_cleanup_errors=True) as folder:
         root=Path(folder);install=root/'Installed App';settings=root/'settings';results=root/'reports'
+        if legacy_only:setup=compile_installer(previous_runtime(root),'2.3.1','ci-legacy-engine',legacy=True)
         settings.mkdir();results.mkdir()
         # Environment overrides apply to installed children, not machine-wide settings.
         os.environ['ANALIZER_SETTINGS_DIR']=str(settings);os.environ['ANALIZER_OUTPUT_DIR']=str(results)
@@ -79,8 +81,9 @@ def check():
         def runtime_check(version):
             output=root/'installed-check.json';output.unlink(missing_ok=True)
             exe=install/'versions'/version/'ApplianceSignalStudio.exe'
-            invoke(exe,['--installation-check','--report',str(output)],log)
+            invoke(exe,['--self-test' if legacy_only else '--installation-check','--report',str(output)],log)
             data=json.loads(output.read_text(encoding='utf-8'));assert data['ok'] and data['version']==version
+            if legacy_only:return
             assert Path(data['installed_root']).resolve()==install.resolve()
             assert Path(data['runtime_directory']).resolve()==(exe.parent/'_internal').resolve()
         shortcut=Path(os.environ['APPDATA'])/'Microsoft/Windows/Start Menu/Programs/Appliance Signal Studio.lnk'
@@ -93,9 +96,10 @@ def check():
             result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',utf8+command],capture_output=True,text=True,encoding='utf-8',check=True)
             return Path(result.stdout.strip()).resolve()
         try:
-            install_package(setup);runtime_check(VERSION);preserved()
-            assert registration()['DisplayVersion']==VERSION
-            assert desktop.is_file() and shortcut_target()==(install/'versions'/VERSION/'ApplianceSignalStudio.exe').resolve()
+            print('PHASE: install/repair',flush=True)
+            install_package(setup);runtime_check(version);preserved()
+            assert registration()['DisplayVersion']==version
+            assert desktop.is_file() and shortcut_target()==(install/'versions'/version/'ApplianceSignalStudio.exe').resolve()
             import winreg
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,UNINSTALL_KEY):raise AssertionError('Unexpected machine-wide installation')
@@ -105,19 +109,24 @@ def check():
             app_installation.hold_application_mutex()
             try:
                 assert install_package(setup,False)!=0,'Setup ignored a running application'
-                assert registration()['DisplayVersion']==VERSION
+                assert registration()['DisplayVersion']==version
             finally:
                 import ctypes
                 from ctypes import wintypes
                 close=ctypes.windll.kernel32.CloseHandle;close.argtypes=[wintypes.HANDLE]
                 close(app_installation._mutex_handle);app_installation._mutex_handle=None
             checks.append('running-app mutex prevents concurrent installation')
-            install_package(setup);runtime_check(VERSION);preserved();checks.append('same-version repair')
+            print('PHASE: install/repair',flush=True)
+            install_package(setup);runtime_check(version);preserved();checks.append('same-version repair')
             user_file=install/'keep-user-file.txt';user_file.write_text('user-owned')
+            print('PHASE: uninstall',flush=True)
             remove();assert not registration();preserved();assert user_file.read_text()=='user-owned'
-            assert not (install/'versions'/VERSION/'ApplianceSignalStudio.exe').exists()
+            assert not (install/'versions'/version/'ApplianceSignalStudio.exe').exists()
             assert not shortcut.exists() and not desktop.exists()
             checks.append('uninstall removes app files and retains user settings, reports and unowned file')
+            if legacy_only:
+                print(json.dumps({'ok':True,'scope':'Installer engine on actual v2.3.1 runtime; not final v2.3.2 validation','checks':checks}),flush=True)
+                return
             old=compile_installer(previous_runtime(root),'2.3.1','ci-old-setup',legacy=True)
             install_package(old);assert registration()['DisplayVersion']=='2.3.1';preserved()
             install_package(setup);runtime_check(VERSION);preserved()
@@ -141,4 +150,7 @@ def check():
     print(json.dumps(record,indent=2))
 
 
-if __name__=='__main__':check()
+if __name__=='__main__':
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--legacy-smoke',action='store_true')
+    check(legacy_only=parser.parse_args().legacy_smoke)

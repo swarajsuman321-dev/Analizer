@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        id: python
         with:
           python-version: '3.12'
           architecture: x64
@@ -56,7 +57,17 @@ jobs:
             Write-Output "::error title=Native interaction test failure::$tail"
           }
           exit $code
+      - name: Restore exact-source tested runtimes
+        id: runtime-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            dist/onedir
+            dist/ApplianceSignalStudio.exe
+            dist/ApplianceSignalStudio_Portable.zip
+          key: windows-runtime-v1-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('*.py', '*.spec', 'requirements*.txt', 'version_info.txt', 'app_icon.ico', 'app_logo.png', 'manuals/*.md', 'profiles/*.json') }}
       - name: Build and test portable and single-file executables
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $output = & .venv-exe\Scripts\python.exe build_exe.py --skip-install 2>&1
@@ -69,6 +80,23 @@ jobs:
             Write-Output "::error title=Windows package failure::$tail"
           }
           exit $code
+      - name: Revalidate cached runtimes and current tests
+        if: steps.runtime-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          .venv-exe\Scripts\python.exe -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv-exe\Scripts\python.exe -c "from build_exe import check_bundle,DIST; from app_updates import restart_environment; check_bundle(DIST/'onedir/ApplianceSignalStudio/ApplianceSignalStudio.exe','onedir'); check_bundle(DIST/'ApplianceSignalStudio.exe','onefile'); check_bundle(DIST/'ApplianceSignalStudio.exe','onefile_restart',env=restart_environment())"
+          exit $LASTEXITCODE
+      - name: Save verified runtimes before installer testing
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            dist/onedir
+            dist/ApplianceSignalStudio.exe
+            dist/ApplianceSignalStudio_Portable.zip
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
       - name: Build and verify per-user installer lifecycle
         shell: pwsh
         run: |
@@ -80,7 +108,9 @@ jobs:
           }
           $output | Write-Output
           if ($code -ne 0) {
-            $tail = (($output | Select-Object -Last 65) -join "`n").Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            $tail = ($output | Select-Object -Last 65) -join "`n"
+            if ($tail.Length -gt 2600) { $tail = $tail.Substring($tail.Length - 2600) }
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error title=Installer lifecycle failure::$tail"
           }
           exit $code
