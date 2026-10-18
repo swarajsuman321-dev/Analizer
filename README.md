@@ -201,3 +201,7 @@ Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_RE
 One primary navigation toolbar, direct Legend/Grid controls, inline playback, adaptive dialogs and per-workspace appearance settings preserve the existing workbench. Engineering Setup provides configurable appliance profiles, reviewed channel mappings/units, run roles, phase rules, calibration and explicit limits. Analyze Engineering Data adds quality-aware KPIs and run comparisons; Generate Engineering Report creates traceable paginated PDF and nine-sheet Excel reports. No manufacturer phase meanings, calibrations or acceptance limits are invented.
 
 Read the [v2.3.0 manual](manuals/v2.3.0.md) before configuring an engineering evaluation. Native Windows release evidence is published only after verification completes.
+
+## UI/UX audit
+
+The [18 October 2026 UI/UX audit](docs/audits/2026-10-18/README.md) includes the usability scorecard, click-budget analysis, layout blueprint, prioritized implementation plan, and supporting evidence. Findings apply to the source commit identified in the report.
