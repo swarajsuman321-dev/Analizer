@@ -372,6 +372,9 @@ class PlotPane(pg.PlotWidget):
         self._render()
         if hasattr(self,'legend'):
             self.legend.setLabelTextColor('#e3eaf5' if self.dark else '#182033')
+            # pyqtgraph updates LabelItem.opts but leaves existing rich text unchanged.
+            # Re-render the current label to apply the effective theme immediately.
+            for _,label in self.legend.items:label.setText(label.text)
             self.legend.setBrush(pg.mkBrush(21,27,38,145) if self.dark else pg.mkBrush(255,255,255,170))
             self.legend.setPen(pg.mkPen('#637084',width=.5))
             self.legend.layout.setContentsMargins(4,2,4,2)

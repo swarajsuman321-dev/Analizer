@@ -2,6 +2,8 @@
 
 Updated 18 October 2026 (India time). The user approved **all 36 audit items**, then confirmed that mappings/calibrations/limits must stay configurable and PDF reports should use **four sections with readable pagination**. This is an extension of the existing PySide6 app, not a replacement frontend.
 
+The final patch release is **v2.3.1**: it additionally repaints existing legend rich text on theme switches and wraps/rounds PDF table text to prevent clipped long names. All v2.3.0 capabilities remain included. The older real-file audit is preserved in `docs/audits/2026-10-18-real-file-test-report.md`; its F01 delta and F02 legend findings are corrected here. Focus Graph provides an explicit narrow-screen option; default docks remain enabled. Consistent dataset aliases in every legacy legend/readout remain a separate usability opportunity, not a claim of this release.
+
 ## Implemented scope
 
 | Approved IDs | Implementation |
@@ -42,7 +44,7 @@ Naive recorded timestamps need a declared `metadata.recorded_timezone` for absol
 
 ## Verification status
 
-The final local regression discovered **265 tests: 264 passed and one Windows-only test skipped** (147.662 seconds). This includes 33 engineering numerical/report tests, 13 compact-workbench GUI tests and fresh-process Qt scale checks at 1×, 1.25× and 1.5× in both themes. Native Windows packaging and release verification remain pending; native results will be recorded separately.
+The final local regression discovered **266 tests: 265 passed and one Windows-only test skipped** (148.364 seconds). This includes 33 engineering numerical/report tests, 14 compact-workbench GUI tests and fresh-process Qt scale checks at 1×, 1.25× and 1.5× in both themes. Native Windows packaging and release verification remain pending; native results will be recorded separately.
 
 Source GUI/frozen-workflow smoke now exercises profile loading, a known 1000 W × 120 s energy calculation, engineering PDF, all nine workbook sheets, existing exports, TDMS templates, legacy workspace and update identity. Synthetic dark UI and PDF executive-cover renders were visually inspected. No actual measurement is included in those images.
 

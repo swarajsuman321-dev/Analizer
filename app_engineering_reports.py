@@ -143,8 +143,10 @@ def write_pdf(path,store,runs,comparison,tables,info,view,cancel,selected_ids):
             frame=pd.DataFrame([{'Record':i+1,'Field':str(k),'Value':json_text(v) if isinstance(v,(dict,list)) else v} for i,row in frame.iterrows() for k,v in row.items()])
         records=[]
         for _,row in frame.iterrows():
-            values=[str(v) if pd.notna(v) else 'Not Available' for v in row]
-            wrapped=[textwrap.wrap(v,30 if len(values)>3 else 80) or [''] for v in values]
+            values=[(f'{v:.6g}' if isinstance(v,(float,np.floating)) else str(v)) if pd.notna(v) else 'Not Available' for v in row]
+            # Equal-width table cells need shorter lines as column count grows.
+            # Conservative wrapping prevents long KPI names/JSON from clipping.
+            wrapped=[textwrap.wrap(v,max(12,110//max(1,len(values)))) or [''] for v in values]
             for index in range(max(map(len,wrapped))):records.append([parts[index] if index<len(parts) else '' for parts in wrapped])
         for start in range(0,max(1,len(records)),28):
             fig=Figure(figsize=(11.7,8.3));fig.suptitle(title,fontsize=16,x=.04,ha='left');axis=fig.add_axes([.04,.09,.92,.80]);axis.axis('off')

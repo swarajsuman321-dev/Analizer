@@ -30,6 +30,13 @@ class CompactUITests(unittest.TestCase):
         w.compact.toggles['show_grid'].trigger();self.assertFalse(p.show_grid)
         w.tabs.setCurrentIndex(1);self.assertTrue(w.compact.toggles['show_grid'].isChecked())
         w.tabs.setCurrentIndex(0);self.assertFalse(w.compact.toggles['show_grid'].isChecked())
+    def test_legend_rendered_text_tracks_dark_light_dark(self):
+        for theme,color in [('Dark','#e3eaf5'),('Light','#182033'),('Dark','#e3eaf5')]:
+            self.w.theme.apply(theme);self.app.processEvents()
+            labels=self.w.dashboard.active.legend.items
+            self.assertTrue(labels)
+            for _,label in labels:self.assertIn(color,label.item.toHtml().lower())
+
     def test_inline_playback_has_no_popup_and_handles_no_phase(self):
         strip=self.w.studio.playback();self.app.processEvents()
         self.assertFalse(strip.isWindow());self.assertLess(strip.height(),150);self.assertEqual(len(strip.findChildren(QtWidgets.QTableView)),0)

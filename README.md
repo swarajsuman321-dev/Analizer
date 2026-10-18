@@ -1,4 +1,4 @@
-# Appliance Signal Studio 2.3.0
+# Appliance Signal Studio 2.3.1
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
