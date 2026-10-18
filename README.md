@@ -7,6 +7,8 @@ Python 3.12 is the supported development runtime.
 
 The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. [Native verification](docs/validation/release-v2.3.2.json) passed; existing UI/report audit limitations remain documented.
 
+Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy and current update gaps](docs/DUAL_DISTRIBUTION_POLICY.md), and the [audit improvement approval checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md) before implementing the next changes.
+
 ![Current workbench with synthetic signals](docs/images/workbench.png)
 
 ```sh
