@@ -8,6 +8,22 @@
 
 **Evidence files:** [runtime observations](observations.json), [test log](targeted-tests.txt), [dark minimum-size capture](workbench-dark-1024.png), [light minimum-size capture](workbench-light-1024.png), [larger capture](workbench-dark-1440.png), [PDF text](comparison-probe.txt), [legend rich-text state](legend-probe.json), and [declared control inventory](control-inventory.csv). All recordings used here are synthetic. The static control inventory contains **228 declarations** across 6 modules; dynamic labels are marked for caller/context inspection. It supports the label/menu/tooltip review and is not a claim that every generated dialog was exercised.
 
+## Audit screenshots
+
+These captures show the audited application with synthetic recordings. Select an image to open it at full size.
+
+### Dark theme — 1440 × 900
+
+[![Analyzer audit: dark theme at 1440 by 900 pixels](workbench-dark-1440.png)](workbench-dark-1440.png)
+
+### Dark theme — 1024 × 680
+
+[![Analyzer audit: dark theme at the minimum window size, showing narrow plot space](workbench-dark-1024.png)](workbench-dark-1024.png)
+
+### Light theme — 1024 × 680
+
+[![Analyzer audit: light theme at the minimum window size, showing the legend contrast issue](workbench-light-1024.png)](workbench-light-1024.png)
+
 ## Section 1: Usability Heuristic Audit Scorecard
 
 Severity: **Critical** blocks safe completion or establishes serious data integrity loss; **High** risks misinterpretation or seriously impedes a core task; **Medium** creates repeated friction or weakens confidence; **Low** is localized discoverability/consistency debt. No Critical issue was established in this audit. The table contains **5 High, 9 Medium, and 4 Low** findings. “Source” means code-confirmed, without claiming a runtime reproduction of every path.
