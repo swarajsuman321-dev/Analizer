@@ -1,0 +1,300 @@
+{
+  "source": "8c3ce86",
+  "version": "2.3.1",
+  "platform": "Linux Qt offscreen",
+  "qt_scale": 1.0,
+  "geometry_cases": [
+    {
+      "scenario": "Single to Vertical split, logical 1536x912",
+      "window": [
+        1536,
+        912
+      ],
+      "workspace": [
+        842,
+        515
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            840,
+            337
+          ],
+          "viewbox_height": 299.1,
+          "size_hint": [
+            600,
+            337
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            840,
+            116
+          ],
+          "viewbox_height": 78.1,
+          "size_hint": [
+            600,
+            116
+          ]
+        }
+      ],
+      "row_stretch": [
+        0,
+        0
+      ],
+      "readout_width": 1172,
+      "readout_content_width": 1170
+    },
+    {
+      "scenario": "Resized 1024x680",
+      "window": [
+        1024,
+        680
+      ],
+      "workspace": [
+        330,
+        283
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            534,
+            139
+          ],
+          "viewbox_height": 101.1,
+          "size_hint": [
+            534,
+            139
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            534,
+            68
+          ],
+          "viewbox_height": 30.1,
+          "size_hint": [
+            534,
+            68
+          ]
+        }
+      ],
+      "row_stretch": [
+        0,
+        0
+      ],
+      "readout_width": 660,
+      "readout_content_width": 718
+    },
+    {
+      "scenario": "Resized 1920x1140",
+      "window": [
+        1920,
+        1140
+      ],
+      "workspace": [
+        1226,
+        743
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            1224,
+            451
+          ],
+          "viewbox_height": 413.1,
+          "size_hint": [
+            600,
+            451
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            1224,
+            230
+          ],
+          "viewbox_height": 192.1,
+          "size_hint": [
+            600,
+            230
+          ]
+        }
+      ],
+      "row_stretch": [
+        0,
+        0
+      ],
+      "readout_width": 1556,
+      "readout_content_width": 1554
+    },
+    {
+      "scenario": "Return to 1536x912, baseline",
+      "window": [
+        1536,
+        912
+      ],
+      "workspace": [
+        842,
+        515
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            840,
+            337
+          ],
+          "viewbox_height": 299.1,
+          "size_hint": [
+            600,
+            337
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            840,
+            116
+          ],
+          "viewbox_height": 78.1,
+          "size_hint": [
+            600,
+            116
+          ]
+        }
+      ],
+      "row_stretch": [
+        0,
+        0
+      ],
+      "readout_width": 1172,
+      "readout_content_width": 1170
+    },
+    {
+      "scenario": "Diagnostic only: equal stretch and 180px minimum",
+      "window": [
+        1536,
+        912
+      ],
+      "workspace": [
+        842,
+        515
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            840,
+            227
+          ],
+          "viewbox_height": 189.1,
+          "size_hint": [
+            600,
+            227
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            840,
+            226
+          ],
+          "viewbox_height": 188.1,
+          "size_hint": [
+            600,
+            226
+          ]
+        }
+      ],
+      "row_stretch": [
+        1,
+        1
+      ],
+      "readout_width": 1172,
+      "readout_content_width": 1170
+    }
+  ],
+  "lock_dialog": {
+    "size": [
+      768,
+      136
+    ],
+    "options": [
+      [
+        "Unlocked",
+        "out Valve"
+      ],
+      [
+        "Unlocked",
+        "out Valve"
+      ]
+    ]
+  },
+  "cursor_locks_created": [
+    true,
+    true
+  ],
+  "cursor_step": {
+    "before": 66.3,
+    "after": 66.4,
+    "is_real_sample": true
+  },
+  "locked_positions_preserved_on_pan": true,
+  "navigation": {
+    "has_quick_zoom": false,
+    "tab_corner_present": false,
+    "icons": {
+      "in": true,
+      "out": true,
+      "reset": true,
+      "pan": true
+    }
+  },
+  "energy_card": "<b>Power</b> \u00b7 Cursor interval<br>\u0394X 2 min &nbsp; |\u0394Y| 0 W<br>Min 3600 &nbsp; Max 3600 &nbsp; Mean 3600 W<br>Interval RMS 3600 \u00b7 Slope 0 W/min<br>Integral 7200 W\u00b7min \u00b7 Coverage 100.0%<br>Interval energy 120 Wh",
+  "light_legend": [
+    {
+      "text": "Power",
+      "html": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\nhr { height: 1px; border-width: 0; }\nli.unchecked::marker { content: \"\\2610\"; }\nli.checked::marker { content: \"\\2612\"; }\n</style></head><body style=\" font-family:'Sans Serif'; font-size:9pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" color:#182033;\">Power</span></p></body></html>"
+    }
+  ],
+  "same_name_readout": [
+    "Temperature",
+    "Temperature"
+  ],
+  "filter_select_all": {
+    "visible_children": 1,
+    "affected_channels": 2
+  },
+  "preset_color_mismatches": []
+}

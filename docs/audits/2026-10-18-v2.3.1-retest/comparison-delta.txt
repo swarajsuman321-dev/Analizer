@@ -1,0 +1,47 @@
+                                                                                                             Signal analysis report
+                       APower
+                         B2 4
+    3601.0
+    3600.8
+    3600.6
+W
+
+
+
+
+    3600.4
+    3600.2
+    3600.0
+                   0                                         50                                  100                                  150                                      200                               250
+                                                                                                                     time (min)
+                       ADrain
+                         B2 4 Valve
+            ON         Water Pressure
+                                                                                                                                                                                                                                        1654
+                                                                                                                                                                                                                                        1652
+Actuators
+
+
+
+
+                                                                                                                                                                                                                                        1650
+
+
+
+
+                                                                                                                                                                                                                                           Pa
+                                                                                                                                                                                                                                        1648
+                                                                                                                                                                                                                                        1646
+            OFF
+                   0                                              50                                   100                                        150                                    200                                      250
+                                                                                                                     time (min)
+                          channel                   unit                    A                B                   X                   Y                       Min                 Max                Mean          match percent
+                  Power                     W                      3600             3600                2                  0                        3600                3600               3600
+                  Drain Valve               state                  OFF              OFF                 2                  OFF OFF                  OFF                 OFF                0% ON
+                  Water Pressure            Pa                     1651.9           1653.6              2                  1.6397                   1651.9              1653.6             1652.8
+
+
+
+                                parameter                                 sim val                      raw val                            delta                                percent                     match percent
+                   RETEST_SIGNED_DELTA                     100 W                             115 W                             +15.00 W                            +15.00%                            85
+

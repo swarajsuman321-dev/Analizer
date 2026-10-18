@@ -1,5 +1,7 @@
 # Analyzer UI/UX simplicity audit — 18 October 2026 (IST)
 
+**Update:** [v2.3.1 retest with new screenshots and full regression results](../2026-10-18-v2.3.1-retest/README.md) distinguishes resolved issues from remaining problems. This original report describes the older source pinned below.
+
 **Overall finding:** preserve the engineering engine and simplify its presentation. The highest priorities are reliable identification of each recording, readable plots at the supported minimum size, correct comparison-report content, theme contrast, and reversible dataset removal. Adding more toolbar buttons before addressing those issues would increase cognitive load.
 
 **Audited source:** `swarajsuman321-dev/Analizer`, main commit **2f76bc592a4465d297907d089dd3f83c92936625**, application version **2.2.3**. This source is three commits newer than the successful v2.2.3 Windows build at `37a1919`. The latest documentation already records several open improvements; this report independently checks the requested workflows against the current code.

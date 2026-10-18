@@ -1,0 +1,56 @@
+{
+  "source": "8c3ce86",
+  "version": "2.3.1",
+  "platform": "Linux Qt offscreen",
+  "qt_scale": 1.25,
+  "geometry_cases": [
+    {
+      "scenario": "Single to Vertical split, logical 1536x912",
+      "window": [
+        1536,
+        912
+      ],
+      "workspace": [
+        842,
+        515
+      ],
+      "panes": [
+        {
+          "names": [
+            "out Valve"
+          ],
+          "widget": [
+            840,
+            337
+          ],
+          "viewbox_height": 299.1,
+          "size_hint": [
+            480,
+            337
+          ]
+        },
+        {
+          "names": [
+            "Drain Valve",
+            "Water Pressure"
+          ],
+          "widget": [
+            840,
+            116
+          ],
+          "viewbox_height": 78.1,
+          "size_hint": [
+            480,
+            116
+          ]
+        }
+      ],
+      "row_stretch": [
+        0,
+        0
+      ],
+      "readout_width": 1172,
+      "readout_content_width": 1170
+    }
+  ]
+}

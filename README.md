@@ -207,3 +207,6 @@ Read the [v2.3.0 manual](manuals/v2.3.0.md) before configuring an engineering ev
 ## UI/UX audit
 
 The [18 October 2026 UI/UX audit](docs/audits/2026-10-18/README.md) includes the usability scorecard, click-budget analysis, layout blueprint, prioritized implementation plan, and supporting evidence. Findings apply to the source commit identified in the report.
+
+
+The [v2.3.1 UI retest](docs/audits/2026-10-18-v2.3.1-retest/README.md) includes the full 268-test local outcome, resolved audit findings, and reproduction of the remaining compressed lower split pane.
