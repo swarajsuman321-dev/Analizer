@@ -30,7 +30,7 @@ jobs:
           python -m venv .venv-exe
           .venv-exe\Scripts\python.exe -m pip install --only-binary=:all: -r requirements-build.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .venv-exe\Scripts\python.exe -c "from scripts.build_installer import compiler; print(compiler())"
+          .venv-exe\Scripts\python.exe scripts/build_installer.py --check-script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check native updates and channel interactions
         shell: pwsh

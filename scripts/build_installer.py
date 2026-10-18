@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
@@ -38,6 +39,15 @@ def compile_installer(payload=None,version=VERSION,output=None,fail_health=False
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
+    parser.add_argument('--check-script',action='store_true',help='Compile a disposable stub to validate Setup syntax before expensive builds')
+    args=parser.parse_args()
     if sys.platform!='win32':parser.error('Build the installer on Windows')
-    print(compile_installer())
+    if args.check_script:
+        with tempfile.TemporaryDirectory(prefix='installer-syntax-') as directory:
+            payload=Path(directory);(payload/'ApplianceSignalStudio.exe').write_bytes(b'compiler-input-only; never installed')
+            (payload/'_internal').mkdir()
+            result=compile_installer(payload=payload,output='ci-syntax-only')
+            result.unlink()
+        print('Installer script syntax passed; disposable stub was not installed.')
+    else:
+        print(compile_installer())
