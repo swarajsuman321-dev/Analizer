@@ -1,4 +1,4 @@
-"""Persistent user outputs live beside the executable, never in its unpack directory."""
+"""Portable outputs stay beside the EXE; installed outputs stay in Documents."""
 from pathlib import Path
 import os
 import sys
@@ -7,6 +7,11 @@ import sys
 def output_directory():
     override=os.environ.get('ANALIZER_OUTPUT_DIR')
     base=Path(sys.executable).resolve().parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent
+    from app_installation import installed_root
+    if installed_root():
+        from PySide6.QtCore import QStandardPaths
+        documents=QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+        base=Path(documents) if documents else Path.home()/'Documents'
     preferred=Path(override).expanduser() if override else base/'SignalStudio_Output'
     candidates=[preferred] if override else [preferred,Path.home()/'Documents'/'SignalStudio_Output']
     for root in candidates:

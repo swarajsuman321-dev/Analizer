@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 REPOSITORY='swarajsuman321-dev/Analizer'
 RELEASES=f'https://github.com/{REPOSITORY}/releases'
 MANIFEST_URL=RELEASES+'/latest/download/update.json'
+INSTALLER_MANIFEST_URL=RELEASES+'/latest/download/installer-update.json'
 MAX_DOWNLOAD=600*1024*1024
 
 
@@ -26,11 +27,16 @@ def version_tuple(value):
 def validate_manifest(data):
     if not isinstance(data,dict):raise ValueError('Invalid update information')
     version_tuple(data.get('version'))
-    expected=RELEASES+f"/download/v{data['version']}/ApplianceSignalStudio.exe"
+    if data.get('kind','portable') not in ('portable','installer'):raise ValueError('Unknown update distribution')
+    expected=RELEASES+f"/download/v{data['version']}/"+asset_name(data)
     if data.get('url')!=expected:raise ValueError('Unexpected update download location')
     if not re.fullmatch('[0-9a-f]{64}',str(data.get('sha256',''))):raise ValueError('Missing update checksum')
     if type(data.get('size')) is not int or not 0<data['size']<=MAX_DOWNLOAD:raise ValueError('Invalid update size')
     return data
+
+
+def asset_name(manifest):
+    return f"ApplianceSignalStudio-Setup-{manifest['version']}.exe" if manifest.get('kind')=='installer' else 'ApplianceSignalStudio.exe'
 
 
 def request(url):
@@ -150,17 +156,17 @@ def network_hint(exc):
 def import_offline_update(manifest_path, directory, progress=lambda value: None):
     """Import IT-approved update.json + matching EXE without contacting GitHub."""
     manifest_path = Path(manifest_path)
-    if manifest_path.name != 'update.json':
-        raise ValueError('Select the update.json supplied with the release.')
+    if manifest_path.name not in ('update.json','installer-update.json'):
+        raise ValueError('Select update.json or installer-update.json supplied with the release.')
     if manifest_path.stat().st_size > 256 * 1024:
         raise ValueError('Update manifest is too large.')
     manifest = validate_manifest(json.loads(manifest_path.read_text(encoding='utf-8')))
-    source = manifest_path.parent / 'ApplianceSignalStudio.exe'
+    source = manifest_path.parent / asset_name(manifest)
     if not source.is_file():
-        raise ValueError('Place ApplianceSignalStudio.exe alongside update.json.')
+        raise ValueError('Place '+asset_name(manifest)+' alongside the update manifest.')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    target = directory / f"ApplianceSignalStudio-{manifest['version']}.exe"
+    target = directory / (asset_name(manifest) if manifest.get('kind')=='installer' else f"ApplianceSignalStudio-{manifest['version']}.exe")
     part = target.with_suffix('.part')
     digest = hashlib.sha256()
     count = 0
@@ -182,7 +188,8 @@ def import_offline_update(manifest_path, directory, progress=lambda value: None)
 
 
 def check_latest():
-    with request(MANIFEST_URL) as response:
+    from app_installation import installed_root
+    with request(INSTALLER_MANIFEST_URL if installed_root() else MANIFEST_URL) as response:
         data=response.read(256*1024+1)
     if len(data)>256*1024:raise ValueError('Update information is too large')
     return validate_manifest(json.loads(data))
@@ -190,7 +197,8 @@ def check_latest():
 
 def download_update(manifest,directory,progress=lambda value:None):
     manifest=validate_manifest(manifest);directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
-    target=directory/f"ApplianceSignalStudio-{manifest['version']}.exe";part=target.with_suffix('.part')
+    name=asset_name(manifest) if manifest.get('kind')=='installer' else f"ApplianceSignalStudio-{manifest['version']}.exe"
+    target=directory/name;part=target.with_suffix('.part')
     digest=hashlib.sha256();size=0
     try:
         with request(manifest['url']) as response,part.open('wb') as stream:
@@ -208,10 +216,17 @@ def download_update(manifest,directory,progress=lambda value:None):
 def ps_quote(value):return "'"+str(value).replace("'","''")+"'"
 
 
-def launch_installer(download,recovery,directory,expected_hash):
+def launch_installer(download,recovery,directory,expected_hash,manifest=None):
     if sys.platform!='win32' or not getattr(sys,'frozen',False):raise ValueError('Automatic installation is available in the downloaded Windows app')
     with Path(download).open('rb') as stream:
         if hashlib.file_digest(stream,'sha256').hexdigest()!=expected_hash:raise ValueError('The downloaded update changed; download it again')
+    from app_installation import installed_root
+    if installed_root() or (manifest and manifest.get('kind')=='installer'):
+        if not manifest or validate_manifest(manifest).get('kind')!='installer':
+            raise ValueError('Installed applications require the Setup package, not the portable EXE')
+        if manifest['sha256']!=expected_hash:raise ValueError('Installer checksum does not match the verified manifest')
+        from app_installed_updates import launch_setup_update
+        return launch_setup_update(download,recovery,directory,manifest)
     target=Path(sys.executable).resolve();backup=target.with_suffix('.previous.exe')
     # Check write access before asking the app to exit. No elevation or shell interpolation.
     try:

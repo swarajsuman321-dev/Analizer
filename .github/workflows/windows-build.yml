@@ -12,7 +12,10 @@ jobs:
     permissions:
       contents: write
     runs-on: windows-latest
-    timeout-minutes: 30
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +29,8 @@ jobs:
         run: |
           python -m venv .venv-exe
           .venv-exe\Scripts\python.exe -m pip install --only-binary=:all: -r requirements-build.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv-exe\Scripts\python.exe -c "from scripts.build_installer import compiler; print(compiler())"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check native updates and channel interactions
         shell: pwsh
@@ -60,13 +65,29 @@ jobs:
             Write-Output "::error title=Windows package failure::$tail"
           }
           exit $code
+      - name: Build and verify per-user installer lifecycle
+        shell: pwsh
+        run: |
+          $output = & .venv-exe\Scripts\python.exe scripts/build_installer.py 2>&1
+          $code = $LASTEXITCODE
+          if ($code -eq 0) {
+            $output += & .venv-exe\Scripts\python.exe scripts/check_installer.py 2>&1
+            $code = $LASTEXITCODE
+          }
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = (($output | Select-Object -Last 24) -join "`n").Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Installer lifecycle failure::$tail"
+          }
+          exit $code
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: ApplianceSignalStudio-Windows-v2.3.1
+          name: ApplianceSignalStudio-Windows-v2.3.2
           path: |
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip
+            dist/ApplianceSignalStudio-Setup-*.exe
           if-no-files-found: error
           retention-days: 30
       - name: Upload build diagnostics
@@ -92,9 +113,9 @@ jobs:
           $draft = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft' 2>$null
           if ($LASTEXITCODE -eq 0) {
             if ($draft -eq 'false') { Write-Output "Version already published; keeping immutable release."; exit 0 }
-            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md" 2>&1
+            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
           } else {
-            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json "manuals/v$version.md" 2>&1
+            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
           }
           $publishCode = $LASTEXITCODE
           $publication | Write-Output

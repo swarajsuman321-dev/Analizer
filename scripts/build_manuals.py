@@ -15,6 +15,7 @@ NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, proce
        '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.',
        '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.',
        '2.2.2':'Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas.',
+       '2.3.2':'Per-user Windows installer with bundled runtime, Start menu and optional desktop shortcuts, separate verified Setup updates, runtime health checks and data-preserving uninstall.',
        '2.3.1':'Repaint rendered legend labels immediately on theme changes and prevent report table text clipping; includes all v2.3.0 engineering and compact-workbench features.',
        '2.3.0':'Compact workbench controls, configurable appliance profiles and KPIs, run comparisons with tolerance envelopes, and traceable engineering PDF/Excel reports.',
        '2.2.3':'Quick zoom controls beside Analysis/Comparison, distinct stable channel colors and visible legends, and About menu access to User Manual and Updates.'}

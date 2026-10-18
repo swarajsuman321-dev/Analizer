@@ -125,13 +125,18 @@ def startup_error(details):
 def entry_main():
     parser = argparse.ArgumentParser(description='Appliance Signal Studio')
     parser.add_argument('--self-test',action='store_true')
+    parser.add_argument('--installation-check',action='store_true')
     parser.add_argument('--report',type=Path)
     parser.add_argument('--restore',type=Path,help='Restore a recovery workspace after an update')
     args = parser.parse_args()
     report = args.report.resolve() if args.report else None
-    if args.self_test:
+    if args.self_test or args.installation_check:
         try:
-            result = self_test()
+            if args.installation_check:
+                from app_installation import installation_check
+                result = installation_check()
+            else:
+                result = self_test()
         except Exception:
             result = {'ok':False,'error':traceback.format_exc()}
         if report:
@@ -141,6 +146,8 @@ def entry_main():
             print(json.dumps(result,indent=2))
         return 0 if result['ok'] else 1
     try:
+        from app_installation import hold_application_mutex
+        hold_application_mutex()
         from main import run
         return run()
     except Exception:

@@ -167,6 +167,13 @@ def finalize_installation():
     """Called only after a normal packaged Windows startup/restore succeeds."""
     if sys.platform!='win32' or not getattr(sys,'frozen',False):return
     executable=Path(sys.executable).resolve();roots=installation_roots();home=settings_directory()
+    from app_installation import installed_root
+    if installed_root():
+        # Inno Setup owns complete version directories and its uninstall log.
+        # Never let portable cleanup remove a runtime retained for recovery.
+        migrate_user_files([p/'SignalStudio_Output' for p in roots]+roots)
+        write_json(home/'lifecycle.json',{'version':VERSION,'mode':'installer-managed','removed':[]})
+        return
     # Re-verify copies before deleting any obsolete binary.
     migrate_user_files([p/'SignalStudio_Output' for p in roots]+roots)
     record_path=home/'installations.json'

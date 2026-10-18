@@ -12,3 +12,10 @@ data={'version':VERSION,'url':f'{RELEASES}/download/v{VERSION}/ApplianceSignalSt
       'size':exe.stat().st_size,'sha256':checksum,
       'notes':Path(f'manuals/v{VERSION}.md').read_text(encoding='utf-8').split('## Changes in this version\n',1)[1].split('\n##',1)[0].strip()}
 Path('dist/update.json').write_text(json.dumps(validate_manifest(data),indent=2),encoding='utf-8')
+
+# Separate feed keeps installed updates isolated from older single-EXE clients.
+setup=Path(f'dist/ApplianceSignalStudio-Setup-{VERSION}.exe')
+with setup.open('rb') as stream:setup_hash=hashlib.file_digest(stream,'sha256').hexdigest()
+installer={**data,'kind':'installer','url':f'{RELEASES}/download/v{VERSION}/{setup.name}',
+           'size':setup.stat().st_size,'sha256':setup_hash}
+Path('dist/installer-update.json').write_text(json.dumps(validate_manifest(installer),indent=2),encoding='utf-8')

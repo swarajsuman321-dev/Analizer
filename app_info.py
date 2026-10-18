@@ -62,6 +62,9 @@ class InfoTab(QtWidgets.QWidget):
         self.check_button.setEnabled(True);self.install_button.setEnabled(False);self.offline_button.setEnabled(True)
         if error:self.status.setText('Could not check for updates. '+network_hint(error));self.offline_button.setEnabled(True);return
         self.manifest=result
+        from app_installation import installed_root
+        if installed_root() and result.get('kind')!='installer':
+            self.status.setText('This installation requires the Setup update package. Download Setup from the official release page.');return
         if version_tuple(result['version'])<=version_tuple(VERSION):self.status.setText(f'You have the latest version ({VERSION}).');return
         self.status.setText(f"Version {result['version']} is available ({result['size']/1024/1024:.0f} MB).")
         self.notes.setText(str(result.get('notes','')))
@@ -73,7 +76,7 @@ class InfoTab(QtWidgets.QWidget):
             return
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Select approved update manifest', '',
-            'Update manifest (update.json);;JSON files (*.json)')
+            'Update manifests (update.json installer-update.json);;JSON files (*.json)')
         if not filename:
             return
         self.progress.setValue(0)
@@ -90,6 +93,9 @@ class InfoTab(QtWidgets.QWidget):
             self.status.setText('Offline update rejected: ' + str(error))
             return
         manifest, download = result
+        from app_installation import installed_root
+        if installed_root() and manifest.get('kind')!='installer':
+            self.status.setText('Offline update rejected: choose installer-update.json and its matching Setup package.');return
         if version_tuple(manifest['version']) <= version_tuple(VERSION):
             self.status.setText('This package is not newer than the installed version.')
             return
@@ -109,7 +115,7 @@ class InfoTab(QtWidgets.QWidget):
                 from app_workspace_io import save_workspace
                 directory=self.update_directory();recovery=directory/'recovery.json'
                 self.window.mutate();save_workspace(str(recovery),self.window.store,[w.state() for w in self.window.workspaces],self.window.ui_state())
-                launch_installer(self.download,recovery,directory,self.manifest['sha256'])
+                launch_installer(self.download,recovery,directory,self.manifest['sha256'],manifest=self.manifest)
                 self.window.close()
             except Exception as exc:self.status.setText('Could not install update. '+str(exc))
             return
