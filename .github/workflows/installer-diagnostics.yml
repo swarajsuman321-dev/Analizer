@@ -6,6 +6,7 @@ on:
       - installer/**
       - scripts/check_installer.py
       - scripts/build_installer.py
+      - scripts/windows_shortcut.py
       - .github/workflows/installer-diagnostics.yml
   workflow_dispatch:
 permissions:

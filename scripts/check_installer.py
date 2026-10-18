@@ -91,10 +91,8 @@ def check(legacy_only=False):
         desktop_result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',utf8+"[Environment]::GetFolderPath('Desktop')"],capture_output=True,text=True,encoding='utf-8',check=True)
         desktop=Path(desktop_result.stdout.strip())/'Appliance Signal Studio.lnk'
         def shortcut_target():
-            from app_updates import ps_quote
-            command='(New-Object -ComObject WScript.Shell).CreateShortcut('+ps_quote(shortcut)+').TargetPath'
-            result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',utf8+command],capture_output=True,text=True,encoding='utf-8',check=True)
-            return Path(result.stdout.strip()).resolve()
+            from scripts.windows_shortcut import shortcut_target as read_target
+            return read_target(shortcut)
         try:
             print('PHASE: install/repair',flush=True)
             install_package(setup);runtime_check(version);preserved()
