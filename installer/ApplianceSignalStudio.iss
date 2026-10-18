@@ -66,10 +66,9 @@ begin
   Exit;
   #endif
   try
-    { Extract a private complete copy before Setup modifies any installed files.
-      ExtractTemporaryFiles retains the unexpanded {app} component below {tmp}.
-      A nonempty PrepareToInstall result is a hard stop, unlike AfterInstall
-      callback exceptions, which Inno Setup intentionally catches and ignores. }
+    // Stage the complete payload before changing installed files.
+    // Temporary extraction keeps the literal app constant beneath the temp root.
+    // A nonempty result is a hard stop; AfterInstall exceptions are not.
     ExtractTemporaryFiles('*');
     Runtime := ExpandConstant('{tmp}\') + '{app}\versions\{#AppVersion}\ApplianceSignalStudio.exe';
     ReportPath := ExpandConstant('{localappdata}\ApplianceSignalStudio\InstallerLogs\check-{#AppVersion}.json');
