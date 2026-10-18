@@ -566,11 +566,28 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.time_lock_action=self.navigation_bar.addAction('Lock Time Axes');self.time_lock_action.setCheckable(True);self.time_lock_action.setChecked(True)
         self.time_lock_action.toggled.connect(self.set_time_lock)
         outer.insertWidget(0,self.navigation_bar)
-        self.hover_readout=QtWidgets.QLabel('Mouse X/Y · Move over a graph to inspect values',self)
+        self.hover_strip=QtWidgets.QWidget(self);self.hover_strip.setObjectName('graphReadoutAndQuickZoom')
+        self.hover_strip.setFixedHeight(48)
+        strip_layout=QtWidgets.QHBoxLayout(self.hover_strip);strip_layout.setContentsMargins(0,0,4,0);strip_layout.setSpacing(4)
+        self.hover_readout=QtWidgets.QLabel('Mouse X/Y · Move over a graph to inspect values',self.hover_strip)
         self.hover_readout.setObjectName('mouseXYReadout');self.hover_readout.setTextFormat(QtCore.Qt.TextFormat.PlainText)
         self.hover_readout.setFixedHeight(48);self.hover_readout.setContentsMargins(8,2,8,2)
         self.hover_readout.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Fixed)
-        outer.insertWidget(1,self.hover_readout)
+        strip_layout.addWidget(self.hover_readout,1)
+        # Share QAction instances with the header so shortcuts, mode constraints
+        # and linked-axis behavior cannot diverge between the two locations.
+        self.quick_zoom_bar=QtWidgets.QToolBar('Quick Zoom',self.hover_strip)
+        self.quick_zoom_bar.setObjectName('quickZoom');self.quick_zoom_bar.setMovable(False)
+        self.quick_zoom_bar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,QtWidgets.QSizePolicy.Policy.Fixed)
+        for command in ('in','out','reset'):self.quick_zoom_bar.addAction(self.navigation_actions[command])
+        self.quick_mode_button=QtWidgets.QToolButton(self.hover_strip)
+        self.quick_mode_button.setAccessibleName('Zoom and pan mode');self.quick_mode_button.setAutoRaise(True)
+        self.quick_mode_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu=QtWidgets.QMenu(self.quick_mode_button)
+        for command in ('x','y','xy','pan'):menu.addAction(self.navigation_actions[command])
+        self.quick_mode_button.setMenu(menu);self.quick_mode_button.setDefaultAction(self.navigation_actions['pan'])
+        strip_layout.addWidget(self.quick_zoom_bar);strip_layout.addWidget(self.quick_mode_button)
+        outer.insertWidget(1,self.hover_strip)
         self.set_layout('Single')
 
     def _hover_changed(self,pane,state):
@@ -583,6 +600,9 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
+        # Leave room for coordinates even with both sidebars open. QToolBar
+        # exposes its existing overflow menu when the center column is narrow.
+        if hasattr(self,'quick_zoom_bar'):self.quick_zoom_bar.setMaximumWidth(max(80,int(self.width()*.5)))
         if self._hover_pane:self._hover_changed(self._hover_pane,self._hover_pane.hover_state)
 
     def navigate(self,command,factor=None):
@@ -592,6 +612,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         if command in ('x','y','xy','box','pan'):
             self.navigation_mode='xy' if command=='box' else command
             self.navigation_actions[self.navigation_mode].setChecked(True)
+            self.quick_mode_button.setDefaultAction(self.navigation_actions[self.navigation_mode])
             for pane in self.visible_panes():
                 view=pane.getViewBox();view.setMouseMode(view.PanMode if command=='pan' else view.RectMode)
                 view.setMouseEnabled(x=command!='y',y=command!='x')

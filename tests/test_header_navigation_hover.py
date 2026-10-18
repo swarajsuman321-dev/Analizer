@@ -74,3 +74,34 @@ class HeaderNavigationTests(unittest.TestCase):
         self.assertEqual(ws.navigation_mode,'y');self.assertTrue(ws.navigation_actions['y'].isChecked())
         self.assertEqual(tuple(ws.active.getViewBox().state['mouseEnabled']),(False,True))
         state.pop('navigation_mode');ws.restore(state);self.assertEqual(ws.navigation_mode,'pan')
+
+    def test_quick_zoom_shares_actions_and_respects_axis_mode(self):
+        ws=self.w.dashboard;ws.set_layout('Vertical split');p,q=ws.visible_panes();q.bind([self.c.id]);ws.link();self.app.processEvents()
+        self.assertEqual(ws.quick_zoom_bar.actions(),[ws.navigation_actions[key] for key in ('in','out','reset')])
+        self.assertEqual(ws.quick_mode_button.menu().actions(),[ws.navigation_actions[key] for key in ('x','y','xy','pan')])
+        ws.navigate('x');self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['x'])
+        beforex=np.diff(p.viewRange()[0])[0];beforey=[list(pane.viewRange()[1]) for pane in (p,q)]
+        button=ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['in'])
+        self.assertTrue(button.isVisible());QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton);self.app.processEvents()
+        self.assertAlmostEqual(np.diff(p.viewRange()[0])[0]/beforex,.8)
+        np.testing.assert_allclose(p.viewRange()[0],q.viewRange()[0])
+        for pane,expected in zip((p,q),beforey):np.testing.assert_allclose(pane.viewRange()[1],expected)
+        ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['out']).click();self.app.processEvents()
+        self.assertAlmostEqual(np.diff(p.viewRange()[0])[0],beforex)
+        ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['reset']).click();self.app.processEvents()
+        self.assertLessEqual(p.viewRange()[0][0],0);self.assertGreaterEqual(p.viewRange()[0][1],2)
+        ws.navigation_actions['y'].trigger();self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['y'])
+
+    def test_quick_controls_stay_outside_canvas_and_track_workspace(self):
+        w=self.w;w.resize(1024,768);self.app.processEvents()
+        for index,ws in enumerate(w.workspaces):
+            w.tabs.setCurrentIndex(index);self.app.processEvents()
+            bar=ws.quick_zoom_bar;strip=ws.hover_strip
+            self.assertTrue(bar.isVisible());self.assertTrue(ws.quick_mode_button.isVisible())
+            self.assertEqual(strip.height(),48);self.assertEqual(ws.hover_readout.height(),48)
+            self.assertLess(strip.mapToGlobal(strip.rect().bottomLeft()).y(),ws.active.mapToGlobal(ws.active.rect().topLeft()).y())
+            self.assertLessEqual(ws.hover_readout.mapToGlobal(ws.hover_readout.rect().topRight()).x(),bar.mapToGlobal(bar.rect().topLeft()).x())
+            self.assertLessEqual(bar.width(),max(80,int(ws.width()*.5)))
+            ws.quick_mode_button.menu().actions()[2].trigger();self.assertEqual(ws.navigation_mode,'xy')
+            self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['xy'])
+        w.tabs.setCurrentIndex(0);self.assertTrue(w.dashboard.quick_zoom_bar.isVisible());self.assertFalse(w.comparison.quick_zoom_bar.isVisible())

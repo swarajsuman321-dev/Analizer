@@ -72,6 +72,7 @@ def self_test():
             if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
             if hasattr(hover_pane,'hover_label') or 'Mouse X' not in window.dashboard.hover_readout.toolTip():raise RuntimeError('Mouse readout must stay outside the canvas')
             if window.dashboard.navigation_bar.parentWidget() is not window or not {'x','y','xy','pan','reset'}<=window.dashboard.navigation_actions.keys():raise RuntimeError('Header navigation controls are missing')
+            if window.dashboard.quick_zoom_bar.actions()!=[window.dashboard.navigation_actions[key] for key in ('in','out','reset')]:raise RuntimeError('Shared quick zoom controls are missing')
             if [line.value() for line in hover_pane.cursor_lines]!=positions:raise RuntimeError('Hover moved measurement cursors')
             hover_pane.clear_hover()
             from PIL import Image,ImageDraw
@@ -79,5 +80,5 @@ def self_test():
             draw.rectangle((50,40,750,620),outline='black',width=2);draw.line((55,250,745,250),fill=(32,32,32),width=3);image.save(root/'reference.png')
             reference=load_reference(root/'reference.png',calibration={'duration_min':10,'plot_bounds':[50,750,40,620]})
             if not reference.channels:raise RuntimeError('Image reference extraction failed')
-        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','separate About and User Manual windows','header navigation and fixed hover readout','per-file channel controls','Windows product/version identity','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
+        return {'qt_gui_checked':True,'channels':len(window.store.channels),'checks':['Qt startup','application and window icons','bundled version manual','separate About and User Manual windows','header navigation, fixed hover readout and shared quick zoom','per-file channel controls','Windows product/version identity','TDMS reader and units','TDMS parameter review and saved template','whole recording removal','mouse XY hover','synthetic channel data','FFT coordinate separation','portable workspace','SVG presentation','PDF/PNG reports','interval Excel/CSV','presets','normalized tracks','extension hooks and Qt plot','full workbook','image-reference calibration']}
     finally:window.close();app.processEvents()

@@ -187,3 +187,7 @@ Engineering Controls now shares Open's first-use TDMS review and persistent temp
 ### Header navigation and non-obstructing hover (v2.2.2)
 
 Zoom X, Zoom Y, Zoom XY, Pan, Reset View and Lock Cursors are in the upper application toolbar. Mouse X/Y readings use a fixed strip outside the canvas. Modes remain visible and persist per workspace. See [layout and verification details](docs/HEADER_NAVIGATION_AND_HOVER.md) and the [v2.2.2 manual](manuals/v2.2.2.md).
+
+### Quick zoom in the readout strip (v2.2.3)
+
+The unused right side of the fixed Mouse X/Y strip now offers Zoom In, Zoom Out, Reset View, and an X/Y/XY/Pan selector. These reuse the existing actions, maintain synchronized navigation, and keep text and controls outside the graph. See [quick zoom verification](docs/QUICK_ZOOM_CONTROLS.md) and the [v2.2.3 manual](manuals/v2.2.3.md).

@@ -14,7 +14,8 @@ NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, proce
        '2.1.9':'Complete recording removal, reviewed TDMS parameter templates, persistent output folders, and real-file import corrections.',
        '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.',
        '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.',
-       '2.2.2':'Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas.'}
+       '2.2.2':'Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas.',
+       '2.2.3':'Quick Zoom In, Zoom Out and Reset View beside the mouse readout, sharing the existing X/Y/XY/Pan actions.'}
 
 
 def generate(versions=None):
