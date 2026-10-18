@@ -77,7 +77,7 @@ class InstallerTests(unittest.TestCase):
             with patch('sys.platform','win32'),patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_installed_updates.subprocess.Popen') as launch:
                 launch_installer(download,root/'restore.json',root,package()['sha256'],manifest=package())
                 script=(root/'install-setup-update.ps1').read_text(encoding='utf-8-sig')
-                self.assertIn("User''s App",script);self.assertIn('Get-FileHash',script);self.assertIn('$setup.ExitCode',script)
+                self.assertIn("User''s App",script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('$setup.ExitCode',script)
                 self.assertNotIn('Move-Item',script);self.assertIn('FilePath $previous',script)
                 self.assertEqual(launch.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'],'1')
 

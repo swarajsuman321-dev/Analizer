@@ -24,7 +24,10 @@ $recovery = {ps_quote(recovery)}
 $log = {ps_quote(Path(directory)/'setup-update.log')}
 Wait-Process -Id {os.getpid()} -ErrorAction SilentlyContinue
 try {{
-    $actualHash = (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant()
+    $stream = [System.IO.File]::OpenRead($download)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {{ $actualHash = [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }}
+    finally {{ $stream.Dispose(); $sha.Dispose() }}
     if ($actualHash -ne {ps_quote(manifest['sha256'])}) {{ throw 'Installer checksum changed' }}
     $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/SP-', '/NORESTART',
         {ps_quote('/DIR="'+str(root)+'"')}, {ps_quote('/LOG="'+str(Path(directory)/'setup-install.log')+'"')})
