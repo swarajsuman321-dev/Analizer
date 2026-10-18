@@ -1,0 +1,17 @@
+dialog,width_logical_px,height_logical_px,long_unwrapped_explanations
+Plot display,238,210,
+Cursor locks,768,136,"Locked cursors stay on real samples while panning. Drag to scrub; ←/→ steps A, Shift+←/→ steps B. Other channels update at the same time."
+Move cursors,227,259,
+Channel mapping,720,420,
+Measurements / quality,720,420,
+Comparison mapping,317,379,
+Reference units,577,169,"Pressure comparison retains original numbers, labelled Pa. Metadata does not rescale measurements."
+Engineering setup,768,420,
+Extensions,720,420,Python extensions run local code and use register_patch(manager). Install only extensions you trust.
+Rule phase,423,225,
+Rule tolerance,362,154,
+Rule acceptance,422,154,
+Rule anchor,747,219,
+TDMS first review,776,650,
+About / Updates,434,506,
+User Manual,463,319,

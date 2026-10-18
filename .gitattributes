@@ -1,0 +1,3 @@
+tests/samples/recordings/*.csv -text -whitespace
+tests/samples/recordings/*.CSV -text -whitespace
+tests/samples/recordings/*.tdms -text -whitespace

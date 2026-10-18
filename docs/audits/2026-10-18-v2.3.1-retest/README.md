@@ -1,5 +1,7 @@
 # v2.3.1 UI retest — 18 October 2026
 
+> Superseded placement criterion: the latest user requirement puts zoom/pan beside Analysis/Comparison inside the graph header. The global-toolbar placement is an open defect. See [current requirements](../../USER_WORKFLOW_ACCEPTANCE.md) and the real-recording audit.
+
 **Result: substantial improvements verified, but the split-plot layout is still defective.** The compressed lower graph in the supplied screenshot reproduces in the current source. Passing the existing test suite does not establish that both split panes remain readable.
 
 Source inspected and executed: **8c3ce86**, application **2.3.1**, including application changes at **1b8fe71**. The supplied screenshots identify v2.3.1. Source was fast-forwarded from GitHub before testing. No application code or executable was changed by this retest.

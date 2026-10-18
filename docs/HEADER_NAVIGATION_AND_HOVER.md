@@ -1,5 +1,7 @@
 # Header graph controls and non-obstructing hover — v2.2.2
 
+> Superseded placement criterion: the latest user requirement puts zoom/pan beside Analysis/Comparison inside the graph header. The global-toolbar placement is an open defect. See [current requirements](USER_WORKFLOW_ACCEPTANCE.md) and the real-recording audit.
+
 ## Layout correction
 
 The navigation tools are now in the **upper application toolbar**, immediately below Open/Save/Report and above the graph tabs, matching the user's clarified placement. No navigation toolbar is parented to a graph viewport and no plot margin is reserved for a floating toolbar.

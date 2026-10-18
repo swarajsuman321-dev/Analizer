@@ -210,3 +210,7 @@ The [18 October 2026 UI/UX audit](docs/audits/2026-10-18/README.md) includes the
 
 
 The [v2.3.1 UI retest](docs/audits/2026-10-18-v2.3.1-retest/README.md) includes the full 268-test local outcome, resolved audit findings, and reproduction of the remaining compressed lower split pane.
+
+### Real-recording user workflow audit (18 October 2026)
+
+[Findings, screenshots and reproducible evidence](docs/audits/2026-10-18-real-user-workflows/README.md) document unresolved time-lock, cursor, context-menu and graph-header issues. [Reusable original test recordings](tests/samples/recordings/README.md) are committed with SHA-256 verification. [Latest user acceptance requirements](docs/USER_WORKFLOW_ACCEPTANCE.md) supersede older global-toolbar placement criteria.
