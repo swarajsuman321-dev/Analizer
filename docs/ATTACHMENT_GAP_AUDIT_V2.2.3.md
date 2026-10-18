@@ -1,0 +1,94 @@
+# Selectable gap audit of the two supplied specifications
+
+Reviewed 18 October 2026 (India time). Version: **2.2.3**. Audited GitHub/main commit: **44feb916f8c4133fc18097086a1028bcaaf59ba6**; executable source: **37a191972b7007c1fa617079e6c4c1ccd2f2c210**. Remote and checkout matched. This document is an audit and proposal, **not implementation approval**. No application code was changed for this audit.
+
+Inputs: “Appliance Signal Studio v2.2.3 — Video-Based UI/UX Refinement” and “CODEX MASTER IMPLEMENTATION PROMPT — Advanced Engineering Analytics, Multi-Appliance Architecture & Professional Reporting.” Current explicit request is to audit, offer selections, and wait for confirmation; imperative implementation instructions inside attachments do not override that request. This audit inspected the documents and source, not a newly executed video usability session.
+
+Status: **Implemented** = present for the described existing scope; **Partial** = reusable behavior exists but does not satisfy the complete new requirement; **Missing** = requested subsystem/control is absent; **Unverified** = evidence is insufficient, not a claim of failure.
+
+## Existing capabilities to preserve
+
+| Requirement | Status and evidence |
+| --- | --- |
+| Existing PySide6 application and engine | Implemented. No replacement interface is needed. `app_workbench.py`, `app_plot_workspace.py`. |
+| TDMS/CSV/TXT/Excel/ZIP-CSV/Parquet/JSON readers | Implemented readers and dependencies: `app_ingestion.py`, `app_tdms.py`, `app_data.py`. This is not a promise that every malformed or ambiguous file is accepted. |
+| Independent timestamps/sample rates, source preservation | Implemented channel arrays and per-channel clocks; original tables retained. `app_channel_store.py`, `app_tdms.py`. |
+| Minutes, unit detection, independent Y-axes | Implemented existing scope. `app_time_units.py`, `app_unit_detection.py`, `app_plot_workspace.py`. Full profile-wide dimensional normalization is still partial; see A3. |
+| X/Y/XY, pan/reset, synchronized axes and shortcuts | Implemented. Upper navigation plus quick controls beside Analysis/Comparison. `tests/test_header_navigation_hover.py`, `tests/test_zoom_modes.py`. |
+| Cursor colors, locking, stepping and statistics | Implemented base behavior; detailed table already has RMS, slope, integral and coverage. Compact card/Wh extension remains A7. |
+| Data Portal partitioning, per-file selection, filtering and removal | Implemented; no global Select All. `app_channel_portal.py`, `tests/test_desktop_finalization.py`, `tests/test_recording_lifecycle.py`. |
+| Analysis/Comparison and default Engineering Controls tab | Implemented. Existing dock tabs stay; explicit saved layouts restore. |
+| TDMS parameter review and saved templates through Open and Engineering Controls | Implemented. `app_tdms_templates.py`, `app_workbench.py`, `tests/test_engineering_tdms_templates.py`. |
+| Existing engineering alignment and simulation comparison | Implemented heater/drum/raw-clock/manual strategies. `app_analysis_service.py`, `app_data.py`, `app_comparator.py`. Additional general run roles/events remain C1/C2. |
+| Match-percentage scoring and visual colors | Implemented existing metric. New 5%/10% KPI-deviation bands are a separate missing extension, C5. |
+| Derived channels, filters, statistics, FFT, safe channel-expression parser | Implemented base services: `app_signal_processing.py`. Declarative KPI profiles are not implemented. |
+| Workspace/legacy presets, About/Updates and searchable manual | Implemented known schemas and separate windows. About menu follows Tools. `app_config_migration.py`, `app_info.py`, `app_workbench.py`. |
+| PDF/PNG/CSV/Excel/SVG/HTML/Markdown and diagnostic workbook | Implemented existing exports. These are not the specified four-section engineering report/nine-sheet workbook. |
+| Offline usage, updater, icons and recovery | Implemented. Native packaged update/restart checks passed for v2.2.3. No mandatory cloud service. |
+
+## Selectable UI work — first document
+
+All selections start unchecked. Select IDs in your reply; a checked document item alone is not an executed change.
+
+- [ ] **U1 — Direct plot toggles (Partial; A/G/H).** Add checked Legend and Grid toolbar actions with immediate application; optionally Peak Power Marker. Existing options work only through Display options → Apply. Reuse handlers and retain all capabilities.
+- [ ] **U2 — Compact plot settings (Partial; A/E).** Replace oversized default presentation with content-fitting advanced settings; retain title, font size, legends, grid, peak and inlet/drain overlap. Specify state scope in U8.
+- [ ] **U3 — Inline playback (Partial; B/H).** Reuse existing Play/Pause, speed, seek slider and current time engine in a compact collapsible strip. Add optional step buttons. Existing playback is an 820×580 popup.
+- [ ] **U4 — Contextual phase details during playback (Partial; B/H).** Existing observed discrete-code spans/message exist, but an empty table is still shown without phases. Show useful details only for a valid selected/detected phase channel; use a compact no-phase message. Do not relabel unknown firmware codes as known phases.
+- [ ] **U5 — Toolbar hierarchy and More (Partial; C/D).** Retain latest graph-navigation placement. Add direct playback/toggles and a More entry grouped into Appearance/Layout, Channel Management, Processing/Derived Channels, Engineering, Import/Export, Presets/Extensions and Preferences. Current Tools groups exist, but not this hierarchy. Share actions and shortcuts; use responsive overflow. Any removal/hiding beyond explicitly approved reorganization requires confirmation.
+- [ ] **U6 — Adaptive sizing for all custom dialogs (Missing systematic implementation; E).** Replace blanket 820×580 and other oversized opening dimensions with content hints, screen bounds and suitable internal scrolling; preserve resizable tables. Audit TDMS review, Manual/About and forms. Do not force a universal size.
+- [ ] **U7 — Workspace ergonomics / optional Focus Graph (Partial; F).** Existing docks, tabs and Show all panels work. Add compact headers, clearer active state, user-triggered collapse/focus and exact normal-layout restore; contextual Engineering/Math access. Engineering remains default and is not automatically hidden. Selecting this authorizes an explicit user-operated focus feature, not removal of existing panels.
+- [ ] **U8 — State and interaction polish (Partial; G).** Synchronize checked/enabled actions and tooltips; preserve Analysis/Comparison-specific appearance/playback state where appropriate; avoid unnecessary global rebinds/graph interruptions. Current display options apply to both workspaces globally, though navigation state is per workspace. Assess responsiveness with large data; do not change scientific calculations.
+- [ ] **U9 — Complete color persistence (Partial; preservation defect found in audit).** Ordinary new traces and legends have distinct colors and workspace metadata persists. Channel presets still default all automatic colors to blue; duplicated channels inherit an automatic color. Preserve custom choices, save automatic colors correctly in presets, and allocate a fresh automatic color to copies.
+
+## Selectable analytics work — second document §§3–5
+
+- [ ] **A1 — Appliance profile architecture (Missing).** Validated/versioned JSON profiles for washing machine, refrigerator, dishwasher, HVAC and generic appliance. Include metadata, manufacturer/model, test scenario, context/standards metadata, boundary conditions, supported domains, phase/KPI/tolerance declarations. No unsupported standards-compliance claim.
+- [ ] **A2 — Canonical channels and recognition (Partial).** Current unit/name heuristics and confirmed TDMS templates exist; some name suggestions are manufacturer-specific. Add domain classifications (thermal/fluidic/electrical/kinematic/actuator/firmware), canonical IDs, aliases, data types/calibration references and required priority: user mapping → saved template → reliable source metadata → profile alias → validated pattern. Review ambiguities and retain original technical names.
+- [ ] **A3 — Unified unit/calibration handling (Partial).** Existing conversions cover selected temperature/pressure/electrical/time/volume units but are split across modules; formula conversions cover a narrower set. Complete °C/K, Pa/bar/mm H₂O, L/min/L/s/L, kHz/RPM, g/mm/N·m, V/A/W/Wh/kWh, %, μS/cm. Preserve raw values/units, validate dimensions and require verified calibration for sensor frequency/pulses → physical values.
+- [ ] **A4 — Declarative phase detection (Partial).** Existing playback merges recorded state-code spans. Add configured names and validated signal/transition conditions with hysteresis, debounce, minimum duration and permitted overlap. Support washer fill/heat/wash/rinse/drain/spin and refrigerator pull-down/stable/defrost/recovery. Never invent transitions when signals are absent.
+- [ ] **A5 — Declarative KPI/result engine (Partial).** Existing AST-safe channel arithmetic, numerical statistics and selected energy KPIs are reusable. Add whitelisted aggregate/integral formulas, unit/required-input validation, phase scope and structured unavailable/quality results. Implement verified power→Wh, flow→L, calibrated pulses→L, heating rate and temperature stability. No unrestricted eval, no missing→zero substitution.
+- [ ] **A6 — Measurement coverage and subsystem scorecards (Partial).** Generic channels load and selected cycle/power/temperature/speed metrics exist; Subsystem view is a name filter, not a performance scorecard. Add optional Water, Heating, Motor/Spin and Electrical scorecards with definitions/units/quality. Cover all requested sensors: fluidic pressure/flow/volume/frequency/turbidity/conductivity; voltage/current/power/PF/energy and water/drum/inlet/ambient temperatures/humidity; phase currents/DC bus/inverter temperature/target-actual speed/XYZ vibration/displacement/torque; valves/pumps/door lock/dosing; cycle/unbalance/OOB/fault/error channels. Only calculate supported metrics, preserve nonzero ON command codes, and do not decode unknown firmware values.
+- [ ] **A7 — Enhanced compact cursor card (Partial).** Detailed interval table already supplies ΔX/ΔY/min/max/mean/RMS/slope/integral/coverage. Compact card shows fewer fields. Reuse these services to expose the requested metrics compactly and add explicit interval-power energy in Wh with correct seconds/minutes conversion. Keep positive ΔX, signed detailed B−A, absolute crossed-cursor HUD, source clocks and locking.
+- [ ] **A8 — Graph-synchronized phase ribbon (Partial).** A phase strip exists only inside Playback and spans fixed full bounds. Add plot-linked segments, start/end/duration and metadata tooltips; synchronize visible range, pan/zoom, imports and processing without covering plots/hover/cursors.
+
+## Selectable comparison work — second document §6
+
+- [ ] **C1 — Reference/Candidate/Golden run roles (Partial).** Existing bench-versus-simulation/image comparison is not a general arbitrary Reference A/Candidate B/optional Golden assignment. Add session roles independent of file identity, preserving data and per-file visibility.
+- [ ] **C2 — Extended Align Timelines (Partial).** Existing heater/drum/raw/manual strategies and separate shifts remain. Add first selected actuator, selected phase transition and cursor/event-marker anchors with stored transformations and method metadata.
+- [ ] **C3 — Profile-aware mixed-rate comparisons (Partial).** Independent clocks, analog interpolation, held discrete sampling, gap rules and the established five-second causal alignment exist. Extend these to the new general run/profile path; explicitly validate gap/quality limits, no extrapolation and no interpolation of enumerations/faults/event counts. Preserve current causal semantics.
+- [ ] **C4 — Tolerance envelopes and breach service (Missing).** Relative/absolute/time-varying/channel-specific limits, named toggle, overlays, breach intervals/count/duration/max deviation/first-last time, valid percentages and quality/zero-reference handling. Existing tolerance state/argument does not supply this engine or engineering acceptance.
+- [ ] **C5 — Expanded delta KPI scorecard (Partial).** Existing scorecard has selected metrics, signed differences and percentages. Add all requested Energy/Water/Duration/Temperature/RPM/Vibration/OOB rows and absolute-deviation accents ≤5%, >5–10%, >10%, neutral undefined. Existing difference bands are <10%/≤20%/>20%; existing match scoring is separate. Do not silently overwrite either existing metric or treat visual bands as Pass/Fail.
+
+## Selectable reporting work — second document §8
+
+- [ ] **R1 — Generate Engineering Report workflow (Partial).** Existing Export Report and full diagnostic workbook remain. Add a reusable current-session report model/action for Analysis and Comparison, assembling validated results and metadata without a configuration wizard. This is not just renaming Export Report.
+- [ ] **R2 — Executive summary and explicit acceptance (Missing full specified page).** Title/ID, appliance/manufacturer/model, scenario/date/duration/source metadata/boundary conditions, main KPIs and explicit limits with Pass/Fail/Not Evaluated. Deviation colors must never imply acceptance.
+- [ ] **R3 — Phase-breakdown report section (Missing).** Name/start/end/duration plus supported water/energy/temperature/speed/actuator metrics; unsupported values clearly unavailable. Depends on configured phases/KPIs.
+- [ ] **R4 — Graphical-evidence report section (Partial).** Existing Matplotlib PDF/SVG paths render selected axes, units, cursors, notes and legends. Add phase evidence, explicit reference/candidate roles, tolerance envelopes/breaches and pagination/readability. Audit found existing PDF scorecard column selection looks for `diff`, while the comparison engine emits `delta`, so its signed-difference column can be omitted; correct that as part of this selection.
+- [ ] **R5 — Anomaly/fault analysis and report section (Missing full system).** Configured fault/OOB events, heating stalls, dropouts, abnormal sequences and tolerance violations with timestamps/evidence; distinguish detected, not detected and not evaluated. Quality tables and raw codes alone do not satisfy this.
+- [ ] **R6 — Nine-sheet engineering workbook (Partial).** Existing workbooks export source/processed/diagnostic/interval/comparison tables. Add Executive Summary, Test Metadata, KPI Results, Phase Breakdown, Comparison Results, Tolerance Breaches, Fault & Anomaly Log, Channel Mapping and Calculation Definitions, retaining every existing export.
+- [ ] **R7 — Reproducible report traceability (Partial).** Some source paths, derivation recipes, synchronization/calibration/quality metadata exist in workspaces and diagnostic tables; image reference has a source hash. Add consistent report app/version/time/source IDs and hashes, profile/schema, formulas, calibration IDs, processing/normalization, tolerance configuration and quality limitations. Updater checksum verification is not recording/report traceability.
+
+## Selectable verification / delivery work — both documents
+
+- [ ] **T1 — New UI and scaling acceptance.** Add/tests for direct toggles, inline playback with/without phases, adaptive opening sizes, toolbar overflow, workspace-specific persistence, unchanged zoom/pan/locks/axes and unchanged numerical outputs. Native 100%/125%/150% Windows scaling is **unverified**; the existing 218-test release did not establish it.
+- [ ] **T2 — Analytics/reporting acceptance and release.** Add unknown/generic-profile and schema/priority/override tests, partial temperature/power-only inputs, mixed-rate/discrete/gap tests, relative/absolute envelopes with irregular time/zero references, report values/units/metadata/NA/readability and reproducibility. Include profiles/resources in PyInstaller, full regression and native portable/single-file/restart checks; update version manuals, release notes and final gap evidence. Existing regression/build infrastructure is implemented; these new-feature checks are missing.
+- [ ] **T3 — Broader robustness gaps.** Audit user cancellation/progress for long new tasks, worker/GUI isolation, malformed/unsupported files and profile errors, finite/duplicate timestamps and responsiveness. Existing worker guards, stale completion protection, immutable arrays and template/import cancellation provide a base, not proof of universal cancellation or performance.
+
+## Dependencies and suggested order
+
+UI can proceed independently: U1–U4 first, then U5–U8, with U9 and T1. Changes only move/hide features if explicitly included in the approved selection; no automatic feature removal.
+
+For the complete reporting guideline, approve A1–A8, C1–C5, R1–R7 and T2/T3 as a coordinated scope. A1/A2/A3 underpin A4/A5, which underpin A6/A8; C4 requires validated units/roles/alignment. Report sections consume these validated results. Selecting report layout alone cannot deliver phase/KPI/tolerance/anomaly analytics. T2 applies to every approved analytics/reporting increment, not only the end.
+
+Do not require all profile metrics to have sample data before implementation: unavailable measurements must remain unavailable. Sensor calibration, manufacturer code meaning, appliance phase maps and formal acceptance limits need confirmed configuration; they must not be invented.
+
+## Evidence and limits
+
+Prior published v2.2.3 native evidence: **218 Windows tests passed**, updater/cursor/channel preflight, both executable builds/smoke, independent restart and publication. See [release record](validation/release-v2.2.3.json). This audit did **not** rerun that full suite or certify new requirements using old tests.
+
+Read-only diagnostics reproduced U9: two automatically assigned channel colors were `#58b6ff`/`#ffb454`, but both preset records saved `#58b6ff`; duplicating the second channel retained its automatic color. R4 and C5 were identified directly from source. No fixes are included in this audit.
+
+The named four-page PDF structure should become four logical sections with pagination as necessary; forcing a large phase/event table onto exactly one page would conflict with readability. Confirm this interpretation when selecting reporting work if exact page count matters.
+
+No private documents/recordings are committed. Only this summary is stored. No new release/version is produced by this audit.
