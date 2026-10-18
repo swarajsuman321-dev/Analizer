@@ -63,6 +63,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.tabs=QtWidgets.QTabWidget();self.setCentralWidget(self.tabs)
         self.dashboard=PlotWorkspace(self.store);self.comparison=PlotWorkspace(self.store)
         self.tabs.addTab(self.dashboard,'Analysis');self.tabs.addTab(self.comparison,'Comparison')
+        # Reuse the active workspace actions in the unused graph-tab row.
+        self.quick_navigation=QtWidgets.QStackedWidget(self.tabs)
+        self.quick_navigation.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum,QtWidgets.QSizePolicy.Policy.Fixed)
+        for workspace in self.workspaces:self.quick_navigation.addWidget(workspace.quick_controls)
+        self.tabs.setCornerWidget(self.quick_navigation,QtCore.Qt.Corner.TopRightCorner)
         for workspace in self.workspaces:
             workspace.measurementsChanged.connect(self.readouts)
             workspace.activeChanged.connect(self.workspace_changed)
@@ -71,6 +76,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
         from app_studio_tools import StudioTools
         self.studio=StudioTools(self)
+        self.about_menu=self.menuBar().addMenu('About')
+        self.about_menu.addAction(self.help_action);self.about_menu.addAction(self.info_action)
         from app_info import InfoTab
         self.info_dialog=QtWidgets.QDialog(self);self.info_dialog.setWindowTitle(f'About Appliance Signal Studio · {VERSION}');self.info_dialog.setModal(True);self.info_dialog.resize(1050,760)
         info_layout=QtWidgets.QVBoxLayout(self.info_dialog);self.info=InfoTab(self);info_layout.addWidget(self.info)
@@ -247,8 +254,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             item=channel.addAction(text);item.triggered.connect(lambda checked=False,c=command:self.organize(c))
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
         kind=view.addAction('Show channel kind');self.channel_kind_action=kind;kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show));kind.setChecked(True)
-        self.help_action=toolbar.addAction('User Manual');self.help_action.setShortcut('F1');self.help_action.triggered.connect(self.show_help)
-        self.info_action=toolbar.addAction('About / Updates');self.info_action.triggered.connect(self.show_info)
+        self.help_action=QtGui.QAction('User Manual',self);self.help_action.setShortcut('F1');self.help_action.triggered.connect(self.show_help)
+        self.info_action=QtGui.QAction('Updates',self);self.info_action.triggered.connect(self.show_info)
         channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
         channel.addAction('Remove recording…',lambda:self.guard(self.remove_recording));channel.addAction('Clear workspace',lambda:self.guard(self.clear_recordings))
 
@@ -737,7 +744,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.readouts()
 
     def workspace_changed(self,*args):
-        if self.tabs.currentIndex()<2:self._plot_tab_index=self.tabs.currentIndex()
+        if self.tabs.currentIndex()<2:
+            self._plot_tab_index=self.tabs.currentIndex()
+            self.quick_navigation.setCurrentIndex(self._plot_tab_index)
         if hasattr(self,'layout_combo'):
             for workspace in self.workspaces:workspace.navigation_bar.setVisible(workspace is self.active_workspace)
             pane=self.active_workspace.active

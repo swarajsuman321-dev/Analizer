@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from PySide6 import QtCore,QtGui,QtWidgets
 from app_channel_store import Channel,ChannelStore
+from app_trace_colors import channel_colors
 from app_extensions import PluginManager
 from app_studio_state import (STYLES,channel_preset,validate_preset,recorded_phases,export_full_workbook)
 
@@ -32,7 +33,7 @@ class StudioTools(QtCore.QObject):
     def __init__(self,window):
         super().__init__(window);self.window=window;self.plugins=PluginManager();self.dialogs=[]
         self.reference_settings={};self.calibration={};self.bench_columns={};self.tolerances={}
-        self.options={'title':'Signal analysis','show_grid':True,'show_legends':False,'font_size':9,'annotate_peak':False,'highlight_overlap':False}
+        self.options={'title':'Signal analysis','show_grid':True,'show_legends':True,'font_size':9,'annotate_peak':False,'highlight_overlap':False}
         self.play_timer=QtCore.QTimer(self);self.play_timer.setInterval(50);self.play_timer.timeout.connect(self.tick)
         self.play_context=None;self.pending_preset=None
         self.build_menu();self.refresh_sync()
@@ -196,12 +197,12 @@ class StudioTools(QtCore.QObject):
         if not w.store.channels:raise ValueError('Load data before configuring channels')
         dialog,layout=self.dialog('Channel mapping & appearance');table=QtWidgets.QTableWidget(0,10)
         table.setHorizontalHeaderLabels(['Show','Source / channel','Label','Unit','Panel','Right axis','Style','Width','Color','Y bounds (min,max)']);layout.addWidget(table)
-        entries=[];visible={id for p in w.active_workspace.visible_panes() for id in p.ids}
+        entries=[];visible={id for p in w.active_workspace.visible_panes() for id in p.ids};colors=channel_colors(w.store)
         for row,c in enumerate(w.store.channels.values()):
             table.insertRow(row);style=c.attributes.get('plot_style',{})
             show=QtWidgets.QCheckBox();show.setChecked(c.id in visible);table.setCellWidget(row,0,show)
             original=QtWidgets.QTableWidgetItem(c.attributes.get('source_column',c.name));original.setFlags(original.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable);table.setItem(row,1,original)
-            for col,value in ((2,c.name),(3,c.unit),(7,str(style.get('width',1))),(8,style.get('color','#58b6ff')),(9,f"{style.get('ymin','')},{style.get('ymax','')}")):table.setItem(row,col,QtWidgets.QTableWidgetItem(value))
+            for col,value in ((2,c.name),(3,c.unit),(7,str(style.get('width',1))),(8,colors[c.id]),(9,f"{style.get('ymin','')},{style.get('ymax','')}")):table.setItem(row,col,QtWidgets.QTableWidgetItem(value))
             panel=QtWidgets.QComboBox();panel.addItems([f'Panel {i}' for i in range(1,11)]);panel.setCurrentIndex(next((i for i,p in enumerate(w.active_workspace.panes) if c.id in p.ids),0));table.setCellWidget(row,4,panel)
             right=QtWidgets.QCheckBox();right.setChecked(style.get('side')=='right');table.setCellWidget(row,5,right)
             pattern=QtWidgets.QComboBox();pattern.addItems(list(STYLES));pattern.setCurrentIndex(list(STYLES.values()).index(style.get('style','solid')));table.setCellWidget(row,6,pattern)

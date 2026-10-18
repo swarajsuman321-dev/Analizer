@@ -477,10 +477,16 @@ The selected navigation mode stays visibly pressed. Analysis and Comparison reme
 
 Mouse X/Y text is displayed in a **fixed strip outside the canvas**. The first line reports the mouse coordinate and the independent Y-axis coordinates. The second line identifies the nearest trace, actual sample time, value and unit. A stationary strip cannot cover traces, drag handles or cursor labels. It does not resize the graph as values change. Long content is shortened to fit; hovering over the strip reveals the complete readout. Moving out of a graph clears the transient readout and guides. Hover remains enabled by default and does not move or unlock A/B.
 
-## Quick zoom beside the mouse readout | 2.2.3
+## Quick zoom beside Analysis and Comparison | 2.2.3
 
-The unused right side of the fixed Mouse X/Y strip now provides **Zoom In**, **Zoom Out**, **Reset View**, and a mode selector displaying **Zoom X**, **Zoom Y**, **Zoom XY** or **Pan**. These controls stay above the canvas even when a stacked layout scrolls.
+The unused top-right space on the same row as the **Analysis / Comparison** tabs now provides **+ (Zoom In)**, **− (Zoom Out)**, **Reset View**, and a mode selector displaying **Zoom X**, **Zoom Y**, **Zoom XY** or **Pan**. These controls stay above the canvas even when a stacked layout scrolls.
 
 Click the mode selector to choose which axes a rectangle gesture or zoom button affects. The main header and quick controls share the same actions and checked mode, so keyboard/menu changes remain consistent. Zoom buttons operate on the active graph and respect Lock Time Axes for compatible plots. Analysis and Comparison each retain their own settings.
 
-The readout keeps its space on the left; no popup covers the plot. The strip keeps its existing height. Narrow windows use the quick toolbar's overflow menu for zoom actions; the mode selector remains directly available on the right. Full hover text remains available on the readout tooltip. Existing header tools and shortcuts remain available.
+Mouse X/Y keeps its separate full-width readout below the tabs; no popup covers the plot. The strip keeps its existing height. Narrow windows use the quick toolbar's overflow menu for zoom actions; the mode selector remains directly available on the right. Coordinate text uses a compact X/Y presentation when space is limited; the tooltip retains the full wording and precision. Full hover text remains available on the readout tooltip. Existing header tools and shortcuts remain available.
+
+## About menu and individual channel colors | 2.2.3
+
+Choose **About → User Manual** beside Tools, or press **F1**, to open searchable help. Choose **About → Updates** for the version, build date, changelog, license and update controls. Both features remain available in their existing windows.
+
+Every newly plotted channel receives its own stable trace color, including valves sharing a state axis. Legend swatches match their traces. Legends are enabled for new workspaces; **Tools → Plot → Display options → Legends** controls visibility. Saved visibility and custom channel colors remain respected. Automatic colors are saved with channel metadata and used by reports.

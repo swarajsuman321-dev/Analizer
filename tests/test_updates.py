@@ -219,7 +219,7 @@ class InfoTests(unittest.TestCase):
         from app_version import VERSION
         w=AdvancedStudioWindow()
         try:
-            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'About / Updates');self.assertIn(VERSION,w.info.manuals)
+            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'Updates');self.assertIn(VERSION,w.info.manuals)
             self.assertIn('Updates',w.info.manual.toPlainText())
             w.tabs.setCurrentIndex(1);w.show_info();self.assertIs(w.active_workspace,w.comparison);self.assertTrue(w.info_dialog.isVisible())
             w.tabs.setCurrentIndex(0);w.show_info();self.assertIs(w.active_workspace,w.dashboard);self.assertEqual(w.ui_state()['tab'],0)

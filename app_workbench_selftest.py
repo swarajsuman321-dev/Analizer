@@ -26,7 +26,7 @@ def self_test():
             if (root/'report.svg').stat().st_size<100:raise RuntimeError('SVG export failed')
             from app_version import VERSION
             if VERSION not in window.info.manuals or 'Updates' not in window.info.manual.toPlainText():raise RuntimeError('Bundled Info manual is missing')
-            if window.tabs.count()!=2 or not hasattr(window,'help_action') or window.help.topics.findText('View menu and panel layout')<0:raise RuntimeError('Top-toolbar manual navigation is missing')
+            if window.tabs.count()!=2 or not hasattr(window,'help_action') or window.help.topics.findText('View menu and panel layout')<0:raise RuntimeError('Manual navigation is missing')
             if not window.info_dialog.isModal() or window.help_dialog.isModal() or window.help.parentWidget() is not window.help_dialog:raise RuntimeError('About/Help window separation failed')
             if hasattr(window.portal,'select_all') or not window.dashboard.navigation_actions:raise RuntimeError('Dataset isolation or header navigation is missing')
             import sys
@@ -72,6 +72,8 @@ def self_test():
             if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
             if hasattr(hover_pane,'hover_label') or 'Mouse X' not in window.dashboard.hover_readout.toolTip():raise RuntimeError('Mouse readout must stay outside the canvas')
             if window.dashboard.navigation_bar.parentWidget() is not window or not {'x','y','xy','pan','reset'}<=window.dashboard.navigation_actions.keys():raise RuntimeError('Header navigation controls are missing')
+            if window.about_menu.actions()!=[window.help_action,window.info_action]:raise RuntimeError('About menu navigation is missing')
+            if window.quick_navigation.currentWidget() is not window.active_workspace.quick_controls:raise RuntimeError('Tab-row quick controls are missing')
             if window.dashboard.quick_zoom_bar.actions()!=[window.dashboard.navigation_actions[key] for key in ('in','out','reset')]:raise RuntimeError('Shared quick zoom controls are missing')
             if [line.value() for line in hover_pane.cursor_lines]!=positions:raise RuntimeError('Hover moved measurement cursors')
             hover_pane.clear_hover()

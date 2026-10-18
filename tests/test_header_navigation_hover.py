@@ -57,7 +57,7 @@ class HeaderNavigationTests(unittest.TestCase):
         for fraction in (.1,.5,.9):
             rect=p.getViewBox().sceneBoundingRect();position=QtCore.QPointF(rect.left()+rect.width()*fraction,rect.center().y())
             p._mouse_hover((position,));self.app.processEvents()
-            self.assertIn('Mouse X',readout.text());self.assertIn('Mouse Y',readout.text());self.assertIn('Temperature',readout.toolTip())
+            self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ');self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
             self.assertEqual(p.geometry(),initial);self.assertEqual([line.value() for line in p.cursor_lines],before)
         self.w.resize(1024,768);self.app.processEvents()
         self.assertEqual(readout.height(),48);self.assertLess(readout.mapToGlobal(readout.rect().bottomLeft()).y(),p.mapToGlobal(p.rect().topLeft()).y())
@@ -78,6 +78,7 @@ class HeaderNavigationTests(unittest.TestCase):
     def test_quick_zoom_shares_actions_and_respects_axis_mode(self):
         ws=self.w.dashboard;ws.set_layout('Vertical split');p,q=ws.visible_panes();q.bind([self.c.id]);ws.link();self.app.processEvents()
         self.assertEqual(ws.quick_zoom_bar.actions(),[ws.navigation_actions[key] for key in ('in','out','reset')])
+        self.assertEqual(ws.navigation_actions['in'].text(),'Zoom In');self.assertEqual(ws.quick_zoom_bar.widgetForAction(ws.navigation_actions['in']).accessibleName(),'Zoom In')
         self.assertEqual(ws.quick_mode_button.menu().actions(),[ws.navigation_actions[key] for key in ('x','y','xy','pan')])
         ws.navigate('x');self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['x'])
         beforex=np.diff(p.viewRange()[0])[0];beforey=[list(pane.viewRange()[1]) for pane in (p,q)]
@@ -100,8 +101,12 @@ class HeaderNavigationTests(unittest.TestCase):
             self.assertTrue(bar.isVisible());self.assertTrue(ws.quick_mode_button.isVisible())
             self.assertEqual(strip.height(),48);self.assertEqual(ws.hover_readout.height(),48)
             self.assertLess(strip.mapToGlobal(strip.rect().bottomLeft()).y(),ws.active.mapToGlobal(ws.active.rect().topLeft()).y())
-            self.assertLessEqual(ws.hover_readout.mapToGlobal(ws.hover_readout.rect().topRight()).x(),bar.mapToGlobal(bar.rect().topLeft()).x())
-            self.assertLessEqual(bar.width(),max(80,int(ws.width()*.5)))
+            self.assertIs(w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner),w.quick_navigation)
+            self.assertIs(w.quick_navigation.currentWidget(),ws.quick_controls)
+            self.assertLess(bar.mapToGlobal(bar.rect().bottomLeft()).y(),strip.mapToGlobal(strip.rect().topLeft()).y())
+            self.assertLessEqual(abs(bar.mapToGlobal(bar.rect().center()).y()-w.tabs.tabBar().mapToGlobal(w.tabs.tabBar().rect().center()).y()),16)
+            self.assertLessEqual(bar.width(),max(100,int(ws.width()*.5)))
+            for command in ('in','out'):self.assertTrue(bar.widgetForAction(ws.navigation_actions[command]).isVisible())
             ws.quick_mode_button.menu().actions()[2].trigger();self.assertEqual(ws.navigation_mode,'xy')
             self.assertIs(ws.quick_mode_button.defaultAction(),ws.navigation_actions['xy'])
         w.tabs.setCurrentIndex(0);self.assertTrue(w.dashboard.quick_zoom_bar.isVisible());self.assertFalse(w.comparison.quick_zoom_bar.isVisible())

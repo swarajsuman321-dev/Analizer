@@ -15,7 +15,7 @@ NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, proce
        '2.2.0':'Per-file channel controls, active-graph navigation, separate About and User Manual windows, legacy configuration migration and verified installation cleanup.',
        '2.2.1':'Shared TDMS parameter review and saved templates for Engineering Controls and Open, plus independent frozen-runtime restart after updates.',
        '2.2.2':'Header Zoom X/Y/XY, Pan, Reset View and cursor locking; fixed mouse X/Y readout outside the plot canvas.',
-       '2.2.3':'Quick Zoom In, Zoom Out and Reset View beside the mouse readout, sharing the existing X/Y/XY/Pan actions.'}
+       '2.2.3':'Quick zoom controls beside Analysis/Comparison, distinct stable channel colors and visible legends, and About menu access to User Manual and Updates.'}
 
 
 def generate(versions=None):
@@ -45,6 +45,8 @@ def generate(versions=None):
                 if title=='Mouse X/Y hover':
                     body=body.replace('compact readout','fixed readout strip above the graph')
                 body=body.replace('**Reset zoom / Fit**','**Reset View**')
+            if number>=(2,2,3):
+                body=body.replace('**User Manual** in the top toolbar','**About → User Manual** in the top menu').replace('**About / Updates**','**About → Updates**')
             text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 

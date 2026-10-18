@@ -18,7 +18,7 @@ class ManualAndViewTests(unittest.TestCase):
         w=self.window
         self.assertEqual([w.tabs.tabText(i) for i in range(w.tabs.count())],['Analysis','Comparison'])
         toolbar=next(t for t in w.findChildren(QtWidgets.QToolBar) if t.objectName()=='Workbench')
-        self.assertIn(w.help_action,toolbar.actions());w.tabs.setCurrentIndex(1);w.help_action.trigger();self.app.processEvents()
+        self.assertNotIn(w.help_action,toolbar.actions());self.assertEqual(w.about_menu.actions(),[w.help_action,w.info_action]);self.assertEqual([a.text() for a in w.menuBar().actions()][-2:],['Tools','About']);w.tabs.setCurrentIndex(1);w.help_action.trigger();self.app.processEvents()
         self.assertTrue(w.help_dialog.isVisible());self.assertIs(w.active_workspace,w.comparison)
         self.assertEqual(w.help.parentWidget(),w.help_dialog)
         w.help_dialog.close();self.assertTrue(w.isVisible());self.assertEqual(w.tabs.currentIndex(),1)

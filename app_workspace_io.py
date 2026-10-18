@@ -115,7 +115,9 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
     matplotlib.use('Agg')
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_agg import FigureCanvasAgg
-    from app_plot_workspace import COLORS,LAYOUTS
+    from app_plot_workspace import LAYOUTS
+    from app_trace_colors import channel_colors
+    colors=channel_colors(store)
     from app_presentation import CURSOR_COLORS,match_color
     from app_reporting import interval_tables
     path=Path(path);rows,cols=LAYOUTS[workspace['layout']]
@@ -130,7 +132,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
         axis=fig.add_subplot(grid[index//cols,index%cols]);axes={};ranges=view.get('range')
         units=list(dict.fromkeys(view.get('bindings',{}).get(id,store.channels[id].unit) for id in view['ids']))
         for id in view['ids']:
-            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit);style=c.attributes.get('plot_style',{});color=style.get('color',COLORS[units.index(key)%len(COLORS)])
+            c=store.channels[id];key=view.get('bindings',{}).get(id,c.unit);style=c.attributes.get('plot_style',{});color=colors[id]
             if key not in axes:
                 current=axis if not axes else axis.twinx()
                 if style.get('side')=='left' and axes:

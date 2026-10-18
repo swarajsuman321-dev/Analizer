@@ -5,6 +5,7 @@ import pyqtgraph as pg
 from app_fast_plot import EnvelopeCache
 from app_presentation import CURSOR_COLORS,cursor_sample
 from app_signal_processing import IntervalSummary
+from app_trace_colors import channel_colors
 
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
 COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
@@ -74,7 +75,7 @@ class PlotPane(pg.PlotWidget):
         self.store=store;self.ids=[];self.bindings={};self.axes={};self.curves={};self.cache={};self.summaries={}
         self.dark=True;self.display_budget=12000
         self._normalizing=False;self._synchronizing=False;self.normalized=False;self.normalization_bindings={};self._normalization={}
-        self.show_legends=False;self.show_grid=True;self.history=[];self.history_index=-1;self._history_restoring=False
+        self.show_legends=True;self.show_grid=True;self.history=[];self.history_index=-1;self._history_restoring=False
         self.coordinate=None;self.snap=True;self.cursor_mode='dual';self.cursor_locks=[None,None]
         self.annotations=[];self.annotation_items=[]
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
@@ -315,6 +316,7 @@ class PlotPane(pg.PlotWidget):
         self.coordinate=next(iter(coordinates),None)
         self.bindings={id:('Normalized tracks' if self.normalized else ('Actuators' if self.store.channels[id].attributes.get('actuator_binary') and (assignments or {}).get(id,self.store.channels[id].unit) in ('state','Actuators') else (assignments or {}).get(id,self.store.channels[id].unit))) for id in self.ids}
         units=list(dict.fromkeys(self.bindings.values()))
+        colors=channel_colors(self.store)
         primary=self.getViewBox()
         for i,unit in enumerate(units):
             color=QtGui.QColor(COLORS[i%len(COLORS)])
@@ -333,7 +335,7 @@ class PlotPane(pg.PlotWidget):
             else:axis.setTicks(None)
             for j,id in enumerate(id for id in self.ids if self.bindings[id]==unit):
                 c=self.store.channels[id];x,y=c.values()
-                color=QtGui.QColor(COLORS[i%len(COLORS)])
+                color=QtGui.QColor(colors[id])
                 if not self.dark:color=color.darker(170)
                 style=c.attributes.get('plot_style',{})
                 if style.get('color'):color=QtGui.QColor(style['color'])
@@ -368,7 +370,10 @@ class PlotPane(pg.PlotWidget):
         else:
             self.restore_ranges(saved)
         self._render()
-        if hasattr(self,'legend'):self.legend.setVisible(self.show_legends and bool(self.ids))
+        if hasattr(self,'legend'):
+            self.legend.setLabelTextColor('#e3eaf5' if self.dark else '#182033')
+            self.legend.setBrush(pg.mkBrush(21,27,38,225) if self.dark else pg.mkBrush(255,255,255,230))
+            self.legend.setVisible(self.show_legends and bool(self.ids))
         self.showGrid(x=self.show_grid,y=self.show_grid,alpha=.2)
         for unit in units:
             bounds=next((self.store.channels[id].attributes.get('plot_style',{}) for id in self.ids if self.bindings[id]==unit),{})
@@ -533,7 +538,7 @@ class PlotPane(pg.PlotWidget):
 
     def restore(self,state):
         self.snap=state.get('snap',True);self.normalized=state.get('normalized',False);self.normalization_bindings=state.get('normalization_bindings',{})
-        self.show_grid=state.get('show_grid',True);self.show_legends=state.get('show_legends',False)
+        self.show_grid=state.get('show_grid',True);self.show_legends=state.get('show_legends',True)
         self.bind(state['ids'],state.get('bindings'),fit=False);self.restore_ranges(state)
         self.snap=state.get('snap',True);self.set_cursor_mode(state.get('cursor_mode','dual'))
         for vb,item in self.annotation_items:vb.removeItem(item)
@@ -576,17 +581,27 @@ class PlotWorkspace(QtWidgets.QWidget):
         strip_layout.addWidget(self.hover_readout,1)
         # Share QAction instances with the header so shortcuts, mode constraints
         # and linked-axis behavior cannot diverge between the two locations.
-        self.quick_zoom_bar=QtWidgets.QToolBar('Quick Zoom',self.hover_strip)
+        self.quick_controls=QtWidgets.QWidget(self)
+        quick_layout=QtWidgets.QHBoxLayout(self.quick_controls);quick_layout.setContentsMargins(0,0,0,0);quick_layout.setSpacing(4)
+        self.quick_zoom_bar=QtWidgets.QToolBar('Quick Zoom',self.quick_controls)
         self.quick_zoom_bar.setObjectName('quickZoom');self.quick_zoom_bar.setMovable(False)
         self.quick_zoom_bar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,QtWidgets.QSizePolicy.Policy.Fixed)
         for command in ('in','out','reset'):self.quick_zoom_bar.addAction(self.navigation_actions[command])
-        self.quick_mode_button=QtWidgets.QToolButton(self.hover_strip)
+        # Compact labels belong to these buttons only; shared actions retain
+        # their explicit Zoom In/Out names in the header and overflow menu.
+        for command,label in (('in','+'),('out','−')):
+            button=self.quick_zoom_bar.widgetForAction(self.navigation_actions[command])
+            button.setText(label);button.setFixedWidth(32)
+            button.setAccessibleName(self.navigation_actions[command].text())
+            button.setToolTip(self.navigation_actions[command].text())
+        self.quick_mode_button=QtWidgets.QToolButton(self.quick_controls)
         self.quick_mode_button.setAccessibleName('Zoom and pan mode');self.quick_mode_button.setAutoRaise(True)
         self.quick_mode_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
         menu=QtWidgets.QMenu(self.quick_mode_button)
         for command in ('x','y','xy','pan'):menu.addAction(self.navigation_actions[command])
         self.quick_mode_button.setMenu(menu);self.quick_mode_button.setDefaultAction(self.navigation_actions['pan'])
-        strip_layout.addWidget(self.quick_zoom_bar);strip_layout.addWidget(self.quick_mode_button)
+        quick_layout.addWidget(self.quick_zoom_bar);quick_layout.addWidget(self.quick_mode_button)
+        outer.insertWidget(1,self.quick_controls)
         outer.insertWidget(1,self.hover_strip)
         self.set_layout('Single')
 
@@ -596,14 +611,26 @@ class PlotWorkspace(QtWidgets.QWidget):
         text=pane.hover_text if state else 'Mouse X/Y · Move over a graph to inspect values'
         self.hover_readout.setToolTip(text)
         width=max(0,self.hover_readout.contentsRect().width())
-        self.hover_readout.setText('\n'.join(self.hover_readout.fontMetrics().elidedText(line,QtCore.Qt.TextElideMode.ElideRight,width) for line in text.splitlines()))
+        lines=text.splitlines()
+        if state and self.hover_readout.fontMetrics().horizontalAdvance(lines[0])>width:
+            # Keep both coordinates legible before shortening trace details.
+            # The tooltip always retains the original precision and wording.
+            values=' | '.join('ON/OFF' if a['unit']=='Actuators' else f"{a['y']:.4g} {a['unit']}" for a in state['axes'])
+            lines[0]=f"X {state['x']:.4g} {state['coordinate_unit']} | Y {values}"
+        self.hover_readout.setText('\n'.join(self.hover_readout.fontMetrics().elidedText(line,QtCore.Qt.TextElideMode.ElideRight,width) for line in lines))
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
         # Leave room for coordinates even with both sidebars open. QToolBar
         # exposes its existing overflow menu when the center column is narrow.
-        if hasattr(self,'quick_zoom_bar'):self.quick_zoom_bar.setMaximumWidth(max(80,int(self.width()*.5)))
+        self._size_quick_controls()
         if self._hover_pane:self._hover_changed(self._hover_pane,self._hover_pane.hover_state)
+
+    def _size_quick_controls(self):
+        if not hasattr(self,'quick_mode_button'):return
+        reserve=min(220,max(140,self.hover_readout.fontMetrics().horizontalAdvance('X 000.00 min | Y 000.00 °C')))
+        available=self.width()-reserve-self.quick_mode_button.sizeHint().width()-16
+        self.quick_zoom_bar.setMaximumWidth(max(100,min(int(self.width()*.5),available)))
 
     def navigate(self,command,factor=None):
         """Scale synchronized X once, and every independent Y axis once."""
@@ -613,6 +640,7 @@ class PlotWorkspace(QtWidgets.QWidget):
             self.navigation_mode='xy' if command=='box' else command
             self.navigation_actions[self.navigation_mode].setChecked(True)
             self.quick_mode_button.setDefaultAction(self.navigation_actions[self.navigation_mode])
+            self._size_quick_controls()
             for pane in self.visible_panes():
                 view=pane.getViewBox();view.setMouseMode(view.PanMode if command=='pan' else view.RectMode)
                 view.setMouseEnabled(x=command!='y',y=command!='x')
