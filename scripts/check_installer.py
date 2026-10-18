@@ -30,7 +30,13 @@ def registration():
 
 
 def invoke(exe,args,log,expect_success=True):
-    result=subprocess.run([str(exe),*args],timeout=240)
+    from app_updates import ps_quote
+    # Inno's uninstaller can copy itself to a temporary child process. Waiting
+    # only for the original PID can race registry/file assertions and cleanup.
+    arguments=subprocess.list2cmdline([str(arg) for arg in args])
+    command=("$ErrorActionPreference = 'Stop'; $p = Start-Process -FilePath "+ps_quote(exe)+
+             ' -ArgumentList '+ps_quote(arguments)+' -Wait -PassThru; exit $p.ExitCode')
+    result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',command],timeout=240)
     if expect_success and result.returncode:
         detail=log.read_text(encoding='utf-8-sig',errors='replace')[-4000:] if log.exists() else 'No installer log'
         raise RuntimeError(f'{exe.name} returned {result.returncode}: {detail}')
@@ -56,7 +62,7 @@ def check():
     if sys.platform!='win32':raise RuntimeError('Use an isolated native Windows CI runner')
     if registration():raise RuntimeError('Refusing to modify an existing user installation')
     checks=[];setup=ROOT/'dist'/f'ApplianceSignalStudio-Setup-{VERSION}.exe'
-    with tempfile.TemporaryDirectory(prefix="Signal Studio O'Brien Ω ") as folder:
+    with tempfile.TemporaryDirectory(prefix="Signal Studio O'Brien Ω ",ignore_cleanup_errors=True) as folder:
         root=Path(folder);install=root/'Installed App';settings=root/'settings';results=root/'reports'
         settings.mkdir();results.mkdir()
         # Environment overrides apply to installed children, not machine-wide settings.
@@ -123,6 +129,10 @@ def check():
             assert shortcut_target()==(install/'versions'/VERSION/'ApplianceSignalStudio.exe').resolve()
             runtime_check(VERSION);preserved();checks.append('failed-runtime upgrade rollback keeps current version runnable')
             remove();assert not registration();preserved();checks.append('uninstall after upgrade')
+        except BaseException:
+            import traceback
+            traceback.print_exc()
+            raise
         finally:
             if registration() and (install/'unins000.exe').exists():remove()
     record={'ok':True,'version':VERSION,'platform':'native Windows x64 CI','checks':checks,

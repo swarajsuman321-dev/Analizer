@@ -80,7 +80,7 @@ jobs:
           }
           $output | Write-Output
           if ($code -ne 0) {
-            $tail = (($output | Select-Object -Last 24) -join "`n").Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            $tail = (($output | Select-Object -Last 65) -join "`n").Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error title=Installer lifecycle failure::$tail"
           }
           exit $code
