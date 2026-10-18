@@ -1,9 +1,11 @@
-# Appliance Signal Studio 2.3.1
+# Appliance Signal Studio 2.3.2
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
-**Latest verified Windows release: [v2.3.1 downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.1)** · [User manual](manuals/v2.3.1.md) · [Implementation and validation](docs/ENGINEERING_V2.3.0.md).
+**Windows installer: [Download Setup v2.3.2](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.2/ApplianceSignalStudio-Setup-2.3.2.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Portable downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.2) · [User manual](manuals/v2.3.2.md).
+
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. [Native verification](docs/validation/release-v2.3.2.json) passed; existing UI/report audit limitations remain documented.
 
 ![Current workbench with synthetic signals](docs/images/workbench.png)
 

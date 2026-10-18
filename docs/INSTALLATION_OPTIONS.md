@@ -1,5 +1,7 @@
 # Installed Windows application: benefit and implementation scope
 
+**Follow-up:** the v2.3.2 installer trial is now [implemented and natively verified](WINDOWS_INSTALLER.md). The assessment below preserves the original proposal and broader future scope.
+
 Assessment date: 2026-10-17. This is a proposed distribution change, not an installer shipped with v2.2.1.
 
 ## Recommendation

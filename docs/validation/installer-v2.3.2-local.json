@@ -1,0 +1,32 @@
+{
+  "version": "2.3.2",
+  "source_commit": "38c277b",
+  "platform": "Linux / Qt offscreen",
+  "regression": {
+    "discovered": 277,
+    "passed": 275,
+    "skipped": 2,
+    "seconds": 139.652,
+    "skips": [
+      "Native portable PowerShell replacement/rollback",
+      "Native installed Setup success/failure restart"
+    ]
+  },
+  "installation_health_check": {
+    "passed": true,
+    "frozen": false,
+    "notes": "Dependency/icon/profile imports; packaged and installed checks are native CI gates."
+  },
+  "installer_contract_tests": {
+    "discovered": 9,
+    "passed": 8,
+    "skipped": 1
+  },
+  "windows_lifecycle": "Passed: see release-v2.3.2.json",
+  "scope": "Initial full local regression before Windows-specific fixes; final native release evidence is release-v2.3.2.json",
+  "focused_after_hash_fix": {
+    "discovered": 9,
+    "passed": 8,
+    "skipped": 1
+  }
+}

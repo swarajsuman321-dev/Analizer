@@ -1,0 +1,52 @@
+{
+  "version": "2.3.2",
+  "source_commit": "26d624ab32e38837f6622643bc7dd123f465c3ec",
+  "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39124794144",
+  "job_id": 117667554326,
+  "workflow_conclusion": "success",
+  "native_regression_tests": 277,
+  "native_regression_skipped": 0,
+  "runtime_build": "Exact application-source/assets/Python-version cache; current full tests and all bundled smoke checks rerun before installer publication",
+  "portable_and_single_file_smokes": "passed",
+  "independent_onefile_restart": "passed",
+  "native_installer_lifecycle": {
+    "passed": true,
+    "checks": [
+      "Fresh per-user install and installed runtime imports in Unicode/apostrophe path",
+      "HKCU registration and Start/desktop shortcut targets using IShellLinkW",
+      "Running-app mutex blocks installation",
+      "Same-version repair",
+      "Uninstall removes app/shortcuts and preserves templates, reports and an unowned file",
+      "Upgrade from digest-pinned real v2.3.1 runtime wrapped in a CI-only installer; previous runtime retained",
+      "Failed runtime health gate blocks before changes; current version remains runnable",
+      "Uninstall after upgrade preserves personal data"
+    ]
+  },
+  "focused_engine_workflow": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39124794151",
+  "public_installer_manifest": {
+    "version": "2.3.2",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.2/ApplianceSignalStudio-Setup-2.3.2.exe",
+    "size": 134584014,
+    "sha256": "1981778be12305e2e5f6308251d9f2bb3771299561a4c79cf688daed38a3f17a",
+    "notes": "Per-user Windows installer with bundled runtime, Start menu and optional desktop shortcuts, separate verified Setup updates, runtime health checks and data-preserving uninstall.",
+    "kind": "installer"
+  },
+  "public_portable_manifest": {
+    "version": "2.3.2",
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.2/ApplianceSignalStudio.exe",
+    "size": 154533203,
+    "sha256": "aa44ecba22bbb3ca69f971a4a548bfcdcb0947fced49f296d5abc428a833eebe",
+    "notes": "Per-user Windows installer with bundled runtime, Start menu and optional desktop shortcuts, separate verified Setup updates, runtime health checks and data-preserving uninstall."
+  },
+  "public_setup_download_verification": {
+    "bytes": 134584014,
+    "sha256": "1981778be12305e2e5f6308251d9f2bb3771299561a4c79cf688daed38a3f17a",
+    "matches_manifest": true
+  },
+  "signing": "Unsigned trial installer; no signing identity configured",
+  "limits": [
+    "Per-user mode verified on privileged CI runner, not an independent standard-user login.",
+    "Not clean-VM, every-antivirus or every-PC certification.",
+    "Existing UI/report usability audits remain applicable; this release adds installation support."
+  ]
+}
