@@ -1,0 +1,229 @@
+file,line,declaration,label_or_expression,kind
+app_channel_portal.py,25,setPlaceholderText,"Filter name, unit, source, properties…",literal
+app_channel_portal.py,26,QCheckBox,Regular expression,literal
+app_channel_portal.py,46,QPushButton,Remove recording…,literal
+app_channel_portal.py,46,QPushButton,Clear workspace,literal
+app_channel_portal.py,47,setToolTip,Unload an entire recording and its derived traces. Original files are kept.,literal
+app_channel_portal.py,48,setToolTip,Unload all recordings from both plot workspaces. Original files are kept.,literal
+app_channel_portal.py,90,setToolTip,0,dynamic: inspect caller/context
+app_channel_portal.py,113,addAction,Select All in This File,literal
+app_channel_portal.py,114,addAction,Deselect All in This File,literal
+app_channel_portal.py,115,addAction,Close Dataset,literal
+app_channel_portal.py,43,QPushButton,text,dynamic: inspect caller/context
+app_channel_portal.py,75,setToolTip,0,dynamic: inspect caller/context
+app_channel_portal.py,93,QPushButton,Close Dataset,literal
+app_channel_portal.py,93,setToolTip,'Unload ' + ds.name + '; keep the original file',dynamic: inspect caller/context
+app_channel_portal.py,103,setText,0,dynamic: inspect caller/context
+app_channel_portal.py,104,setToolTip,0,dynamic: inspect caller/context
+app_info.py,23,QLabel,f'<h2>Appliance Signal Studio {VERSION}</h2>',dynamic: inspect caller/context
+app_info.py,25,QLabel,'Output folder: ' + str(output_directory()),dynamic: inspect caller/context
+app_info.py,26,QPushButton,Open output folder,literal
+app_info.py,29,QLabel,'Settings and templates: ' + str(settings_directory()),dynamic: inspect caller/context
+app_info.py,30,QPushButton,Open Settings Folder,literal
+app_info.py,32,QPushButton,Check for updates,literal
+app_info.py,32,QPushButton,Download update,literal
+app_info.py,33,QPushButton,Cancel download,literal
+app_info.py,33,QPushButton,Import offline update…,literal
+app_info.py,35,QLabel,Updates are checked only when you choose. Your recordings stay on this computer.,literal
+app_info.py,42,addTab,release,dynamic: inspect caller/context
+app_info.py,43,addTab,history,dynamic: inspect caller/context
+app_info.py,44,addTab,license,dynamic: inspect caller/context
+app_info.py,58,setText,Download update,literal
+app_info.py,58,setText,Checking GitHub Releases…,literal
+app_info.py,66,setText,"f""Version {result['version']} is available ({result['size'] / 1024 / 1024:.0f} MB).""",dynamic: inspect caller/context
+app_info.py,67,setText,"str(result.get('notes', ''))",dynamic: inspect caller/context
+app_info.py,81,setText,Validating approved offline update…,literal
+app_info.py,97,setText,"str(manifest.get('notes', ''))",dynamic: inspect caller/context
+app_info.py,116,setText,Downloading and verifying the update. You can continue working.,literal
+app_info.py,157,setPlaceholderText,Find a feature or keyword…,literal
+app_info.py,157,QPushButton,Find next,literal
+app_info.py,171,addItems,"re.findall('^## (.+)$', content, re.M)",dynamic: inspect caller/context
+app_info.py,188,setText,'' if found else 'No matches in this version’s manual.',dynamic: inspect caller/context
+app_info.py,45,QLabel,'Build date: ' + BUILD_DATE,dynamic: inspect caller/context
+app_info.py,63,setText,'Could not check for updates. ' + network_hint(error),dynamic: inspect caller/context
+app_info.py,65,setText,f'You have the latest version ({VERSION}).',dynamic: inspect caller/context
+app_info.py,72,setText,Finish the current update operation first.,literal
+app_info.py,90,setText,'Offline update rejected: ' + str(error),dynamic: inspect caller/context
+app_info.py,94,setText,This package is not newer than the installed version.,literal
+app_info.py,99,setText,Install update & restart,literal
+app_info.py,101,setText,"f""Offline update v{manifest['version']} verified. Ready to install.""",dynamic: inspect caller/context
+app_info.py,103,setText,f'Offline package verified at {download}. Installation requires the Windows EXE.',dynamic: inspect caller/context
+app_info.py,106,setText,Wait for data processing to finish before updating.,literal
+app_info.py,125,setText,'Download failed. ' + error,dynamic: inspect caller/context
+app_info.py,128,setText,Install update & restart,literal
+app_info.py,129,setText,Update verified. Install saves a recovery workspace and restarts the app. The previous executable is kept as a backup.,literal
+app_info.py,130,setText,f'Update verified and saved to {result}. Automatic installation requires the Windows app.',dynamic: inspect caller/context
+app_info.py,138,setText,Cancelling download…,literal
+app_info.py,145,setText,Finishing the current network request before closing…,literal
+app_info.py,155,QLabel,User manual for version:,literal
+app_info.py,164,addItem,version,dynamic: inspect caller/context
+app_info.py,114,setText,'Could not install update. ' + str(exc),dynamic: inspect caller/context
+app_plot_workspace.py,90,QLabel,No channels selected,literal
+app_plot_workspace.py,118,addItem,self.hover_marker,dynamic: inspect caller/context
+app_plot_workspace.py,397,addItem,plot.vb,dynamic: inspect caller/context
+app_plot_workspace.py,397,addItem,plot.titleLabel,dynamic: inspect caller/context
+app_plot_workspace.py,505,addItem,item,dynamic: inspect caller/context
+app_plot_workspace.py,571,addAction,Lock Time Axes,literal
+app_plot_workspace.py,577,QLabel,Mouse X/Y · Move over a graph to inspect values,literal
+app_plot_workspace.py,597,QToolButton,self.quick_controls,dynamic: inspect caller/context
+app_plot_workspace.py,598,setAccessibleName,Zoom and pan mode,literal
+app_plot_workspace.py,612,setToolTip,text,dynamic: inspect caller/context
+app_plot_workspace.py,620,setText,"'\n'.join((self.hover_readout.fontMetrics().elidedText(line, QtCore.Qt.TextElideMode.ElideRight, width) for line in lines))",dynamic: inspect caller/context
+app_plot_workspace.py,99,addItem,line,dynamic: inspect caller/context
+app_plot_workspace.py,116,addItem,line,dynamic: inspect caller/context
+app_plot_workspace.py,396,addItem,plot.axes[name]['item'],dynamic: inspect caller/context
+app_plot_workspace.py,398,addItem,axis,dynamic: inspect caller/context
+app_plot_workspace.py,399,addItem,axis,dynamic: inspect caller/context
+app_plot_workspace.py,565,addAction,label,dynamic: inspect caller/context
+app_plot_workspace.py,589,addAction,self.navigation_actions[command],dynamic: inspect caller/context
+app_plot_workspace.py,594,setText,label,dynamic: inspect caller/context
+app_plot_workspace.py,595,setAccessibleName,self.navigation_actions[command].text(),dynamic: inspect caller/context
+app_plot_workspace.py,596,setToolTip,self.navigation_actions[command].text(),dynamic: inspect caller/context
+app_plot_workspace.py,601,addAction,self.navigation_actions[command],dynamic: inspect caller/context
+app_plot_workspace.py,231,addItem,marker,dynamic: inspect caller/context
+app_plot_workspace.py,332,addItem,vb,dynamic: inspect caller/context
+app_plot_workspace.py,352,addItem,curve,dynamic: inspect caller/context
+app_plot_workspace.py,567,addAction,action,dynamic: inspect caller/context
+app_plot_workspace.py,568,setToolTip,"{'x': 'Box zoom in time only (Ctrl+1)', 'y': 'Box zoom in value axes only (Ctrl+2)', 'xy': 'Box zoom in time and values (Ctrl+3)', 'pan': 'Drag to pan the graph (Ctrl+4)'}[command]",dynamic: inspect caller/context
+app_plot_workspace.py,353,addItem,pg.PlotDataItem(pen=curve.pen),dynamic: inspect caller/context
+app_studio_tools.py,19,setToolTip,Observed state/code intervals. Click to seek; no phase names are inferred.,literal
+app_studio_tools.py,45,addMenu,Tools,literal
+app_studio_tools.py,64,addAction,f'About version {VERSION}',dynamic: inspect caller/context
+app_studio_tools.py,71,setWindowTitle,title,dynamic: inspect caller/context
+app_studio_tools.py,127,setText,path,dynamic: inspect caller/context
+app_studio_tools.py,211,QPushButton,Apply to workspace,literal
+app_studio_tools.py,259,addRow,Report / plot title,literal
+app_studio_tools.py,260,addRow,Plot font size,literal
+app_studio_tools.py,263,QPushButton,Apply,literal
+app_studio_tools.py,331,QPushButton,Apply,literal
+app_studio_tools.py,343,QPushButton,Move,literal
+app_studio_tools.py,349,setText,'\n'.join(('\t'.join(row) for row in rows)),dynamic: inspect caller/context
+app_studio_tools.py,385,QPushButton,Play,literal
+app_studio_tools.py,436,QPushButton,Apply mapping,literal
+app_studio_tools.py,446,QPushButton,Apply,literal
+app_studio_tools.py,456,addRow,Duration (minutes),literal
+app_studio_tools.py,457,addRow,Reference height (pixels),literal
+app_studio_tools.py,458,addRow,"Plot bounds left,right,top,bottom (blank = auto)",literal
+app_studio_tools.py,459,QCheckBox,Time ticks verified,literal
+app_studio_tools.py,459,addRow,time_verified,dynamic: inspect caller/context
+app_studio_tools.py,468,QPushButton,Apply calibration,literal
+app_studio_tools.py,544,QPushButton,Export plot,literal
+app_studio_tools.py,55,addMenu,name,dynamic: inspect caller/context
+app_studio_tools.py,81,addTab,view,dynamic: inspect caller/context
+app_studio_tools.py,98,addItem,'Manual time offset' if strategy.startswith('Manual') else strategy,dynamic: inspect caller/context
+app_studio_tools.py,206,addItems,"[f'Panel {i}' for i in range(1, 11)]",dynamic: inspect caller/context
+app_studio_tools.py,208,addItems,list(STYLES),dynamic: inspect caller/context
+app_studio_tools.py,236,setText,color.name(),dynamic: inspect caller/context
+app_studio_tools.py,249,QPushButton,Apply to workspace,literal
+app_studio_tools.py,262,QCheckBox,label,dynamic: inspect caller/context
+app_studio_tools.py,262,addRow,check,dynamic: inspect caller/context
+app_studio_tools.py,324,QLabel,"Locked cursors stay on real samples while panning. Drag to scrub; ←/→ steps A, Shift+←/→ steps B. Other channels update at the same time.",literal
+app_studio_tools.py,326,addItem,Unlocked,literal
+app_studio_tools.py,330,addRow,'Cursor ' + name,dynamic: inspect caller/context
+app_studio_tools.py,340,addRow,name,dynamic: inspect caller/context
+app_studio_tools.py,342,QPushButton,label,dynamic: inspect caller/context
+app_studio_tools.py,380,setText,f'{point:.6g} {pane.coordinate[1]}',dynamic: inspect caller/context
+app_studio_tools.py,434,addItems,"['Auto', 'None', *[str(c) for c in frame.columns]]",dynamic: inspect caller/context
+app_studio_tools.py,435,addRow,spec['label'],dynamic: inspect caller/context
+app_studio_tools.py,444,addItems,values,dynamic: inspect caller/context
+app_studio_tools.py,444,addRow,label,dynamic: inspect caller/context
+app_studio_tools.py,445,QLabel,"Pressure comparison retains original numbers, labelled Pa. Metadata does not rescale measurements.",literal
+app_studio_tools.py,472,setText,path,dynamic: inspect caller/context
+app_studio_tools.py,505,QLabel,Python extensions run local code and use register_patch(manager). Install only extensions you trust.,literal
+app_studio_tools.py,526,QPushButton,title,dynamic: inspect caller/context
+app_studio_tools.py,58,addAction,display,dynamic: inspect caller/context
+app_studio_tools.py,248,QLabel,"f'{result.name}: {len(result.x):,} samples. Original data remains unchanged.'",dynamic: inspect caller/context
+app_studio_tools.py,327,addItem,self.window.store.channels[id].name,dynamic: inspect caller/context
+app_studio_tools.py,388,QLabel,No recorded phase/state channel is selected.,literal
+app_studio_tools.py,394,setText,Pause,literal
+app_studio_tools.py,412,setText,Play,literal
+app_tdms_templates.py,102,setWindowTitle,Review TDMS parameters,literal
+app_tdms_templates.py,106,QLabel,text + ('\n' + warning if warning else ''),dynamic: inspect caller/context
+app_tdms_templates.py,124,setText,Save template and load,literal
+app_tdms_templates.py,110,setToolTip,identity(c),dynamic: inspect caller/context
+app_tdms_templates.py,114,setToolTip,ON/OFF: zero is OFF; finite nonzero integers are ON. Missing and fractional values stay unknown.,literal
+app_tdms_templates.py,113,addItem,label,dynamic: inspect caller/context
+app_tdms_templates.py,135,setText,str(exc),dynamic: inspect caller/context
+app_workbench.py,56,setWindowTitle,f'Appliance Signal Studio · {VERSION}',dynamic: inspect caller/context
+app_workbench.py,65,addTab,self.dashboard,dynamic: inspect caller/context
+app_workbench.py,65,addTab,self.comparison,dynamic: inspect caller/context
+app_workbench.py,79,addMenu,About,literal
+app_workbench.py,80,addAction,self.help_action,dynamic: inspect caller/context
+app_workbench.py,80,addAction,self.info_action,dynamic: inspect caller/context
+app_workbench.py,82,setWindowTitle,f'About Appliance Signal Studio · {VERSION}',dynamic: inspect caller/context
+app_workbench.py,84,setWindowTitle,User Manual,literal
+app_workbench.py,117,QDockWidget,name,dynamic: inspect caller/context
+app_workbench.py,133,addItems,analog | discrete,literal
+app_workbench.py,134,addItem,Auto (identify actuator commands),literal
+app_workbench.py,134,addItem,Numeric / original readings,literal
+app_workbench.py,134,addItem,Actuator ON / OFF,literal
+app_workbench.py,138,QPushButton,Apply properties and limits,literal
+app_workbench.py,138,addRow,button,dynamic: inspect caller/context
+app_workbench.py,144,addItems,Cursor interval | Whole recording,literal
+app_workbench.py,144,setToolTip,"Scope for Min, Max and Average; A, B and Δ value always follow the cursors",literal
+app_workbench.py,154,QLabel,Select a plotted channel to inspect its interval.,literal
+app_workbench.py,182,setText,('<br>'.join(anchors) + '<br><br>' if anchors else '') + summary,dynamic: inspect caller/context
+app_workbench.py,187,addRow,Formula,literal
+app_workbench.py,187,addRow,Result name,literal
+app_workbench.py,188,QPushButton,Create formula channel,literal
+app_workbench.py,188,addRow,button,dynamic: inspect caller/context
+app_workbench.py,189,addItems,OPERATIONS,dynamic: inspect caller/context
+app_workbench.py,189,addRow,Operation,literal
+app_workbench.py,198,addRow,self.parameter_widget,dynamic: inspect caller/context
+app_workbench.py,200,QLabel,window/order · cutoff (Hz) · scale/offset · shift/step (coordinate units) · bins · prominence,literal
+app_workbench.py,200,addRow,self.parameter_help,dynamic: inspect caller/context
+app_workbench.py,201,QPushButton,Apply to workspace,literal
+app_workbench.py,201,addRow,self.apply_button,dynamic: inspect caller/context
+app_workbench.py,202,QPushButton,Define local unit,literal
+app_workbench.py,202,addRow,define,dynamic: inspect caller/context
+app_workbench.py,221,addItems,BUILTIN_SYNC_STRATEGIES,dynamic: inspect caller/context
+app_workbench.py,221,addRow,Recording Alignment Method,literal
+app_workbench.py,222,addRow,Manual offset (seconds),literal
+app_workbench.py,223,QPushButton,Align recordings,literal
+app_workbench.py,223,addRow,button,dynamic: inspect caller/context
+app_workbench.py,224,QPushButton,Compare original recordings,literal
+app_workbench.py,224,addRow,button,dynamic: inspect caller/context
+app_workbench.py,225,addRow,self.engineering_notes,dynamic: inspect caller/context
+app_workbench.py,226,addRow,self.scorecard,dynamic: inspect caller/context
+app_workbench.py,238,QPushButton,Export Report,literal
+app_workbench.py,241,setToolTip,"Save a PDF summary, interval CSV/Excel, or high-resolution PNG",literal
+app_workbench.py,242,QAction,self,dynamic: inspect caller/context
+app_workbench.py,242,addAction,report_action,dynamic: inspect caller/context
+app_workbench.py,244,addItems,LAYOUTS,dynamic: inspect caller/context
+app_workbench.py,248,QCheckBox,Snap to Samples,literal
+app_workbench.py,249,addMenu,View,literal
+app_workbench.py,250,addAction,Show all panels,literal
+app_workbench.py,252,addMenu,Channel,literal
+app_workbench.py,255,addItems,System | Dark | Light,literal
+app_workbench.py,256,addAction,Show channel kind,literal
+app_workbench.py,257,QAction,User Manual,literal
+app_workbench.py,258,QAction,Updates,literal
+app_workbench.py,259,addAction,Review TDMS parameters…,literal
+app_workbench.py,260,addAction,Remove recording…,literal
+app_workbench.py,260,addAction,Clear workspace,literal
+app_workbench.py,408,addItem,Selected channel projection,literal
+app_workbench.py,578,setText,"f'<span style=""color:{CURSOR_COLORS[0]};background:#182033;padding:4px""><b>A</b> {a:.6g}</span> &nbsp; <span style=""color:{CURSOR_COLORS[1]};background:#182033;padding:4px""><b>B</b> {b:.6g}</span>'",dynamic: inspect caller/context
+app_workbench.py,137,addRow,label,dynamic: inspect caller/context
+app_workbench.py,169,setText,No channels selected,literal
+app_workbench.py,197,addRow,labels[key],dynamic: inspect caller/context
+app_workbench.py,218,QPushButton,Choose File…,literal
+app_workbench.py,219,addRow,label,dynamic: inspect caller/context
+app_workbench.py,233,QAction,text,dynamic: inspect caller/context
+app_workbench.py,233,setToolTip,tip or text,dynamic: inspect caller/context
+app_workbench.py,235,addAction,item,dynamic: inspect caller/context
+app_workbench.py,246,addItem,label,dynamic: inspect caller/context
+app_workbench.py,251,addAction,dock.toggleViewAction(),dynamic: inspect caller/context
+app_workbench.py,254,addAction,text,dynamic: inspect caller/context
+app_workbench.py,267,addAction,Lock Cursors…,literal
+app_workbench.py,267,setToolTip,Lock Cursor A or B to a chosen channel sample (Ctrl+L),literal
+app_workbench.py,306,setText,path,dynamic: inspect caller/context
+app_workbench.py,409,addItem,ds.name,dynamic: inspect caller/context
+app_workbench.py,416,setText,c.name,dynamic: inspect caller/context
+app_workbench.py,416,setText,c.unit,dynamic: inspect caller/context
+app_workbench.py,416,setText,c.group,dynamic: inspect caller/context
+app_workbench.py,724,setText,"engineering.get(key, '')",dynamic: inspect caller/context
+app_workbench.py,344,setText,entry['name'],dynamic: inspect caller/context
+app_workbench.py,344,setText,entry['unit'],dynamic: inspect caller/context
+app_workbench.py,419,setText,"str(c.attributes.get(key, ''))",dynamic: inspect caller/context
+app_workbench.py,582,setText,self.cursor_caption.text() + ' &nbsp; ' + live,dynamic: inspect caller/context
+app_workbench.py,596,setToolTip,f'{c.name}: {text}',dynamic: inspect caller/context

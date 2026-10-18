@@ -1,0 +1,134 @@
+{
+  "commit": "2f76bc592a4465d297907d089dd3f83c92936625",
+  "platform": "Linux Qt offscreen",
+  "cursor_colors": [
+    "#00D2FF",
+    "#FF9F1C"
+  ],
+  "default_raised_engineering": true,
+  "sizes": [
+    {
+      "requested": [
+        1440,
+        900
+      ],
+      "actual": [
+        1440,
+        900
+      ],
+      "central_width": 750,
+      "plot_workspace_width": 746,
+      "readout_width": 1076,
+      "readout_content_width": 1060,
+      "interval_card_width": 340,
+      "primary_zoom_button_visible": true,
+      "quick_zoom_button_visible": true
+    },
+    {
+      "requested": [
+        1024,
+        680
+      ],
+      "actual": [
+        1024,
+        680
+      ],
+      "central_width": 334,
+      "plot_workspace_width": 330,
+      "readout_width": 660,
+      "readout_content_width": 716,
+      "interval_card_width": 340,
+      "primary_zoom_button_visible": true,
+      "quick_zoom_button_visible": true
+    }
+  ],
+  "same_coordinate_two_file_import": {
+    "layout": "Single",
+    "plotted_ids_by_pane": [
+      [
+        "f418e22ea5ee470c94f70693cda74a4a",
+        "423383001cc144e4b4a56c7c45790e01",
+        "85d78e7c5bf2480faee0cb6800bf7ea0",
+        "43cb2314e77c496a910d88c6d4573abb"
+      ]
+    ],
+    "dataset_ids_by_pane": [
+      [
+        "0c760c83231a47c18ed69198af07ef3f",
+        "598b4ca6b41d4dd38cf7104482935368"
+      ]
+    ]
+  },
+  "readout_rows": [
+    [
+      "Temperature",
+      "\u00b0C",
+      "22",
+      "24"
+    ],
+    [
+      "Temperature",
+      "\u00b0C",
+      "22",
+      "24"
+    ],
+    [
+      "Power",
+      "W",
+      "3600",
+      "3600"
+    ],
+    [
+      "Power",
+      "W",
+      "3600",
+      "3600"
+    ]
+  ],
+  "clamped_cursors": [
+    0.0,
+    10.0
+  ],
+  "export_excel_sheets": [
+    "Active interval",
+    "Cursor summary"
+  ],
+  "interval_summary_columns": [
+    "pane",
+    "channel_id",
+    "channel",
+    "unit",
+    "coordinate_unit",
+    "cursor_A_X",
+    "cursor_B_X",
+    "A",
+    "B",
+    "\u0394X",
+    "\u0394Y",
+    "Mean",
+    "RMS",
+    "Min",
+    "Max",
+    "Peak-to-Peak",
+    "Slope",
+    "Integral",
+    "Coverage",
+    "match_percent"
+  ],
+  "has_explicit_energy_Wh": false,
+  "filter_temperature_select_all_count": 2,
+  "filter_temperature_visible_leaves_per_file": 1,
+  "display_options_size": [
+    820,
+    580
+  ],
+  "about_action_text": "Updates",
+  "about_dialog_title": "About Appliance Signal Studio \u00b7 2.2.3",
+  "manual_separate_object": true,
+  "navigation_icons_null": {
+    "in": true,
+    "out": true,
+    "reset": true,
+    "pan": true
+  }
+}

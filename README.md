@@ -195,3 +195,8 @@ The unused right side of the Analysis/Comparison tab row now offers Zoom In, Zoo
 The top **About** menu beside **Tools** contains **User Manual** and **Updates**. Same-unit channels, including valves, receive distinct stable colors with matching legends enabled for new workspaces; saved styles and visibility preferences are retained.
 
 Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_REVIEW_V2.2.3.md). Native Windows release verification: [record](docs/validation/release-v2.2.3.json).
+
+
+## UI/UX audit
+
+The [18 October 2026 UI/UX audit](docs/audits/2026-10-18/README.md) includes the usability scorecard, click-budget analysis, layout blueprint, prioritized implementation plan, and supporting evidence. Findings apply to the source commit identified in the report.

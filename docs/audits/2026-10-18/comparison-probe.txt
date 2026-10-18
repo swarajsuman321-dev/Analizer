@@ -1,0 +1,31 @@
+                                                                                             Signal analysis report
+               A Power
+                 0                                                                                                 B1
+    3601.0
+
+    3600.8
+
+    3600.6
+W
+
+
+
+
+    3600.4
+
+    3600.2
+
+    3600.0
+             0.00                          0.25               0.50                    0.75                       1.00          1.25                   1.50            1.75                          2.00
+                                                                                                              time (min)
+
+
+                     channel                 unit             A                   B                       X                Y          Min               Max          Mean                match percent
+             Power                   W              3600                   3600               1                       0        3600              3600         3600
+
+
+
+
+                               parameter                             sim val                                    raw val                     percent                          match percent
+               AUDIT_METRIC                           100 W                                       115 W                          +15.00%                        85
+
