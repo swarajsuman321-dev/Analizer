@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "provided_date": "2026-10-18",
+  "purpose": "User-provided real recordings for reproducible usability and reliability testing; user explicitly requested GitHub reuse.",
+  "files": [
+    {
+      "role": "tdms",
+      "filename": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+      "bytes": 6771896,
+      "sha256": "328bea1d56b1942d6aa90ccfea01874d2d12cd23c62a4d0f92ce2ac762ecb99f"
+    },
+    {
+      "role": "power",
+      "filename": "Cotton 60 label with IEC 4kg load PD T-3.CSV",
+      "bytes": 2405437,
+      "sha256": "dd18f9d61878dcecf237cbc824452d7a1d8925bede965fe67d3bb74e993f9f20"
+    },
+    {
+      "role": "machine",
+      "filename": "Cotton 60 label with 4kg IEC load RD T-3 (1).csv",
+      "bytes": 5515475,
+      "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558"
+    },
+    {
+      "role": "simulation",
+      "filename": "SB30LF0_Cottons_VT0022_var4_7000g_20260731_1332_800RPM_40deg_Standard_R027_0000002_simulated_values.csv",
+      "bytes": 16759584,
+      "sha256": "0e857e07a7cb5dba6aab3b471801f7f62586c8d409fd6580a463beacbcab339d"
+    }
+  ]
+}

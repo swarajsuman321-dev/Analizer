@@ -1,0 +1,2917 @@
+{
+  "version": "2.3.1",
+  "platform": "linux",
+  "qt_platform": "offscreen",
+  "inputs": [
+    {
+      "role": "tdms",
+      "filename": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+      "bytes": 6771896,
+      "sha256": "328bea1d56b1942d6aa90ccfea01874d2d12cd23c62a4d0f92ce2ac762ecb99f",
+      "source_rows": [
+        11363
+      ],
+      "channels": [
+        {
+          "id": "06cfe8267f2b404ea2a724fa00ceb27b",
+          "name": "MCB_MotorControlBridge_sDataResourceTemperatureMeasurement_ucMotorTemperature_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11319,
+          "start_min": 0.023450581232706706,
+          "end_min": 232.3656989733378,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "e13ebfbefd7348ee88ba5ced95ce623f",
+          "name": "PDH_AAS_B_HEATER_ON_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11338,
+          "start_min": 0.020523579915364583,
+          "end_min": 232.3617863734563,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "1e3b15e43ec44b5ca46aa51bf4c39bf7",
+          "name": "PDH_AAS_B_PU_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11338,
+          "start_min": 0.020523579915364583,
+          "end_min": 232.3617863734563,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "637e0a129f2042e9a96ee4bbfc5e4c7a",
+          "name": "PDH_AAS_B_V1_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11338,
+          "start_min": 0.020523579915364583,
+          "end_min": 232.3617863734563,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "12fbd3a5279b4dc2be5834569540ec92",
+          "name": "PDH_AAS_B_V2_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11338,
+          "start_min": 0.020523579915364583,
+          "end_min": 232.3617863734563,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "a14ed506c2b04a62b383db37d1a71759",
+          "name": "PDH_AAS_UI_ACTUAL_SPEED_0_R",
+          "unit": "RPM",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "71e8e735a6914d259baf621eaa191692",
+          "name": "PDH_AAS_UI_MOTOR_IS_ERROR_0_R",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "066aebba9df945b8adfc29ed05185463",
+          "name": "PDH_AAS_UI_REFERENCE_SPEED_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "97ffd1a421d143b0b7c9607d3ff9c91d",
+          "name": "PDH_ASO_D_UC_PROG_SEL_POSITION_0_R",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 11347,
+          "start_min": 0.01865100860595703,
+          "end_min": 232.35909326076506,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "5e889c3aeb934c46bbf292ea5575ca77",
+          "name": "PDH_ERRH_UI_ERROR_DETECTION_FAILURE_MESSAGES_11_0_R",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 11292,
+          "start_min": 0.028234998385111492,
+          "end_min": 232.35424842039743,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "29255274dd9140c082aaa95b962c4f0c",
+          "name": "PDH_FOA_B_FOAM_DETECTED_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11338,
+          "start_min": 0.020523579915364583,
+          "end_min": 232.3617863734563,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "43f262dbfa6e4ad7959921a4a4137b16",
+          "name": "PDH_FSS_D_B_RINSE_HOLD_ACTIVE_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11357,
+          "start_min": 0.017606170972188313,
+          "end_min": 232.35698080857594,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "d08573d469124879a7e8521083f9581b",
+          "name": "PDH_INCT2_UI_CURRENT_STWF_NUMBER_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11298,
+          "start_min": 0.026845916112263998,
+          "end_min": 232.3533205270767,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "3fa7e01d0e3d4b18bee324b693589548",
+          "name": "PDH_INT_AUC_DEVICE_STATE_1_VALUE_0_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11324,
+          "start_min": 0.022481640179951985,
+          "end_min": 232.36472703615823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "d9b607889b0d4790bede984520ef0a8d",
+          "name": "PDH_INT_AUC_DEVICE_STATE_1_VALUE_1_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11324,
+          "start_min": 0.022481640179951985,
+          "end_min": 232.36472703615823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "cc18612913264cf794ed3879d305bded",
+          "name": "PDH_INT_AUC_DEVICE_STATE_1_VALUE_2_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11324,
+          "start_min": 0.022481640179951985,
+          "end_min": 232.36472703615823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "98c81029e7cf41c58512c2c302c80082",
+          "name": "PDH_INT_AUC_DEVICE_STATE_1_VALUE_3_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11324,
+          "start_min": 0.022481640179951985,
+          "end_min": 232.36472703615823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "481f224722a64429855b43a2b4b29c7c",
+          "name": "PDH_INT_AUC_DEVICE_STATE_1_VALUE_4_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11324,
+          "start_min": 0.022481640179951985,
+          "end_min": 232.36472703615823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "ea194fc2c7b048c4b28c1192681bcdaf",
+          "name": "PDH_MOC_UI_TARGET_SPEED_0_R",
+          "unit": "RPM",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "ffabf9242c284408b74bdf8874ae44c1",
+          "name": "PDH_PUD_D_UC_PROGRESS_STATE_0_R",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 11347,
+          "start_min": 0.01865100860595703,
+          "end_min": 232.35909326076506,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "285326da6dca445cbf12cac0566c7097",
+          "name": "PDH_PUD_STM_D_B_LOW_WATER_PREASURE_DETECTED_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11357,
+          "start_min": 0.017606170972188313,
+          "end_min": 232.35698080857594,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "caba21c8ae1d45d2b7ac04adb4de2c93",
+          "name": "PDH_RTH_D_UI_REMAIN_TIME_MINUTES_0_R",
+          "unit": "min",
+          "kind": "analog",
+          "samples": 11311,
+          "start_min": 0.024349904060363768,
+          "end_min": 232.3665009578069,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "9bba536ab6d9458591d13ce6605777e2",
+          "name": "PDH_TMT2_UC_T_IST_0_R",
+          "unit": "°C",
+          "kind": "analog",
+          "samples": 11329,
+          "start_min": 0.02170243263244629,
+          "end_min": 232.36352406342823,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "78bd2e62cc3b4f2a9814b31cba5584eb",
+          "name": "PDH_UBC_UI_MEASURED_UNBALANCE_0_R",
+          "unit": "",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "3d98d02d681f4d87bf41199769b8c49a",
+          "name": "PDH_WLA2_UI_P_IST_0_R",
+          "unit": "Pa",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "b249c804e7b445b4abf1adf8c184d0d7",
+          "name": "PDH_WQMT2_UI_WATER_QUANTITY_0_R",
+          "unit": "L",
+          "kind": "analog",
+          "samples": 11307,
+          "start_min": 0.025443061192830404,
+          "end_min": 232.35160784721373,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "67a754f274d1479ea24273c2c03062c2",
+          "name": "dE2Prom_Offset_LastError_0_R",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 11363,
+          "start_min": 0.016701141993204754,
+          "end_min": 232.3562201976776,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        }
+      ]
+    },
+    {
+      "role": "power",
+      "filename": "Cotton 60 label with IEC 4kg load PD T-3.CSV",
+      "bytes": 2405437,
+      "sha256": "dd18f9d61878dcecf237cbc824452d7a1d8925bede965fe67d3bb74e993f9f20",
+      "source_rows": [
+        15898
+      ],
+      "channels": [
+        {
+          "id": "469f78773727497ba5ea77d40a4b165d",
+          "name": "Store No.",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "ceee86d9b6a14b08b1f1d8b0976f5518",
+          "name": "Urms-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "405350fa3bf94bf79511a81079a70a11",
+          "name": "Irms-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "1d86328f5f524304afe6dbaf1f991de9",
+          "name": "P-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "ac5ee19d87b5417a8f9125b088d41d05",
+          "name": "S-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "ec66dd84737b4b55896ff14c09190f56",
+          "name": "Q-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "510ef67b88964d60b632fc9001e025e2",
+          "name": "PF-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "439b6b8ef56a45f2971f6e5f6407844c",
+          "name": "DEG-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "2e601ada63a44fe480e5c6a747adbc13",
+          "name": "FU-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        },
+        {
+          "id": "38f1a754878e4bb4a8d6f6798bbd72df",
+          "name": "FI-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 3325
+        },
+        {
+          "id": "67352925e69540838be325159c936a84",
+          "name": "Wp-E1",
+          "unit": "",
+          "kind": "analog",
+          "samples": 15898,
+          "start_min": 0.0,
+          "end_min": 264.95,
+          "duplicate_times": 0,
+          "unknown_values": 0
+        }
+      ]
+    },
+    {
+      "role": "machine",
+      "filename": "Cotton 60 label with 4kg IEC load RD T-3 (1).csv",
+      "bytes": 5515475,
+      "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558",
+      "source_rows": [
+        57494
+      ],
+      "channels": [
+        {
+          "id": "05933025a3164d59934cf066115e4403",
+          "name": "Drump Speed",
+          "unit": "RPM",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "1960c4f1b79f429cafb64e1e785661f6",
+          "name": "Water Pressure",
+          "unit": "Pa",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "e39e9556e08a4892bfb5f4dd374c9c09",
+          "name": "Inlet Valve",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "eca79434ecf144f29ffc490d7de829c4",
+          "name": "out Vavle",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "128c6d89f5e0421fab31db4f03b5295e",
+          "name": "Drain Valve",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "34dd86071e7140579191432807caddef",
+          "name": "Heat Valve",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "89e980ed91544ed0bc3f5072ab0cf589",
+          "name": "water  pressure",
+          "unit": "Pa",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "1a32a8cdf1d2414b81e33eaa7a25abc8",
+          "name": "Wash Left Time",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "37ae9253a65f4d3591143b3d92ef0942",
+          "name": "Weight value",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "ffa52a92190c49989219952d82024c79",
+          "name": "OOB",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "b4285b4a32834b56a68e05d0560de0d8",
+          "name": "vbus",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "74cd4b824e1749ed933e02624e28c0bb",
+          "name": "Wash Stage",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "0688d8321f644db4aed75205e6bee82e",
+          "name": "Water pressure Dst",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "7dec55a8f79a4583a1b22bb370568154",
+          "name": "Current Temperature",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "93a9de391efe4ec287d69cf0403802be",
+          "name": "Door_Lock_State",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "e4b1b40a42f54810b7e02401a7438a16",
+          "name": "Destination temperature",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "da486b8b806e4cf0af283d561f71a209",
+          "name": "Motor_temperatuer",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "ee55debe8f784938b45705cf2a4394dc",
+          "name": "Wash Programmer",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "7935f0a9833a468ba7f38dfb647ead35",
+          "name": "oob_retry_times",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "89cd579920254e968d82448cfe187cb6",
+          "name": "Wash Start/Pause",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "0ea5faecd3e1460d912045b6564bf29c",
+          "name": "err_code",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "6f75227c18424e6d9b0f717b5c4b0f02",
+          "name": "Drump speed feedback",
+          "unit": "RPM",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "e24c7ad916a4459785d3b55a8c7e636a",
+          "name": "Weigh org val",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        },
+        {
+          "id": "8742b45c7d60453aa66afb7304852b24",
+          "name": "Oob org val",
+          "unit": "",
+          "kind": "analog",
+          "samples": 57494,
+          "start_min": 0.0,
+          "end_min": 265.02073333333334,
+          "duplicate_times": 1005,
+          "unknown_values": 0
+        }
+      ]
+    },
+    {
+      "role": "simulation",
+      "filename": "SB30LF0_Cottons_VT0022_var4_7000g_20260731_1332_800RPM_40deg_Standard_R027_0000002_simulated_values.csv",
+      "bytes": 16759584,
+      "sha256": "0e857e07a7cb5dba6aab3b471801f7f62586c8d409fd6580a463beacbcab339d",
+      "source_rows": [
+        106148
+      ],
+      "channels": [
+        {
+          "id": "ab80030beb36409b982b6d3feb49b236",
+          "name": "load_mass",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "e859f2bec5634653904d433c10ff01ed",
+          "name": "remainTime",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "de57370b40f64a68ac3d472bd1bbd372",
+          "name": "saturationMoisture",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "8d221e7c0cfd47e195971d3ea4d35802",
+          "name": "drum_speed",
+          "unit": "RPM",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "990c74abf07c435499a757d859cf7423",
+          "name": "heater_power",
+          "unit": "W",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "d1a2a06e61a64212a25ede4de27b699e",
+          "name": "water_temp",
+          "unit": "°C",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "89ab2744ffb245a79a8ab49e488220cc",
+          "name": "water_pressure",
+          "unit": "Pa",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "d628a6a7200d4670845741a71eb89b99",
+          "name": "water_volume",
+          "unit": "L",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "59726e201935428887511bd862d7e868",
+          "name": "water_amount",
+          "unit": "L",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "5fbc356f3c454da5986303a927564a60",
+          "name": "pre_wash_valve_open",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "877aa9b1fdf14fc086cd089771489701",
+          "name": "main_wash_valve_open",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "63d29b0093104a7393319e8346fbd08e",
+          "name": "drain_open",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "d73f9f6246984df5a41bd4745b2ac51e",
+          "name": "drain_process_active",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "2fa0192b5a054d55b8545abfc9e10e2c",
+          "name": "stwf_number",
+          "unit": "",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "5ed0414780d046348feb221623019ea6",
+          "name": "vt_line",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "40fbff2bb2ea4563bf4adae729f898bc",
+          "name": "trace_line",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "e6796adf47e54c629e6aeebd4da8a304",
+          "name": "process_state",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "63d7ba81e7cc4913be7350f0c4f3f83b",
+          "name": "cp_active",
+          "unit": "state",
+          "kind": "discrete",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "6acc443e57914f518e1f75ccbb3b51d9",
+          "name": "flowRate",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "b1a14348f26a433f83033abc70b541ae",
+          "name": "displayRemainTime",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "814be78aa5434929993a321be6751f33",
+          "name": "type_of_motion",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "4c916e907c04443182275f73af9591c4",
+          "name": "drum_acceleration",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "bda05866913b4242813e6d15f640831b",
+          "name": "heatingTime",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "4eba894085dc41e684fd3c11df7279bb",
+          "name": "accumulated_deltaTS",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "f31c7d87cb2f45818f9f169cbd9b636f",
+          "name": "mean_torque",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 17105
+        },
+        {
+          "id": "cd426fc18d69479c9b26747a0f95bfc4",
+          "name": "PowerSequence",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "83032d6e9b2b4ffdaac8dfe49c412a24",
+          "name": "EnergySequence",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "b9d7818d049744f09307a690177897a6",
+          "name": "PowerLow05Sequence",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        },
+        {
+          "id": "86f4923b55304a8b95be81f0ea2ab09f",
+          "name": "PowerHigh95Sequence",
+          "unit": "",
+          "kind": "analog",
+          "samples": 106148,
+          "start_min": 0.0,
+          "end_min": 176.91,
+          "duplicate_times": 88456,
+          "unknown_values": 0
+        }
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "NAV-HEADER",
+      "user_expectation": "Zoom/pan controls are on the graph header beside Analysis/Comparison, not in a separate global toolbar.",
+      "status": "unmet",
+      "observed": {
+        "row_center_difference_px": 40,
+        "toolbar_parent": "AdvancedStudioWindow"
+      }
+    },
+    {
+      "id": "RIGHT-CLICK",
+      "user_expectation": "Right-click offers chart tasks: Hand/Pan, Cursor, Zoom XY/X/Y, previous zoom and comments on the clicked pane.",
+      "status": "unmet",
+      "observed": {
+        "menu": [
+          {
+            "text": "View All",
+            "enabled": true
+          },
+          {
+            "text": "X axis",
+            "enabled": true,
+            "children": [
+              {
+                "text": "",
+                "enabled": true
+              }
+            ]
+          },
+          {
+            "text": "Y axis",
+            "enabled": true,
+            "children": [
+              {
+                "text": "",
+                "enabled": true
+              }
+            ]
+          },
+          {
+            "text": "Mouse Mode",
+            "enabled": true,
+            "children": [
+              {
+                "text": "3 button",
+                "enabled": true
+              },
+              {
+                "text": "1 button",
+                "enabled": true
+              }
+            ]
+          },
+          {
+            "text": "Plot Options",
+            "enabled": true,
+            "children": [
+              {
+                "text": "Transforms",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              },
+              {
+                "text": "Downsample",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              },
+              {
+                "text": "Average",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              },
+              {
+                "text": "Alpha",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              },
+              {
+                "text": "Grid",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              },
+              {
+                "text": "Points",
+                "enabled": true,
+                "children": [
+                  {
+                    "text": "",
+                    "enabled": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": "Export...",
+            "enabled": true
+          }
+        ],
+        "missing_task_labels": [
+          "zoom xy",
+          "zoom x",
+          "zoom y",
+          "cursor",
+          "revert zoom",
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "TIME-1",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after same-unit panes.",
+      "status": "unmet",
+      "observed": {
+        "name": "same-unit panes",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.74626865671642,
+            80.0
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              802.334375,
+              226.1
+            ]
+          },
+          {
+            "name": [
+              "PDH_AAS_B_HEATER_ON_0_R"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              787.1,
+              199.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-2",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after different units, stacked.",
+      "status": "unmet",
+      "observed": {
+        "name": "different units, stacked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.74626865671642,
+            77.31343283582089
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              802.334375,
+              226.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              733.7,
+              199.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-3",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after different units, side by side.",
+      "status": "passed",
+      "observed": {
+        "name": "different units, side by side",
+        "layout": "Horizontal split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.0,
+            80.0
+          ]
+        ],
+        "same_visible_time": true,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              434.334375,
+              455.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              427.7,
+              455.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-4",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after resize while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "resize while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            41.09489051094891,
+            76.05839416058394
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              477.7,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-5",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after pan second pane while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "pan second pane while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            58.12108559498956,
+            126.76409185803757
+          ],
+          [
+            60.0,
+            120.0
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              477.7,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-6",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after zoom X while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "zoom X while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            44.0,
+            76.0
+          ],
+          [
+            44.87591240875913,
+            72.84671532846716
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              477.7,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-7",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after fit/reset while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "fit/reset while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            -4.647270481268564,
+            237.0107945446968
+          ],
+          [
+            -4.2062886107832265,
+            237.0107945446968
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "water_temp"
+            ],
+            "view_rect": [
+              38.587500000000006,
+              0.0,
+              545.9125,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-8",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after hide and show a pressure channel.",
+      "status": "unmet",
+      "observed": {
+        "name": "hide and show a pressure channel",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.72874493927125,
+            84.37246963562752
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              492.934375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle"
+            ],
+            "view_rect": [
+              47.040625000000006,
+              0.0,
+              537.459375,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-9",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after theme change while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "theme change while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.65693430656934,
+            76.05839416058393
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              47.040625000000006,
+              0.0,
+              484.059375,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-10",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after tab switch while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "tab switch while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.65693430656934,
+            76.05839416058393
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              47.040625000000006,
+              0.0,
+              484.059375,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-11",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after restore saved view while locked.",
+      "status": "unmet",
+      "observed": {
+        "name": "restore saved view while locked",
+        "layout": "Vertical split",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            41.09489051094891,
+            76.05839416058394
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              546.334375,
+              182.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              477.7,
+              183.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-12",
+      "user_expectation": "With Lock Time Axes on, compatible visible time plots have identical left/right limits after four mixed-unit panes.",
+      "status": "unmet",
+      "observed": {
+        "name": "four mixed-unit panes",
+        "layout": "2×2",
+        "x_ranges_min": [
+          [
+            40.0,
+            80.0
+          ],
+          [
+            40.0,
+            80.0
+          ],
+          [
+            41.204819277108435,
+            75.66265060240964
+          ],
+          [
+            40.0,
+            80.0
+          ]
+        ],
+        "same_visible_time": false,
+        "plot_pixels": [
+          {
+            "name": [
+              "PDH_TMT2_UC_T_IST_0_R"
+            ],
+            "view_rect": [
+              38.165625000000006,
+              0.0,
+              496.334375,
+              142.1
+            ]
+          },
+          {
+            "name": [
+              "PDH_AAS_B_HEATER_ON_0_R"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              419.1,
+              142.1
+            ]
+          },
+          {
+            "name": [
+              "out Vavle",
+              "Water Pressure"
+            ],
+            "view_rect": [
+              53.400000000000006,
+              0.0,
+              427.7,
+              209.1
+            ]
+          },
+          {
+            "name": [
+              "P-E1"
+            ],
+            "view_rect": [
+              53.712500000000006,
+              0.0,
+              418.7875,
+              209.1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "TIME-OFF",
+      "user_expectation": "With Lock Time Axes off, I can inspect different time windows independently.",
+      "status": "passed",
+      "observed": [
+        [
+          10.0,
+          30.0
+        ],
+        [
+          50.0,
+          90.0
+        ]
+      ]
+    },
+    {
+      "id": "PANE-1536",
+      "user_expectation": "Every visible split plot retains at least 150 logical pixels of drawing height or scrolls instead of being crushed.",
+      "status": "passed",
+      "observed": {
+        "window": [
+          1536,
+          912
+        ],
+        "drawing_heights": [
+          189.1,
+          188.1
+        ]
+      }
+    },
+    {
+      "id": "PANE-1024",
+      "user_expectation": "Every visible split plot retains at least 150 logical pixels of drawing height or scrolls instead of being crushed.",
+      "status": "unmet",
+      "observed": {
+        "window": [
+          1024,
+          680
+        ],
+        "drawing_heights": [
+          65.1,
+          66.1
+        ]
+      }
+    },
+    {
+      "id": "FILTER-DEFAULT",
+      "user_expectation": "The default low-pass cutoff fits the loaded sample rate, or the UI explains a valid range before Apply.",
+      "status": "unmet",
+      "observed": {
+        "operation": "Butterworth low-pass",
+        "status": "rejected_with_message",
+        "message": "Digital filter critical frequencies must be 0 < Wn < fs/2 (fs=1.0000000000000568 -> fs/2=0.5000000000000284)",
+        "known_clock_or_support_requirement": false
+      }
+    },
+    {
+      "id": "MATH-CLOCK",
+      "user_expectation": "A formula must not silently combine unrelated recording clocks.",
+      "status": "passed",
+      "observed": "Channel clocks differ; explicitly resample before combining them"
+    },
+    {
+      "id": "CURSOR-DUPLICATE",
+      "user_expectation": "At a duplicate timestamp, the locked marker and numeric readout identify the same sample/value.",
+      "status": "unmet",
+      "observed": {
+        "channel": "Drump Speed",
+        "time": 93.23066666666666,
+        "anchor_index": 35426,
+        "marker_value": -10.0,
+        "readout_value": -15.0,
+        "displayed_readout_A": "-15"
+      }
+    }
+  ],
+  "time_lock_cases": [
+    {
+      "name": "same-unit panes",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.74626865671642,
+          80.0
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            802.334375,
+            226.1
+          ]
+        },
+        {
+          "name": [
+            "PDH_AAS_B_HEATER_ON_0_R"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            787.1,
+            199.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "different units, stacked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.74626865671642,
+          77.31343283582089
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            802.334375,
+            226.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            733.7,
+            199.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "different units, side by side",
+      "layout": "Horizontal split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.0,
+          80.0
+        ]
+      ],
+      "same_visible_time": true,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            434.334375,
+            455.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            427.7,
+            455.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "resize while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          41.09489051094891,
+          76.05839416058394
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            477.7,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pan second pane while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          58.12108559498956,
+          126.76409185803757
+        ],
+        [
+          60.0,
+          120.0
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            477.7,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "zoom X while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          44.0,
+          76.0
+        ],
+        [
+          44.87591240875913,
+          72.84671532846716
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            477.7,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "fit/reset while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          -4.647270481268564,
+          237.0107945446968
+        ],
+        [
+          -4.2062886107832265,
+          237.0107945446968
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "water_temp"
+          ],
+          "view_rect": [
+            38.587500000000006,
+            0.0,
+            545.9125,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "hide and show a pressure channel",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.72874493927125,
+          84.37246963562752
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            492.934375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle"
+          ],
+          "view_rect": [
+            47.040625000000006,
+            0.0,
+            537.459375,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "theme change while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.65693430656934,
+          76.05839416058393
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            47.040625000000006,
+            0.0,
+            484.059375,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tab switch while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.65693430656934,
+          76.05839416058393
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            47.040625000000006,
+            0.0,
+            484.059375,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "restore saved view while locked",
+      "layout": "Vertical split",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          41.09489051094891,
+          76.05839416058394
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            546.334375,
+            182.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            477.7,
+            183.1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "four mixed-unit panes",
+      "layout": "2×2",
+      "x_ranges_min": [
+        [
+          40.0,
+          80.0
+        ],
+        [
+          40.0,
+          80.0
+        ],
+        [
+          41.204819277108435,
+          75.66265060240964
+        ],
+        [
+          40.0,
+          80.0
+        ]
+      ],
+      "same_visible_time": false,
+      "plot_pixels": [
+        {
+          "name": [
+            "PDH_TMT2_UC_T_IST_0_R"
+          ],
+          "view_rect": [
+            38.165625000000006,
+            0.0,
+            496.334375,
+            142.1
+          ]
+        },
+        {
+          "name": [
+            "PDH_AAS_B_HEATER_ON_0_R"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            419.1,
+            142.1
+          ]
+        },
+        {
+          "name": [
+            "out Vavle",
+            "Water Pressure"
+          ],
+          "view_rect": [
+            53.400000000000006,
+            0.0,
+            427.7,
+            209.1
+          ]
+        },
+        {
+          "name": [
+            "P-E1"
+          ],
+          "view_rect": [
+            53.712500000000006,
+            0.0,
+            418.7875,
+            209.1
+          ]
+        }
+      ]
+    }
+  ],
+  "dialog_inventory": [
+    {
+      "name": "Plot display",
+      "title": "Plot display options",
+      "size": [
+        238,
+        210
+      ],
+      "size_hint": [
+        238,
+        210
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Cursor locks",
+      "title": "Lock cursors to channel",
+      "size": [
+        768,
+        136
+      ],
+      "size_hint": [
+        526,
+        156
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": [
+        "Locked cursors stay on real samples while panning. Drag to scrub; ←/→ steps A, Shift+←/→ steps B. Other channels update at the same time."
+      ]
+    },
+    {
+      "name": "Move cursors",
+      "title": "Move cursors",
+      "size": [
+        227,
+        259
+      ],
+      "size_hint": [
+        227,
+        259
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Channel mapping",
+      "title": "Channel mapping & appearance",
+      "size": [
+        720,
+        420
+      ],
+      "size_hint": [
+        278,
+        247
+      ],
+      "tables": [
+        {
+          "rows": 91,
+          "columns": 10
+        }
+      ],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Measurements / quality",
+      "title": "Engineering KPIs, quality & synchronization",
+      "size": [
+        720,
+        420
+      ],
+      "size_hint": [
+        282,
+        248
+      ],
+      "tables": [
+        {
+          "rows": 30,
+          "columns": 5
+        },
+        {
+          "rows": 25,
+          "columns": 5
+        },
+        {
+          "rows": 14,
+          "columns": 5
+        },
+        {
+          "rows": 81,
+          "columns": 5
+        }
+      ],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Comparison mapping",
+      "title": "Simulation ↔ bench signal mapping",
+      "size": [
+        317,
+        379
+      ],
+      "size_hint": [
+        317,
+        379
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Reference units",
+      "title": "Reference units",
+      "size": [
+        577,
+        169
+      ],
+      "size_hint": [
+        577,
+        169
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": [
+        "Pressure comparison retains original numbers, labelled Pa. Metadata does not rescale measurements."
+      ]
+    },
+    {
+      "name": "Engineering setup",
+      "title": "Engineering Setup",
+      "size": [
+        768,
+        420
+      ],
+      "size_hint": [
+        526,
+        340
+      ],
+      "tables": [
+        {
+          "rows": 91,
+          "columns": 4
+        }
+      ],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Extensions",
+      "title": "Extensions",
+      "size": [
+        720,
+        420
+      ],
+      "size_hint": [
+        567,
+        268
+      ],
+      "tables": [
+        {
+          "rows": 0,
+          "columns": 3
+        }
+      ],
+      "long_unwrapped_explanations": [
+        "Python extensions run local code and use register_patch(manager). Install only extensions you trust."
+      ]
+    },
+    {
+      "name": "Rule phase",
+      "title": "Configure Phase",
+      "size": [
+        423,
+        225
+      ],
+      "size_hint": [
+        423,
+        225
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Rule tolerance",
+      "title": "Configure Tolerance",
+      "size": [
+        362,
+        154
+      ],
+      "size_hint": [
+        362,
+        154
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Rule acceptance",
+      "title": "Configure Acceptance",
+      "size": [
+        422,
+        154
+      ],
+      "size_hint": [
+        422,
+        154
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "Rule anchor",
+      "title": "Configure Anchor",
+      "size": [
+        747,
+        219
+      ],
+      "size_hint": [
+        747,
+        219
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "TDMS first review",
+      "title": "Review TDMS parameters",
+      "size": [
+        776,
+        650
+      ],
+      "size_hint": [
+        298,
+        348
+      ],
+      "tables": [
+        {
+          "rows": 27,
+          "columns": 5
+        }
+      ],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "About / Updates",
+      "title": "About Appliance Signal Studio · 2.3.1",
+      "size": [
+        434,
+        506
+      ],
+      "size_hint": [
+        434,
+        506
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    },
+    {
+      "name": "User Manual",
+      "title": "User Manual",
+      "size": [
+        463,
+        319
+      ],
+      "size_hint": [
+        463,
+        319
+      ],
+      "tables": [],
+      "long_unwrapped_explanations": []
+    }
+  ],
+  "processing": [
+    {
+      "operation": "Offset and scale",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Time shift",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Descriptive statistics",
+      "status": "passed",
+      "samples": 7,
+      "unit": "mixed",
+      "coordinate_unit": "metric"
+    },
+    {
+      "operation": "Histogram",
+      "status": "passed",
+      "samples": 30,
+      "unit": "count",
+      "coordinate_unit": ""
+    },
+    {
+      "operation": "Cumulative integration",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "·s",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Moving average",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Savitzky–Golay",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Butterworth low-pass",
+      "status": "rejected_with_message",
+      "message": "Digital filter critical frequencies must be 0 < Wn < fs/2 (fs=1.0000000000000568 -> fs/2=0.5000000000000284)",
+      "known_clock_or_support_requirement": false
+    },
+    {
+      "operation": "Differentiation",
+      "status": "passed",
+      "samples": 15898,
+      "unit": "/s",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "FFT",
+      "status": "passed",
+      "samples": 7950,
+      "unit": "",
+      "coordinate_unit": "Hz"
+    },
+    {
+      "operation": "Welch PSD",
+      "status": "passed",
+      "samples": 129,
+      "unit": "²/Hz",
+      "coordinate_unit": "Hz"
+    },
+    {
+      "operation": "Peak and valley detection",
+      "status": "passed",
+      "samples": 9756,
+      "unit": "",
+      "coordinate_unit": "min"
+    },
+    {
+      "operation": "Butterworth low-pass, cutoff 0.1 Hz",
+      "status": "passed",
+      "samples": 15898,
+      "unit": ""
+    }
+  ],
+  "execution_errors": [
+    {
+      "scenario": "Qt callback during header and context menu",
+      "kind": "application_callback",
+      "error": "Traceback (most recent call last):\n  File \"/workspace/analizer-tools/venv/lib/python3.12/site-packages/pyqtgraph/graphicsItems/PlotItem/PlotItem.py\", line 1094, in updateSpectrumMode\n    c.setFftMode(b)\n    ^^^^^^^^^^^^\nAttributeError: 'ScatterPlotItem' object has no attribute 'setFftMode'. Did you mean: 'setPxMode'?\n"
+    },
+    {
+      "scenario": "Qt callback during header and context menu",
+      "kind": "application_callback",
+      "error": "Traceback (most recent call last):\n  File \"/workspace/analizer-tools/venv/lib/python3.12/site-packages/pyqtgraph/graphicsItems/PlotItem/PlotItem.py\", line 1094, in updateSpectrumMode\n    c.setFftMode(b)\n    ^^^^^^^^^^^^\nAttributeError: 'ScatterPlotItem' object has no attribute 'setFftMode'. Did you mean: 'setPxMode'?\n"
+    }
+  ],
+  "context_menu": [
+    {
+      "text": "View All",
+      "enabled": true
+    },
+    {
+      "text": "X axis",
+      "enabled": true,
+      "children": [
+        {
+          "text": "",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "text": "Y axis",
+      "enabled": true,
+      "children": [
+        {
+          "text": "",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "text": "Mouse Mode",
+      "enabled": true,
+      "children": [
+        {
+          "text": "3 button",
+          "enabled": true
+        },
+        {
+          "text": "1 button",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "text": "Plot Options",
+      "enabled": true,
+      "children": [
+        {
+          "text": "Transforms",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "text": "Downsample",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "text": "Average",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "text": "Alpha",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "text": "Grid",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "text": "Points",
+          "enabled": true,
+          "children": [
+            {
+              "text": "",
+              "enabled": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Export...",
+      "enabled": true
+    }
+  ],
+  "native_fft_probe": {
+    "checkbox_checked": true,
+    "framework_managed_curve_count": 1,
+    "coordinate": [
+      "time",
+      "min"
+    ],
+    "display_data_unchanged": true
+  },
+  "layout_inventory": [
+    {
+      "layout": "Single",
+      "visible_panes": 1,
+      "widget_heights": [
+        213
+      ]
+    },
+    {
+      "layout": "Horizontal split",
+      "visible_panes": 2,
+      "widget_heights": [
+        213,
+        213
+      ]
+    },
+    {
+      "layout": "Vertical split",
+      "visible_panes": 2,
+      "widget_heights": [
+        103,
+        104
+      ]
+    },
+    {
+      "layout": "2×2",
+      "visible_panes": 4,
+      "widget_heights": [
+        180,
+        180,
+        180,
+        180
+      ]
+    },
+    {
+      "layout": "Stacked",
+      "visible_panes": 4,
+      "widget_heights": [
+        180,
+        180,
+        180,
+        180
+      ]
+    },
+    {
+      "layout": "3 stacked",
+      "visible_panes": 3,
+      "widget_heights": [
+        180,
+        180,
+        180
+      ]
+    },
+    {
+      "layout": "10 panels",
+      "visible_panes": 10,
+      "widget_heights": [
+        180,
+        180,
+        180,
+        180,
+        180,
+        180,
+        180,
+        180,
+        180,
+        180
+      ]
+    }
+  ],
+  "dialog_note": "Screen-bounded is not the same as appropriately compact; screenshots and long unwrapped labels need a task-based review.",
+  "mixed_clock_formula_message": "Channel clocks differ; explicitly resample before combining them",
+  "real_power_interval_card": "<b>P-E1</b> · Cursor interval<br>ΔX 5 min &nbsp; |ΔY| 41.502 <br>Min 2.8377 &nbsp; Max 128.81 &nbsp; Mean 50.943 <br>Interval RMS 53.409 · Slope -8.3004 /min<br>Integral 254.71 ·min · Coverage 100.0%",
+  "control_state_observations": {
+    "peak_marker_enabled": true
+  },
+  "summary": {
+    "contracts": 20,
+    "passed": 4,
+    "unmet": 16,
+    "execution_errors": 2,
+    "application_callback_errors": 2,
+    "audit_runner_errors": 0
+  },
+  "source_files_unchanged": true
+}

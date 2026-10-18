@@ -1,4 +1,7 @@
-"""Reproducible private-data audit. Source recordings are never copied to Git.
+"""Reproducible recording audit. This tool does not copy input files into Git.
+
+The four user-authorized repository fixtures can be selected explicitly; other
+recordings and generated workspaces remain in the requested output directory.
 
 Usage: QT_QPA_PLATFORM=offscreen python tools/audit_recordings.py \
  --input file.tdms --input machine.csv --input power.CSV --input simulation.csv \
