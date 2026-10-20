@@ -106,6 +106,9 @@ class HeaderNavigationTests(unittest.TestCase):
         # pointer movement is clipped to that desktop, so sample visible data
         # within its intersection instead of asking for an offscreen position.
         view=p.getViewBox();drawable=p.mapFromScene(view.sceneBoundingRect()).boundingRect()
+        # A pane may extend beyond its scroll area's visible slice. The widget's
+        # full rectangle alone can place a native pointer on a dock separator.
+        drawable=drawable.intersected(p.viewport().visibleRegion().boundingRect())
         visible=QtCore.QRect(p.viewport().mapToGlobal(drawable.topLeft()),drawable.size()).intersected(self.w.screen().availableGeometry()).adjusted(2,2,-2,-2)
         first=p.viewport().mapToGlobal(p.mapFromScene(view.mapViewToScene(QtCore.QPointF(0,20))))
         last=p.viewport().mapToGlobal(p.mapFromScene(view.mapViewToScene(QtCore.QPointF(2,40))))
