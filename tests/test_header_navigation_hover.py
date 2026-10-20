@@ -118,7 +118,9 @@ class HeaderNavigationTests(unittest.TestCase):
             QtTest.QTest.mouseMove(p.viewport(),p.viewport().mapFromGlobal(position))
             QtTest.QTest.qWait(80)  # Passive hover is deliberately limited to 30 Hz.
             owner=self.app.widgetAt(QtGui.QCursor.pos());popup=self.app.activePopupWidget()
-            diagnostic=f'active={self.w.isActiveWindow()}, underMouse={p.viewport().underMouse()}, pointer={QtGui.QCursor.pos()}, target={position}, owner={owner}, popup={popup}, moves={moves.count()}, changes={changes.count()}, hover={p.hover_state}, raw={p.hover_text}, range={p.viewRange()}'
+            owner_name=type(owner).__name__+'/'+owner.objectName() if owner else 'None'
+            popup_name=type(popup).__name__+'/'+popup.objectName() if popup else 'None'
+            diagnostic=f'owner={owner_name}, ownerIsPlot={owner is p}, ownerIsViewport={owner is p.viewport()}, popup={popup_name}, active={self.w.isActiveWindow()}, underMouse={p.viewport().underMouse()}, pointer={QtGui.QCursor.pos()}, target={position}, moves={moves.count()}, changes={changes.count()}, hover={p.hover_state}, raw={p.hover_text}'
             self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ',diagnostic);self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
             self.assertEqual(p.geometry(),initial);self.assertEqual([line.value() for line in p.cursor_lines],before)
         self.w.resize(1024,768);self.app.processEvents()
