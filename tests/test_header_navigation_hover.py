@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import numpy as np
-from PySide6 import QtWidgets,QtCore,QtTest
+from PySide6 import QtWidgets,QtCore,QtTest,QtGui
 from app_channel_store import Channel
 from app_workbench import AdvancedStudioWindow
 
@@ -96,7 +96,9 @@ class HeaderNavigationTests(unittest.TestCase):
         # Native window exposure and axis sizing finish asynchronously. Exercise
         # the real pointer/proxy path after that settles, rather than injecting
         # hover while the physical pointer is outside and a Leave is queued.
+        self.w.activateWindow();self.w.raise_();p.setFocus()
         QtTest.QTest.qWait(150)
+        QtTest.QTest.mouseMove(p.viewport(),QtCore.QPoint(0,0));QtTest.QTest.qWait(60)
         label_bottom=readout.mapToGlobal(readout.rect().bottomLeft()).y();plot_top=p.mapToGlobal(p.rect().topLeft()).y()
         self.assertLess(label_bottom,plot_top);self.assertFalse(hasattr(p,'hover_label'))
         initial=p.geometry();before=[line.value() for line in p.cursor_lines]
@@ -109,11 +111,14 @@ class HeaderNavigationTests(unittest.TestCase):
         last=p.viewport().mapToGlobal(p.mapFromScene(view.mapViewToScene(QtCore.QPointF(2,40))))
         visible.setLeft(max(visible.left(),first.x()+2));visible.setRight(min(visible.right(),last.x()-2))
         self.assertGreater(visible.width(),6);self.assertGreater(visible.height(),6)
+        moves=QtTest.QSignalSpy(p.scene().sigMouseMoved)
+        changes=QtTest.QSignalSpy(p.hoverChanged)
         for fraction in (.1,.5,.9):
             position=QtCore.QPoint(round(visible.left()+visible.width()*fraction),visible.center().y())
             QtTest.QTest.mouseMove(p.viewport(),p.viewport().mapFromGlobal(position))
             QtTest.QTest.qWait(80)  # Passive hover is deliberately limited to 30 Hz.
-            self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ');self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
+            diagnostic=f'active={self.w.isActiveWindow()}, underMouse={p.viewport().underMouse()}, pointer={QtGui.QCursor.pos()}, target={position}, moves={moves.count()}, changes={changes.count()}, hover={p.hover_state}, range={p.viewRange()}'
+            self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ',diagnostic);self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
             self.assertEqual(p.geometry(),initial);self.assertEqual([line.value() for line in p.cursor_lines],before)
         self.w.resize(1024,768);self.app.processEvents()
         self.assertEqual(readout.height(),48);self.assertLess(readout.mapToGlobal(readout.rect().bottomLeft()).y(),p.mapToGlobal(p.rect().topLeft()).y())

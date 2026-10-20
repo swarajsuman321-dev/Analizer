@@ -53,6 +53,10 @@ jobs:
             $output += & .venv-exe\Scripts\python.exe -m unittest discover -s tests -p test_installer.py -v 2>&1
             $code = $LASTEXITCODE
           }
+          if ($code -eq 0) {
+            $output += & .venv-exe\Scripts\python.exe -m unittest discover -s tests -p test_header_navigation_hover.py -v 2>&1
+            $code = $LASTEXITCODE
+          }
           $output | Write-Output
           if ($code -ne 0) {
             $tail = ($output | Select-Object -Last 35) -join "`n"
