@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "2.4.0",
-  "status": "source verified; native Windows verification pending",
+  "status": "source verified; final native release verification is recorded separately in release-v2.4.0.json",
   "source_base_commit": "7dd90747b7e6e6c85fbe0d955e4703af630e7c16",
   "platform": "linux",
   "qt_platform": "offscreen",
@@ -170,7 +170,7 @@
       "pointer leaves viewport",
       "occlusion by another widget"
     ],
-    "native_status": "pending diagnostic Windows run"
+    "native_status": "passed in final release workflow 39355833246"
   },
   "release_evidence_assembly_tests": {
     "passed": 5,

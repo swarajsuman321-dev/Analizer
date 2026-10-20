@@ -1,0 +1,430 @@
+{
+  "schema": 1,
+  "version": "2.4.0",
+  "build_date": "2026-10-20",
+  "source_commit": "1c93106b2176428533183c89061851af501dfd3e",
+  "assembled_at_utc": "2026-10-20T02:22:28.216307+00:00",
+  "assembly_platform": "win32",
+  "native_gate_reports_passed": true,
+  "workflow_completion": "success; observed in the public Actions job after publication",
+  "ci": {
+    "GITHUB_REPOSITORY": "swarajsuman321-dev/Analizer",
+    "GITHUB_REF": "refs/heads/main",
+    "GITHUB_RUN_ID": "39355833246",
+    "GITHUB_RUN_ATTEMPT": "1",
+    "GITHUB_WORKFLOW": "Build Windows application",
+    "GITHUB_JOB": "windows-exe",
+    "RUNNER_OS": "Windows",
+    "RUNNER_ARCH": "X64",
+    "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/39355833246"
+  },
+  "native_unit_tests": {
+    "status": "passed",
+    "tests_run": 371,
+    "skipped": 0,
+    "expected_failures": 0,
+    "duration_seconds": 204.957,
+    "terminal_summary": "Ran 371 tests in 204.957s\nOK",
+    "source_log": "build.log",
+    "source_bytes": 92717,
+    "source_sha256": "16580c9abfec739fd012646af053b027b75ba7143bdc192c1184dba574a727c0"
+  },
+  "artifacts": {
+    "standalone-onefile": {
+      "filename": "ApplianceSignalStudio.exe",
+      "bytes": 154719110,
+      "sha256": "02f5e3fd99a84c23c48d04b86d895060149e21392e9c67b9da5ea1d9af937683"
+    },
+    "standalone-folder": {
+      "filename": "ApplianceSignalStudio_Portable.zip",
+      "bytes": 155478250,
+      "sha256": "8b167df6001da26b1b3911ce5a046e6ce57d90a6c21bae98cd76252318070849"
+    },
+    "installed-setup": {
+      "filename": "ApplianceSignalStudio-Setup-2.4.0.exe",
+      "bytes": 134769948,
+      "sha256": "a71c5cc7de7ba5fa3efaf55ccc6148fe49f0f39972b4a52616c6aa15ab5894eb"
+    }
+  },
+  "native_gate_reports": {
+    "onedir_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "36fdc376c12ec0c7e54a0da81d171a6438aaeb144eb79b028d577518513721f6",
+      "report": {
+        "ok": true,
+        "version": "2.4.0",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "onefile_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "36fdc376c12ec0c7e54a0da81d171a6438aaeb144eb79b028d577518513721f6",
+      "report": {
+        "ok": true,
+        "version": "2.4.0",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "onefile_restart_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "36fdc376c12ec0c7e54a0da81d171a6438aaeb144eb79b028d577518513721f6",
+      "report": {
+        "ok": true,
+        "version": "2.4.0",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "installer_smoke_report.json": {
+      "bytes": 852,
+      "sha256": "5233883949163313b7c8d8459e62c92920ad927532bc41e7f0465060ea094fe9",
+      "report": {
+        "ok": true,
+        "version": "2.4.0",
+        "platform": "native Windows x64 CI",
+        "checks": [
+          "fresh per-user install, runtime imports, user-only registration and Unicode path",
+          "running-app mutex prevents concurrent installation",
+          "same-version repair",
+          "uninstall removes app files and retains user settings, reports and unowned file",
+          "upgrade from real v2.3.1 runtime preserves settings and previous runtime",
+          "failed-runtime upgrade blocked before changes; current version remains runnable",
+          "uninstall after upgrade"
+        ],
+        "limitations": [
+          "Runner account is privileged; per-user mode is verified via registry scope, not a separate standard-user login.",
+          "Not a clean VM without Python or antivirus certification.",
+          "Installer is unsigned; no publisher signing identity was supplied."
+        ]
+      }
+    },
+    "packaged_workflows_smoke_report.json": {
+      "bytes": 1203,
+      "sha256": "d66e10eab451f2c2f9a1c9d3b7bd243de4c3f7108803164e5929e2947e0c8ad1",
+      "report": {
+        "version": "2.4.0",
+        "ok": true,
+        "editions": {
+          "standalone-onefile": {
+            "checks": 42,
+            "passed": 42,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          },
+          "standalone-folder": {
+            "checks": 42,
+            "passed": 42,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          },
+          "installed": {
+            "checks": 42,
+            "passed": 42,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          }
+        },
+        "manual_checks_unrun": [
+          "Physical wheel, box selection and keyboard navigation in every zoom mode",
+          "Windows 100%, 125%, 150% and 200% display scaling",
+          "Moving between monitors with different scaling and graphics drivers",
+          "Keyboard-only task completion and screen-reader announcements",
+          "Long-running acquisition-sized workloads and antivirus policy interaction"
+        ]
+      }
+    },
+    "application_updates_smoke_report.json": {
+      "bytes": 2237,
+      "sha256": "af9e507e915ae7d1ec7f8a2ebe977c6e3d7b7d8ad7167413bfa129f633bf9233",
+      "report": {
+        "ok": true,
+        "version": "2.4.0",
+        "platform": "native Windows actual GUI",
+        "checks": [
+          "portable: actual frozen updater waits for workbench child and owning onefile bootloader",
+          "portable-zip: actual frozen updater waits for workbench only, excluding unrelated Python launcher",
+          "portable success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "portable restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "portable-zip restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "installer success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "installer restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip locked-runtime: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip staging-tamper: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "installer health-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "all cross-edition update conversions rejected; original sources/settings/templates/reports and sibling runtime unchanged"
+        ],
+        "limitations": [
+          "Harness invokes production updater with an actual prior GUI PID; immutable prior versions did not yet have the new updater UI.",
+          "Previous immutable runtime has no restoration acknowledgement protocol; fallback GUI survival and recovery snapshot load are checked separately.",
+          "Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.",
+          "Manual wheel/keyboard/DPI/multi-monitor and external corporate networks remain separate checks."
+        ]
+      }
+    }
+  },
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "limitations": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction",
+    "Runner account is privileged; per-user mode is verified via registry scope, not a separate standard-user login.",
+    "Not a clean VM without Python or antivirus certification.",
+    "Installer is unsigned; no publisher signing identity was supplied.",
+    "Harness invokes production updater with an actual prior GUI PID; immutable prior versions did not yet have the new updater UI.",
+    "Previous immutable runtime has no restoration acknowledgement protocol; fallback GUI survival and recovery snapshot load are checked separately.",
+    "Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.",
+    "Manual wheel/keyboard/DPI/multi-monitor and external corporate networks remain separate checks."
+  ],
+  "public_native_evidence": {
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/validation-v2.4.0.json",
+    "bytes": 14787,
+    "sha256": "5f04c344e0477f52a498d0edb4e6d1e61f0395bf3fd11f0844b5758ae3530ac3"
+  },
+  "public_release_verification": {
+    "version": "2.4.0",
+    "started_utc": "2026-10-20T02:24:10.286623+00:00",
+    "finished_utc": "2026-10-20T02:24:55.498512+00:00",
+    "ok": true,
+    "items": [
+      {
+        "edition": "standalone-exe",
+        "asset": "ApplianceSignalStudio.exe",
+        "kind": "portable",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/update.json",
+        "feeds_agree": true,
+        "manifest": {
+          "version": "2.4.0",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio.exe",
+          "size": 154719110,
+          "sha256": "02f5e3fd99a84c23c48d04b86d895060149e21392e9c67b9da5ea1d9af937683",
+          "notes": "Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup."
+        },
+        "download": {
+          "bytes": 154719110,
+          "sha256": "02f5e3fd99a84c23c48d04b86d895060149e21392e9c67b9da5ea1d9af937683",
+          "matches_manifest": true
+        }
+      },
+      {
+        "edition": "standalone-zip",
+        "asset": "ApplianceSignalStudio_Portable.zip",
+        "kind": "portable-zip",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/zip-update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/zip-update.json",
+        "feeds_agree": true,
+        "manifest": {
+          "version": "2.4.0",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio_Portable.zip",
+          "size": 155478250,
+          "sha256": "8b167df6001da26b1b3911ce5a046e6ce57d90a6c21bae98cd76252318070849",
+          "notes": "Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.",
+          "kind": "portable-zip"
+        },
+        "download": {
+          "bytes": 155478250,
+          "sha256": "8b167df6001da26b1b3911ce5a046e6ce57d90a6c21bae98cd76252318070849",
+          "matches_manifest": true
+        },
+        "zip_inventory": {
+          "files": 1985,
+          "uncompressed_bytes": 387822924,
+          "crc_valid": true,
+          "whole_runtime_and_current_assets_present": true,
+          "inventory_check_only": "Does not execute Windows code or inspect modules inside PYZ"
+        }
+      },
+      {
+        "edition": "installed",
+        "asset": "ApplianceSignalStudio-Setup-2.4.0.exe",
+        "kind": "installer",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/installer-update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/installer-update.json",
+        "feeds_agree": true,
+        "manifest": {
+          "version": "2.4.0",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio-Setup-2.4.0.exe",
+          "size": 134769948,
+          "sha256": "a71c5cc7de7ba5fa3efaf55ccc6148fe49f0f39972b4a52616c6aa15ab5894eb",
+          "notes": "Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.",
+          "kind": "installer"
+        },
+        "download": {
+          "bytes": 134769948,
+          "sha256": "a71c5cc7de7ba5fa3efaf55ccc6148fe49f0f39972b4a52616c6aa15ab5894eb",
+          "matches_manifest": true
+        }
+      }
+    ]
+  }
+}

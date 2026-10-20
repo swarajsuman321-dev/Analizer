@@ -3,9 +3,9 @@
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
-**Windows installer: [Download Setup v2.3.2](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.2/ApplianceSignalStudio-Setup-2.3.2.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Portable downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.2) · [User manual](manuals/v2.3.2.md).
+**Windows installer: [Download Setup v2.4.0](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio-Setup-2.4.0.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.4.0.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Downloads above remain the verified v2.3.2 release while v2.4.0 native builds run. The [v2.4.0 implementation record](docs/RELEASE_2.4.0.md) tracks the approved audit improvements and verification; source/offscreen checks do not establish native release acceptance.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Version **2.4.0 is published** from the same tested source for all three forms. Native Windows validation passed **371 regression tests with zero skips**, **42 real-recording checks in each form**, installer lifecycle and actual application update/recovery tests. See the [release record](docs/RELEASE_2.4.0.md) and [permanent verification evidence](docs/validation/release-v2.4.0.json), including remaining human/platform checks.
 
 Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy](docs/DUAL_DISTRIBUTION_POLICY.md) and the [approved audit checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md).
 

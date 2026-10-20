@@ -6,6 +6,8 @@ The user has confirmed that v2.3.2 installs, opens and works on their PC. That i
 
 **Approval received:** the user selected **“Approve all A–H (Recommended)”**. All 26 core items are authorized; I1–I3 remain excluded. The [v2.4.0 implementation and verification record](RELEASE_2.4.0.md) tracks delivery. Checkboxes below preserve the original requested scope and are not a claim that every native/human acceptance check has already run.
 
+**Delivery status, 20 October 2026:** v2.4.0 is published for all three package forms. Implementation and automated acceptance for A–H are recorded in the linked release document and permanent evidence. The physical Windows/DPI/multi-monitor/accessibility acceptance portion of H2 remains explicitly open for human review.
+
 ## Decisions already confirmed
 
 - Maintain **Windows Installed** and **Standalone** together: one source implementation, feature set, version, manual and release cycle, with working updates for each. Preserve the existing standalone EXE and ZIP forms. See the [distribution policy](DUAL_DISTRIBUTION_POLICY.md).

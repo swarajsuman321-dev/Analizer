@@ -4,7 +4,7 @@ Prepared 19 October 2026. The user approved **all A–H** in the [improvement ch
 
 ## Release state
 
-Source implementation and local verification are complete. Native Windows build, actual packaged acceptance and update/recovery checks are mandatory before the release is published. See the workflow and the final release evidence before treating a download as verified; source/offscreen results do not certify native Windows behavior.
+**Published 20 October 2026.** [Installed Setup, standalone EXE and complete standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.0) passed the [native Windows workflow](https://github.com/swarajsuman321-dev/Analizer/actions/runs/39355833246) from source `1c93106b2176428533183c89061851af501dfd3e`. The [permanent release evidence](validation/release-v2.4.0.json) records the original six native gate reports, source identity, exact artifact hashes and public download verification. A copy is attached to the release as `validation-v2.4.0.json`.
 
 ## Changes mapped to the approval
 
@@ -47,6 +47,17 @@ Source implementation and local verification are complete. Native Windows build,
 
 The real-file suite includes all 15 nonempty combinations of the four committed fixtures, per-file selection/removal, TDMS known/new template review, exact source/workspace roundtrips, mixed layouts and exports. This remains a finite acceptance set, not every possible input or certified appliance/IEC evaluation.
 
+## Native Windows and published artifacts
+
+- **371/371 regression tests passed**, zero skips or expected failures, 204.957 seconds.
+- One-folder, single-file and independent single-file restart self-tests passed.
+- **42/42 real-recording acceptance checks passed in each of the three forms**: installed, standalone EXE and extracted standalone ZIP. Each recorded seven expected safety rejections and zero callback/runner errors; five manual scenarios remain explicitly unrun.
+- Seven installer lifecycle checks passed, covering installation, running-app exclusion, repair, uninstall/data retention, prior-runtime upgrade and unhealthy-upgrade rejection.
+- Twelve real GUI update/recovery checks passed: all three success and restore-failure paths, complete-folder locked-runtime and tampering recovery, failed installed health gate, verified onefile parent shutdown and edition/source/settings/output isolation.
+- All three latest/versioned feeds agree on v2.4.0. Public downloads are independently checked for size/SHA-256; the ZIP inventory and CRCs are also checked. Exact results are in the linked evidence.
+
+These update tests invoke the current production updater against actual prior GUI processes. Immutable older versions have their original UI/protocol; fallback GUI survival and the independent previous-version workspace are validated separately. The installed late-failure registration/shortcut limitation below remains applicable.
+
 ## Engineering report regression
 
 The supplied older report reviewed in [the PDF audit](audits/2026-10-18-engineering-pdf-usefulness-review.md) had 4,049 pages and 10,231 log records. The current hash-matched RD fixture produces a **ten-page summary** with **30,613 complete records, 30,613 unique event IDs and 31 groups**. Counts differ because acquisition quality can now be evaluated for additional mapped source traces without pretending their physical units/roles are verified. The original speed-gap observations remain; no event deletion is used to obtain the short PDF. A separate synthetic legacy-shaped regression preserves all 10,231 test records.
@@ -71,7 +82,7 @@ The release is unsigned unless an approved publisher certificate is configured. 
 
 ## Remaining human/platform checks
 
-Native automation must pass before publication. Human acceptance still includes physical mouse/keyboard interaction, Windows 100/125/150/200% scaling, multi-monitor/GPU behavior, keyboard-only/screen-reader use, prolonged sessions and the user's actual corporate proxy/offline policy. Automated Qt gestures and offscreen geometry do not certify those scenarios. Calibration, manufacturer phase mappings and acceptance thresholds remain user/test-plan responsibilities.
+Native automation passed. Human acceptance still includes physical mouse/keyboard interaction, Windows 100/125/150/200% scaling, multi-monitor/GPU behavior, keyboard-only/screen-reader use, prolonged sessions and the user's actual corporate proxy/offline policy. Automated Qt gestures and offscreen geometry do not certify those scenarios. Calibration, manufacturer phase mappings and acceptance thresholds remain user/test-plan responsibilities.
 
 ## Maintenance references
 

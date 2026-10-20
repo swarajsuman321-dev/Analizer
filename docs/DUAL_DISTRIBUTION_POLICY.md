@@ -10,6 +10,10 @@ Confirmed by the user on 18 October 2026: future development must support both t
 - Preserve personal settings, reviewed TDMS mappings, presets, legacy templates, saved workspaces, outputs and source recordings across updates. Retain supported backward migration and recovery mechanisms.
 - Ask before removing or hiding capabilities. Keep both existing standalone download forms; new implementations must not silently drop the ZIP option.
 
+## Current release — v2.4.0
+
+Installed, standalone EXE and standalone ZIP are published together with matching update feeds. The native gate passed 371 regression tests, 42 real-recording checks per form, installer lifecycle and twelve actual GUI update/recovery checks. See the [release record](RELEASE_2.4.0.md) and [permanent native/public verification evidence](validation/release-v2.4.0.json). Older ZIP copies require one complete v2.4.0 extraction into a separate writable folder to gain their new updater; recovery/registration limitations and human checks are documented there.
+
 ## Baseline support and remaining gaps — v2.3.2
 
 This table records the pre-implementation baseline. The approved v2.4.0 source now adds complete ZIP updates, stricter mode isolation and restored-startup acknowledgement; its [implementation and verification record](RELEASE_2.4.0.md) separates completed source checks from native release gates.
