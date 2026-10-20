@@ -426,5 +426,15 @@
         }
       }
     ]
-  }
+  },
+  "public_manual_verification": {
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/v2.4.0.md",
+    "matches_source_content_after_line_ending_normalization": true,
+    "source_line_endings": "LF",
+    "published_line_endings": "CRLF",
+    "matches_bundled_zip_manual_bytes": true,
+    "bytes": 78644,
+    "sha256": "7730b20be2890e4b40b4b648baef33d0242bf56f3f1130365d3690798b635ae6"
+  },
+  "public_release_tag_source_verified": "1c93106b2176428533183c89061851af501dfd3e"
 }
