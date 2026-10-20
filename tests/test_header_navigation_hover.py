@@ -117,12 +117,30 @@ class HeaderNavigationTests(unittest.TestCase):
             position=QtCore.QPoint(round(visible.left()+visible.width()*fraction),visible.center().y())
             QtTest.QTest.mouseMove(p.viewport(),p.viewport().mapFromGlobal(position))
             QtTest.QTest.qWait(80)  # Passive hover is deliberately limited to 30 Hz.
-            diagnostic=f'active={self.w.isActiveWindow()}, underMouse={p.viewport().underMouse()}, pointer={QtGui.QCursor.pos()}, target={position}, moves={moves.count()}, changes={changes.count()}, hover={p.hover_state}, range={p.viewRange()}'
+            owner=self.app.widgetAt(QtGui.QCursor.pos());popup=self.app.activePopupWidget()
+            diagnostic=f'active={self.w.isActiveWindow()}, underMouse={p.viewport().underMouse()}, pointer={QtGui.QCursor.pos()}, target={position}, owner={owner}, popup={popup}, moves={moves.count()}, changes={changes.count()}, hover={p.hover_state}, raw={p.hover_text}, range={p.viewRange()}'
             self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ',diagnostic);self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
             self.assertEqual(p.geometry(),initial);self.assertEqual([line.value() for line in p.cursor_lines],before)
         self.w.resize(1024,768);self.app.processEvents()
         self.assertEqual(readout.height(),48);self.assertLess(readout.mapToGlobal(readout.rect().bottomLeft()).y(),p.mapToGlobal(p.rect().topLeft()).y())
         p.clear_hover();self.assertIn('Move over',readout.text());self.assertIsNone(ws._hover_pane)
+
+    def test_live_hover_uses_current_owned_pointer_and_rejects_late_or_obscured_motion(self):
+        p=self.w.dashboard.active;view=p.getViewBox();viewport=p.viewport()
+        actual=view.mapViewToScene(QtCore.QPointF(.5,25));stale=view.mapViewToScene(QtCore.QPointF(1.5,35))
+        local=p.mapFromScene(actual);position=viewport.mapToGlobal(local)
+        with patch.object(viewport,'underMouse',return_value=False),patch.object(QtGui.QCursor,'pos',return_value=position),patch.object(QtWidgets.QApplication,'widgetAt',return_value=viewport):
+            p._live_hover((stale,))
+            self.assertIsNotNone(p.hover_state)
+            self.assertAlmostEqual(p.hover_state['x'],view.mapSceneToView(p.mapToScene(local)).x())
+            self.assertLess(p.hover_state['x'],1)
+        # A queued old scene point must not bring the hover back after Leave,
+        # or display data through another widget that now covers the pointer.
+        outside=viewport.mapToGlobal(QtCore.QPoint(-10,-10))
+        with patch.object(QtGui.QCursor,'pos',return_value=outside),patch.object(QtWidgets.QApplication,'widgetAt',return_value=viewport):
+            p._live_hover((actual,));self.assertIsNone(p.hover_state)
+        with patch.object(QtGui.QCursor,'pos',return_value=position),patch.object(QtWidgets.QApplication,'widgetAt',return_value=self.w.tabs):
+            p._live_hover((actual,));self.assertIsNone(p.hover_state)
 
     def test_hover_in_another_pane_is_not_cleared_by_unrelated_view(self):
         ws=self.w.dashboard;ws.set_layout('Vertical split');p,q=ws.visible_panes();q.bind([self.c.id]);self.app.processEvents()

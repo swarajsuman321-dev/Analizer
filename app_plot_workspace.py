@@ -273,8 +273,17 @@ class PlotPane(pg.PlotWidget):
         return {'x':x,'coordinate_unit':self.coordinate[1] if self.coordinate else '', 'axes':axes,'nearest':nearest}
 
     def _live_hover(self,args):
-        if self.viewport().underMouse():self._mouse_hover(args)
-        else:self.clear_hover()
+        # SignalProxy coalesces motion. Its saved scene point can be stale by
+        # callback time, and native nested viewports can have a stale underMouse
+        # flag. Resolve the actual pointer and owning widget instead: this also
+        # prevents late callbacks from drawing through a menu or another pane.
+        viewport=self.viewport();position=QtGui.QCursor.pos()
+        local=viewport.mapFromGlobal(position);owner=QtWidgets.QApplication.widgetAt(position)
+        if (getattr(self,'_closing',False) or not viewport.isVisible() or
+                not viewport.rect().contains(local) or owner is None or
+                (owner is not viewport and not viewport.isAncestorOf(owner))):
+            self.clear_hover();return
+        self._mouse_hover((self.mapToScene(local),))
 
     def _mouse_hover(self,args):
         position=args[0];state=self.hover_values(position)
