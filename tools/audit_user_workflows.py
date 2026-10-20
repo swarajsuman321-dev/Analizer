@@ -5,15 +5,45 @@ user contract is unmet; results distinguish those findings from execution errors
 No application settings, source recording, or production workspace is overwritten.
 """
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 import sys
 import traceback
+import uuid
 
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
+
+
+def observe_processing(channel, operation, *, transform_fn=None, **parameters):
+    """Record a safe rejection without aborting the remaining audit scenarios.
+
+    Changing a filter cutoff cannot make an irregular clock uniform.  Keep that
+    expected backend guard separate from both an unmet UI contract and a broken
+    audit runner.  Unexpected exceptions still propagate to the runner's error
+    collector rather than being silently counted as successful rejections.
+    """
+    if transform_fn is None:
+        from app_signal_processing import transform as transform_fn
+    try:
+        output = transform_fn(channel, operation, **parameters)
+    except ValueError as exc:
+        message = str(exc)
+        text = message.lower()
+        category = ('clock' if any(word in text for word in ('resampl', 'uniform', 'clock', 'increasing'))
+                    else 'support' if any(word in text for word in ('finite', 'missing', 'masked', 'support'))
+                    else 'parameters' if any(word in text for word in ('cutoff', 'nyquist', 'critical frequenc', 'window', 'padlen', 'positive'))
+                    else 'other_validation')
+        return {'operation': operation, 'parameters': parameters,
+                'status': 'expected_safety_rejection' if category != 'other_validation' else 'rejected_with_message',
+                'message': message, 'rejection_category': category,
+                'known_clock_or_support_requirement': category in ('clock', 'support')}
+    return {'operation': operation, 'parameters': parameters, 'status': 'passed',
+            'samples': len(output.x), 'unit': output.unit,
+            'coordinate_unit': output.coordinate_unit}
 
 
 def main():
@@ -26,6 +56,8 @@ def main():
     os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
     os.environ['ANALIZER_OUTPUT_DIR'] = str(args.output/'outputs')
     os.environ['ANALIZER_SETTINGS_DIR'] = str(args.output/'settings')
+    os.environ['MPLCONFIGDIR'] = str(args.output/'matplotlib')
+    os.environ['XDG_CACHE_HOME'] = str(args.output/'cache')
     import numpy as np
     import pandas as pd
     from PySide6 import QtCore, QtGui, QtWidgets, QtTest
@@ -37,8 +69,11 @@ def main():
     from app_tdms_templates import ParameterReview, ParameterTemplates
     from app_version import VERSION
 
-    result = {'version': VERSION, 'platform': sys.platform,
+    from app_release_acceptance import MANUAL_WINDOWS_CHECKS
+    result = {'version': VERSION, 'platform': sys.platform, 'edition': 'source',
+              'run_id': str(uuid.uuid4()), 'started_at_utc': datetime.now(timezone.utc).isoformat(),
               'qt_platform': os.environ.get('QT_QPA_PLATFORM'),
+              'manual_checks_unrun': list(MANUAL_WINDOWS_CHECKS),
               'inputs': [], 'contracts': [], 'time_lock_cases': [],
               'dialog_inventory': [], 'processing': [], 'execution_errors': []}
 
@@ -246,21 +281,28 @@ def main():
     run('dialog inventory',dialogs)
 
     def processing():
-        strict_rejections=('resample','uniform','finite','clock','increasing','support')
         for operation in ['Offset and scale','Time shift','Descriptive statistics','Histogram','Cumulative integration',
                           'Moving average','Savitzky–Golay','Butterworth low-pass','Differentiation','FFT','Welch PSD','Peak and valley detection']:
-            try:
-                output=transform(power,operation)
-                row={'operation':operation,'status':'passed','samples':len(output.x),'unit':output.unit,'coordinate_unit':output.coordinate_unit}
-            except ValueError as e:
-                row={'operation':operation,'status':'rejected_with_message','message':str(e),
-                     'known_clock_or_support_requirement':any(word in str(e).lower() for word in strict_rejections)}
-            result['processing'].append(row)
+            result['processing'].append(observe_processing(power,operation))
         default_filter=next(row for row in result['processing'] if row['operation']=='Butterworth low-pass')
+        window.portal.search.clear();window.portal.rebuild()
+        iterator=QtWidgets.QTreeWidgetItemIterator(window.portal.tree)
+        while iterator.value():
+            item=iterator.value();item.setSelected(item.data(0,QtCore.Qt.ItemDataRole.UserRole)==power.id);iterator+=1
+        window.operation.setCurrentText('Butterworth low-pass')
+        window.update_processing_preflight(reset_default=True);events()
+        ui_cutoff=window.parameter_fields['cutoff'].value()
+        ui_filter=observe_processing(power,'Butterworth low-pass',cutoff=ui_cutoff)
+        requirements=window.parameter_help.text()
+        guarded=(not window.apply_button.isEnabled() and ui_filter['status']=='expected_safety_rejection'
+                 and any(word in requirements.lower() for word in ('resampl','finite','missing','masked','clock')))
         contract('FILTER-DEFAULT', 'The default low-pass cutoff fits the loaded sample rate, or the UI explains a valid range before Apply.',
-                 default_filter['status']=='passed', default_filter)
-        retry=transform(power,'Butterworth low-pass',cutoff=.1)
-        result['processing'].append({'operation':'Butterworth low-pass, cutoff 0.1 Hz','status':'passed','samples':len(retry.x),'unit':retry.unit})
+                 (window.apply_button.isEnabled() and ui_filter['status']=='passed') or guarded,
+                 {'backend_default':default_filter,'ui_default':ui_filter,'cutoff_hz':ui_cutoff,
+                  'apply_enabled':window.apply_button.isEnabled(),'visible_requirements':requirements})
+        retry=observe_processing(power,'Butterworth low-pass',cutoff=.1)
+        retry['audit_note']='A valid cutoff does not repair irregular or duplicate source timing; explicit resampling remains required.'
+        result['processing'].append(retry)
         try:
             formula(store,'Ch("'+a.id+'") - Ch("'+simulation.id+'")')
             guarded=False
@@ -278,7 +320,7 @@ def main():
             if len(indices):choices.append((c,int(indices[0])))
         if not choices:result['duplicate_cursor']='No changed-value adjacent duplicate found';return
         c,i=choices[0];p=ws.active;p.bind([c.id]);p.lock_cursor(0,c.id);p.cursor_lines[0].setValue(float(c.x[i]));events()
-        index=p.cursor_locks[0]['index'];reading=c.sample(p.cursor_lines[0].value())
+        index=p.cursor_locks[0]['index'];reading=p.measurements()[c.id]['A']
         marker_x,marker_y=p.cursor_markers[0].getData();marker_value=float(marker_y[0]);window._readouts()
         displayed_readout=window.readout.item(0,2).text()
         contract('CURSOR-DUPLICATE','At a duplicate timestamp, the locked marker and numeric readout identify the same sample/value.',
@@ -292,11 +334,13 @@ def main():
                        'unmet':sum(r['status']=='unmet' for r in result['contracts']),
                        'execution_errors':len(result['execution_errors']),
                        'application_callback_errors':len(errors),
-                       'audit_runner_errors':len(result['execution_errors'])-len(errors)}
+                       'audit_runner_errors':len(result['execution_errors'])-len(errors),
+                       'expected_safety_rejections':sum(row['status']=='expected_safety_rejection' for row in result['processing'])}
     result['source_files_unchanged']=True
     for entry in manifest['files']:
         with (args.samples/entry['filename']).open('rb') as f:
             result['source_files_unchanged'] &= hashlib.file_digest(f,'sha256').hexdigest()==entry['sha256']
+    result['finished_at_utc']=datetime.now(timezone.utc).isoformat()
     save();sys.excepthook=old_hook;window.close();app.processEvents()
     print(json.dumps(result['summary']))
     return 1 if result['summary']['unmet'] or result['execution_errors'] else 0

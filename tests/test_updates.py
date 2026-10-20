@@ -7,6 +7,7 @@ import sys
 import subprocess
 import unittest
 from unittest.mock import patch
+from test_dual_distribution_updates import workspace, native_restart_stub
 from app_updates import validate_manifest,version_tuple,download_update,check_latest,RELEASES,ps_quote,import_offline_update,network_hint
 
 
@@ -47,17 +48,17 @@ class UpdateTests(unittest.TestCase):
         from app_updates import launch_installer
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);target=root/"User's app.exe";download=root/'download.exe';recovery=root/'my work.json'
-            target.write_bytes(b'old');download.write_bytes(b'new')
-            with patch('app_updates.sys.platform','win32'),patch('app_updates.sys.frozen',True,create=True),patch('app_updates.sys.executable',str(target)),patch('app_updates.subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_updates.subprocess.Popen') as launch:
-                launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
+            target.write_bytes(b'old');download.write_bytes(b'new');recovery=workspace(root/'snapshot')
+            with patch('app_updates.sys.platform','win32'),patch('app_updates.sys.frozen',True,create=True),patch('app_updates.sys.executable',str(target)),patch('app_update_transaction._windows_process_image',return_value=None),patch('app_updates.subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_updates.subprocess.Popen') as launch:
+                launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest(),manifest=manifest(b'new'))
                 args=launch.call_args.args[0];self.assertEqual(args[0],'powershell.exe');self.assertNotIn('shell',launch.call_args.kwargs)
                 self.assertEqual(launch.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'],'1')
-                script=(root/'install-update.ps1').read_text(encoding='utf-8-sig')
+                script=next((root/'transactions').rglob('install-update.ps1')).read_text(encoding='utf-8-sig')
                 self.assertIn("$env:PYINSTALLER_RESET_ENVIRONMENT = '1'",script);self.assertIn("'_PYI_*'",script)
                 self.assertIn("User''s app.exe",script);self.assertIn('Wait-Process',script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('Move-Item -LiteralPath $backup -Destination $target',script)
                 self.assertEqual(target.read_bytes(),b'old')
                 download.write_bytes(b'tampered')
-                with self.assertRaises(ValueError):launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
+                with self.assertRaises(ValueError):launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest(),manifest=manifest(b'new'))
                 self.assertEqual(launch.call_count,1)
 
     @unittest.skipUnless(sys.platform=='win32','Native PowerShell transaction is tested on Windows CI')
@@ -65,23 +66,22 @@ class UpdateTests(unittest.TestCase):
         from app_updates import launch_installer
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);target=root/"User's app.exe";download=root/'download.exe';recovery=root/'workspace.json';restart=root/'restart.txt'
-            def quoted(value):return ps_quote(value)
+            recovery=workspace(root/'snapshot')
             for fail in (False,True):
                 target.write_bytes(b'old');download.write_bytes(b'new');restart.unlink(missing_ok=True)
                 with patch('app_updates.sys.frozen',True,create=True),patch('app_updates.sys.executable',str(target)),patch('app_updates.subprocess.Popen'):
-                    launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest())
-                # Exercise real PowerShell file operations. Stub only process waiting,
-                # sleep and restart so CI never replaces or closes its own interpreter.
+                    transaction=launch_installer(download,recovery,root,hashlib.sha256(b'new').hexdigest(),manifest=manifest(b'new'))
                 wrapper=root/'exercise.ps1'
-                wrapper.write_text("function Wait-Process {}\nfunction Start-Sleep {}\n$script:launchCount = 0\nfunction Start-Process { param($FilePath, $ArgumentList)\nif ($env:PYINSTALLER_RESET_ENVIRONMENT -ne '1' -or (Test-Path Env:_PYI_APPLICATION_HOME_DIR) -or (Test-Path Env:_MEIPASS2)) { throw 'Stale runtime environment at restart' }\n$script:launchCount++\n"+("if ($script:launchCount -eq 1) { throw 'Simulated restart failure' }\n" if fail else '')+"Set-Content -LiteralPath "+quoted(restart)+" -Value $FilePath\n}\n. "+quoted(root/'install-update.ps1'),encoding='utf-8-sig')
+                wrapper.write_text(native_restart_stub(restart,fail=fail)+". "+ps_quote(transaction['script']),encoding='utf-8-sig')
                 import os
                 stale=dict(os.environ,_PYI_APPLICATION_HOME_DIR='deleted-MEI',_MEIPASS2='deleted-MEI',_PYI_ARCHIVE_FILE=str(target),_PYI_PARENT_PROCESS_LEVEL='1')
                 result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30,env=stale)
                 self.assertEqual(result.returncode,0,result.stderr)
-                log=(root/'install.log').read_text(encoding='utf-16') if (root/'install.log').exists() else result.stderr
-                self.assertEqual(target.read_bytes(),b'old' if fail else b'new',log)
+                outcome=json.loads((transaction['directory']/'transaction.json').read_text(encoding='utf-8-sig'))
+                self.assertEqual(outcome['status'],'recovered-previous' if fail else 'ready',outcome)
+                self.assertEqual(target.read_bytes(),b'old' if fail else b'new',outcome)
                 self.assertEqual(Path(restart.read_text(encoding='utf-8-sig').strip()).resolve(),target.resolve())
-                if fail:self.assertIn('Simulated restart failure',(root/'install.log').read_text(encoding='utf-16'))
+                if fail:self.assertIn('Simulated restart failure',outcome['error'])
                 else:self.assertEqual(target.with_suffix('.previous.exe').read_bytes(),b'old')
 
     def test_restart_environment_discards_old_bootloader_state_only(self):
@@ -219,7 +219,7 @@ class InfoTests(unittest.TestCase):
         from app_version import VERSION
         w=AdvancedStudioWindow()
         try:
-            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'Updates');self.assertIn(VERSION,w.info.manuals)
+            self.assertEqual(w.tabs.count(),2);self.assertEqual(w.info_action.text(),'About / Updates');self.assertIn(VERSION,w.info.manuals)
             self.assertIn('Updates',w.info.manual.toPlainText())
             w.tabs.setCurrentIndex(1);w.show_info();self.assertIs(w.active_workspace,w.comparison);self.assertTrue(w.info_dialog.isVisible())
             w.tabs.setCurrentIndex(0);w.show_info();self.assertIs(w.active_workspace,w.dashboard);self.assertEqual(w.ui_state()['tab'],0)

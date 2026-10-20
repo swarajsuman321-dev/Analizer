@@ -1,8 +1,8 @@
-"""Migrate personal configuration before removing verified obsolete app files.
+"""Migrate personal configuration without deleting another edition or recovery.
 
-Never run registry uninstall commands or recursively delete an installation
-folder. File inventories and Windows version resources establish the narrow
-set of files eligible for cleanup; modified/unrecognized files are retained.
+Discovery never grants ownership of another installation. Setup manages its
+installed payloads; each updater manages only its own transaction backup.
+The explicit legacy inventory helper remains available for compatibility.
 """
 import hashlib
 import json
@@ -174,42 +174,23 @@ def finalize_installation():
         migrate_user_files([p/'SignalStudio_Output' for p in roots]+roots)
         write_json(home/'lifecycle.json',{'version':VERSION,'mode':'installer-managed','removed':[]})
         return
-    # Re-verify copies before deleting any obsolete binary.
+    # Migrate discovered personal configurations without deleting payloads.
     migrate_user_files([p/'SignalStudio_Output' for p in roots]+roots)
     record_path=home/'installations.json'
     try:record=json.loads(record_path.read_text()) if record_path.exists() else {'installations':{}}
     except (OSError,ValueError):record={'installations':{}}
-    removed=[];retained=[]
-    for root in roots:
-        if root==executable.parent and Path(getattr(sys,'_MEIPASS','')).resolve()==(root/'_internal').resolve():continue  # Never remove currently loaded portable dependencies.
-        inventory=record.get('installations',{}).get(str(root))
-        if inventory:
-            gone,kept=cleanup_inventory(root,inventory,executable);removed+=gone;retained+=kept
-        else:
-            candidate=root/'ApplianceSignalStudio.exe';metadata=windows_product_version(candidate)
-            if metadata and metadata['ProductName']==PRODUCT:
-                try:
-                    version='.'.join(metadata['FileVersion'].split('.')[:3])
-                    gone,kept=cleanup_inventory(root,{'product':PRODUCT,'version':version,'files':{candidate.name:digest(candidate)}},executable);removed+=gone;retained+=kept
-                except (OSError,ValueError):retained.append(str(candidate))
-    # Also detect earlier downloaded/versioned executables in the current folder.
-    candidates=set(executable.parent.glob('ApplianceSignalStudio*.exe'))
-    candidates.add(executable.with_suffix('.previous.exe'))
-    for previous in candidates:
-        if previous.resolve()==executable or previous.is_symlink():continue
-        metadata=windows_product_version(previous)
-        if metadata and metadata['ProductName']==PRODUCT:
-            try:
-                version='.'.join(metadata['FileVersion'].split('.')[:3])
-                gone,kept=cleanup_inventory(previous.parent,{'product':PRODUCT,'version':version,'files':{previous.name:digest(previous)}},executable);removed+=gone;retained+=kept
-            except (OSError,ValueError):retained.append(str(previous))
+    # A successful startup does not establish ownership of another edition,
+    # nor does it authorize removing its recovery runtime. Discovery is used
+    # solely for non-destructive configuration migration. Updates own their
+    # specific backup; Inno owns installed payloads. Keep all recovery copies.
+    removed=[];retained=[str(root) for root in roots if root!=executable.parent]
     files={executable.name:digest(executable)}
     internal=executable.parent/'_internal'
     # A one-file app must not claim ownership of leftover portable dependencies.
     if Path(getattr(sys,'_MEIPASS','')).resolve()==internal.resolve():
         for path in internal.rglob('*'):
             if path.is_file() and not path.is_symlink():files[str(path.relative_to(executable.parent))]=digest(path)
-    record.setdefault('installations',{})[str(executable.parent)]={'product':PRODUCT,'version':VERSION,'files':files}
+    record.setdefault('installations',{})[str(executable.parent)]={'product':PRODUCT,'version':VERSION,'files':files,'kind':'portable-zip' if Path(getattr(sys,'_MEIPASS','')).resolve()==internal.resolve() else 'portable','executable':str(executable)}
     write_json(record_path,record);write_json(home/'lifecycle.json',{'version':VERSION,'removed':removed,'retained':retained})
     import winreg
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,r'Software\ApplianceSignalStudio') as key:

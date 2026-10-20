@@ -1,6 +1,8 @@
 """Qt data workbench: shared state, commands, asynchronous processing, and views."""
 import json
 import sys
+import threading
+from copy import deepcopy
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -22,14 +24,20 @@ OPERATIONS=['Moving average','Savitzky–Golay','Butterworth low-pass','Offset a
 
 class WorkerSignals(QtCore.QObject):
     finished=QtCore.Signal(object,object)
+    progress=QtCore.Signal(str,int)
 
 
 class Worker(QtCore.QRunnable):
     def __init__(self,fn):
-        super().__init__();self.fn=fn;self.signals=WorkerSignals()
+        super().__init__();self.fn=fn;self.signals=WorkerSignals();self.cancel=threading.Event();self.output_committed=False
     def run(self):
-        try:self.signals.finished.emit(self.fn(),None)
-        except Exception as exc:self.signals.finished.emit(None,str(exc))
+        from app_operation_context import operation_context,checkpoint
+        try:
+            with operation_context(self.cancel,self.signals.progress.emit) as context:
+                checkpoint();result=self.fn()
+                self.output_committed=context['committed']
+            self.signals.finished.emit(result,None)
+        except Exception as exc:self.signals.finished.emit(None,exc)
 
 
 class FrameModel(QtCore.QAbstractTableModel):
@@ -60,7 +68,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         super().__init__();self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose);self.setWindowTitle(f'Appliance Signal Studio · {VERSION}');self.setMinimumSize(1024,680)
         from app_identity import apply_identity
         apply_identity(self)
-        self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set()
+        self.store=ChannelStore();self.generation=0;self.busy=False;self.workers=set();self.removal_undo=None
         self.output_root=output_directory()
         self.pool=QtCore.QThreadPool.globalInstance();self.pool.setMaxThreadCount(2)
         self.theme=ThemeController(QtWidgets.QApplication.instance(),self)
@@ -72,7 +80,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             workspace.activeChanged.connect(self.workspace_changed)
             workspace.setAcceptDrops(True);workspace.installEventFilter(self)
         self.tabs.currentChanged.connect(self.workspace_changed)
-        self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar()
+        self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar();self._build_operation_status()
         from app_studio_tools import StudioTools
         self.studio=StudioTools(self)
         from app_compact_controls import CompactControls
@@ -130,7 +138,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.portal.visibilityRequested.connect(lambda ids,visible:self.guard(lambda:self.set_channel_visibility(ids,visible)))
         self.portal.selectionChanged.connect(self.selection);self.portal.organizeRequested.connect(self.organize)
         self.portal.removeRequested.connect(lambda:self.guard(self.remove_recording));self.portal.clearRequested.connect(lambda:self.guard(self.clear_recordings))
-        self.portal.datasetRemovalRequested.connect(lambda id:self.guard(lambda:self.drop_recordings([id])))
+        self.portal.datasetRemovalRequested.connect(lambda id:self.guard(lambda:self.request_drop_recordings([id])))
         self.dock('Data Portal',self.portal,QtCore.Qt.DockWidgetArea.LeftDockWidgetArea)
 
     def _build_properties(self):
@@ -140,7 +148,16 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.prop_interpretation=QtWidgets.QComboBox();self.prop_interpretation.addItem('Auto (identify actuator commands)','auto');self.prop_interpretation.addItem('Numeric / original readings','numeric');self.prop_interpretation.addItem('Actuator ON / OFF','actuator')
         self.prop_attrs=QtWidgets.QPlainTextEdit();self.prop_attrs.setMaximumHeight(100)
         self.warning_min=QtWidgets.QLineEdit();self.warning_max=QtWidgets.QLineEdit();self.fault_min=QtWidgets.QLineEdit();self.fault_max=QtWidgets.QLineEdit()
-        for label,widget in [('Name',self.prop_name),('Unit',self.prop_unit),('Group',self.prop_group),('Kind',self.prop_kind),('Value interpretation',self.prop_interpretation),('Custom properties (JSON)',self.prop_attrs),('Warning minimum',self.warning_min),('Warning maximum',self.warning_max),('Fault minimum',self.fault_min),('Fault maximum',self.fault_max)]:form.addRow(label,widget)
+        for label,widget in [('Name',self.prop_name),('Unit',self.prop_unit),('Group',self.prop_group),('Kind',self.prop_kind),('Value interpretation',self.prop_interpretation),('Warning minimum',self.warning_min),('Warning maximum',self.warning_max),('Fault minimum',self.fault_min),('Fault maximum',self.fault_max)]:form.addRow(label,widget)
+        self.prop_metadata=QtWidgets.QTableWidget(0,2);self.prop_metadata.setHorizontalHeaderLabels(['Property','Value (JSON value or text)']);self.prop_metadata.setMaximumHeight(140)
+        self.prop_metadata.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        form.addRow('Custom properties',self.prop_metadata)
+        metadata_row=QtWidgets.QHBoxLayout();add_property=QtWidgets.QPushButton('Add property');remove_property=QtWidgets.QPushButton('Remove property');metadata_row.addWidget(add_property);metadata_row.addWidget(remove_property);form.addRow(metadata_row)
+        add_property.clicked.connect(lambda:self.prop_metadata.insertRow(self.prop_metadata.rowCount()))
+        remove_property.clicked.connect(lambda:self.prop_metadata.removeRow(self.prop_metadata.currentRow()) if self.prop_metadata.currentRow()>=0 else None)
+        self.metadata_advanced=QtWidgets.QToolButton();self.metadata_advanced.setText('Advanced JSON editor');self.metadata_advanced.setCheckable(True);self.metadata_advanced.setToolTip('Edit the complete metadata object. Structured editing remains available when collapsed.')
+        self.prop_attrs.hide();form.addRow(self.metadata_advanced);form.addRow(self.prop_attrs)
+        self.metadata_advanced.toggled.connect(self.toggle_metadata_editor)
         button=QtWidgets.QPushButton('Apply properties and limits');button.clicked.connect(lambda:self.guard(self.apply_properties));form.addRow(button)
         self.dock('Properties',self.properties,QtCore.Qt.DockWidgetArea.RightDockWidgetArea)
 
@@ -158,7 +175,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.readout.setMinimumHeight(110)
         body.addWidget(self.readout,1)
         self.interval_card=QtWidgets.QLabel('Select a plotted channel to inspect its interval.');self.interval_card.setWordWrap(True)
-        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(110);self.interval_card.setFixedWidth(340);body.addWidget(self.interval_card)
+        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(110);self.interval_card.setMinimumWidth(210);self.interval_card.setMaximumWidth(340);body.addWidget(self.interval_card)
         self.readout.itemSelectionChanged.connect(self.update_interval_card)
         self.intervals=QtWidgets.QTableWidget(0,11);self.intervals.setHorizontalHeaderLabels(['Channel','ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage'])
         self.intervals.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -172,13 +189,21 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         measurements=pane.measurements()
         keys=list(measurements);row=self.readout.currentRow()
         if not keys:
-            self.interval_card.setText('No channels selected');return
+            self.interval_card.setText('No channels selected');self.interval_card.setToolTip('');return
         channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurements[channel_id])
         def number(key):return f"{abs(stats[key]) if key in ('ΔX','ΔY') else stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
         anchors=self.locked_cursor_texts(pane)
-        summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; |ΔY| {number('ΔY')} {html.escape(c.unit)}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {html.escape(c.unit)}"
+        from app_channel_identity import channel_label,channel_details
+        title=self.interval_card.fontMetrics().elidedText(channel_label(self.store,c),QtCore.Qt.TextElideMode.ElideMiddle,max(80,self.interval_card.width()-24))
+        name=html.escape(title);unit=html.escape(c.unit or 'Unknown unit')
+        details=[channel_details(self.store,c)]
+        for cursor,lock in enumerate(pane.cursor_locks):
+            if lock and lock['channel'] in self.store.channels:
+                details.append(('A','B')[cursor]+' locked sample '+str(lock['index'])+'\n'+channel_details(self.store,lock['channel']))
+        self.interval_card.setToolTip('\n\n'.join(details))
+        summary=f"<b>{name}</b> · {self.stats_scope.currentText()}<br>ΔX {number('ΔX')} {html.escape(c.coordinate_unit)} &nbsp; |ΔY| {number('ΔY')} {unit}<br>Min {number('Min')} &nbsp; Max {number('Max')} &nbsp; Mean {number('Mean')} {unit}"
         if not c.attributes.get('actuator_binary'):
-            summary+=f"<br>Interval RMS {number('RMS')} · Slope {number('Slope')} {html.escape(c.unit)}/{html.escape(c.coordinate_unit)}<br>Integral {number('Integral')} {html.escape(c.unit)}·{html.escape(c.coordinate_unit)} · Coverage {stats['Coverage']:.1%}"
+            summary+=f"<br>Interval RMS {number('RMS')} · Slope {number('Slope')} {unit}/{html.escape(c.coordinate_unit)}<br>Integral {number('Integral')} {unit}·{html.escape(c.coordinate_unit)} · Coverage {stats['Coverage']:.1%}"
             if c.unit in ('W','kW') and c.coordinate_kind=='time':
                 factor={'s':1/3600,'min':1/60,'h':1}.get(c.coordinate_unit)
                 if factor is not None:summary+=f"<br>Interval energy {stats['Integral']*factor*(1000 if c.unit=='kW' else 1):.5g} Wh"
@@ -189,7 +214,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             binary=pane.summaries[c.id][1].query(a,b);known=binary['Coverage']*binary['ΔX'];on=binary['Mean']*known
             duty=f"{100*binary['Mean']:.4g}%" if np.isfinite(binary['Mean']) else 'Unknown'
             duration=f'{on:.5g}' if np.isfinite(on) else 'Unknown'
-            summary=f"<b>{html.escape(c.name)}</b> · {self.stats_scope.currentText()}<br>A {state_text(stats['A'])} &nbsp; B {state_text(stats['B'])}<br>{'ON time' if c.coordinate_kind=='time' else 'ON span'} {duration} {html.escape(c.coordinate_unit)} · Duty {duty}<br>Known time {known:.5g} {html.escape(c.coordinate_unit)}"
+            summary=f"<b>{name}</b> · {self.stats_scope.currentText()}<br>A {state_text(stats['A'])} &nbsp; B {state_text(stats['B'])}<br>{'ON time' if c.coordinate_kind=='time' else 'ON span'} {duration} {html.escape(c.coordinate_unit)} · Duty {duty}<br>Known time {known:.5g} {html.escape(c.coordinate_unit)}"
         self.interval_card.setText(('<br>'.join(anchors)+'<br><br>' if anchors else '')+summary)
 
     def _build_math(self):
@@ -208,8 +233,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             self.parameter_fields[key]=spin;self.parameter_form.addRow(labels[key],spin)
         form.addRow(self.parameter_widget);self.operation.currentTextChanged.connect(self.show_parameters);self.show_parameters()
 
-        self.parameter_help=QtWidgets.QLabel('window/order · cutoff (Hz) · scale/offset · shift/step (coordinate units) · bins · prominence');self.parameter_help.setWordWrap(True);form.addRow(self.parameter_help)
+        self.parameter_help=QtWidgets.QLabel();self.parameter_help.setWordWrap(True);form.addRow(self.parameter_help)
         self.apply_button=QtWidgets.QPushButton('Apply to workspace');self.apply_button.clicked.connect(lambda:self.guard(self.apply_transform));form.addRow(self.apply_button)
+        self.parameter_fields['cutoff'].valueChanged.connect(self.update_processing_preflight)
+        self.update_processing_preflight()
         define=QtWidgets.QPushButton('Define local unit');define.clicked.connect(lambda:self.guard(self.define_unit));form.addRow(define)
         self.dock('Channel Math',widget,QtCore.Qt.DockWidgetArea.RightDockWidgetArea)
         self.tabifyDockWidget(self.docks['Properties'],self.docks['Channel Math']);self.docks['Properties'].raise_()
@@ -266,18 +293,51 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
         kind=view.addAction('Show channel kind');self.channel_kind_action=kind;kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show));kind.setChecked(True)
         self.help_action=QtGui.QAction('User Manual',self);self.help_action.setShortcut('F1');self.help_action.triggered.connect(self.show_help)
-        self.info_action=QtGui.QAction('Updates',self);self.info_action.triggered.connect(self.show_info)
+        self.info_action=QtGui.QAction('About / Updates',self);self.info_action.triggered.connect(self.show_info)
         channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
         channel.addAction('Remove recording…',lambda:self.guard(self.remove_recording));channel.addAction('Clear workspace',lambda:self.guard(self.clear_recordings))
+        self.undo_removal_action=QtGui.QAction('Undo Dataset Removal',self);channel.addAction(self.undo_removal_action)
+        self.undo_removal_action.triggered.connect(lambda:self.guard(self.undo_recording_removal));self.undo_removal_action.setShortcut('Ctrl+Alt+Z');self.undo_removal_action.setEnabled(False)
 
-        # Keep navigation beside the main application controls, above graph
-        # tabs. Each workspace retains its mode; only the active bar is shown.
-        self.addToolBarBreak(QtCore.Qt.ToolBarArea.TopToolBarArea)
+        # One navigation presentation inside the graph header. Menus and
+        # shortcuts continue using these workspace actions and selected mode.
         for index,workspace in enumerate(self.workspaces):
+            workspace.mutation_guard=self.mutate
             bar=workspace.navigation_bar;bar.setObjectName(('Analysis','Comparison')[index]+'Navigation')
             bar.addSeparator();lock=bar.addAction('Lock Cursors…');lock.setToolTip('Lock Cursor A or B to a chosen channel sample (Ctrl+L)')
             lock.triggered.connect(lambda:self.guard(self.studio.cursor_lock_dialog))
-            self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea,bar);bar.setVisible(index==0)
+            workspace.contextRequested.connect(lambda command,pane:self.guard(lambda:self.plot_context(command,pane)))
+        from app_plot_workspace import install_graph_navigation
+        install_graph_navigation(self.tabs,self.workspaces)
+
+    def _build_operation_status(self):
+        self.operation_progress=QtWidgets.QProgressBar();self.operation_progress.setMaximumWidth(150);self.operation_progress.hide()
+        self.cancel_operation_button=QtWidgets.QPushButton('Cancel operation');self.cancel_operation_button.setToolTip('Request cancellation at the next safe step; an active file writer may need to finish its current step.');self.cancel_operation_button.hide()
+        self.cancel_operation_button.clicked.connect(self.cancel_operation)
+        self.open_export_button=QtWidgets.QPushButton('Open File');self.open_export_folder_button=QtWidgets.QPushButton('Open Folder')
+        self.open_export_button.hide();self.open_export_folder_button.hide();self.last_export=None
+        self.open_export_button.clicked.connect(lambda:self.open_export(False));self.open_export_folder_button.clicked.connect(lambda:self.open_export(True))
+        for widget in (self.open_export_button,self.open_export_folder_button,self.operation_progress,self.cancel_operation_button):self.statusBar().addPermanentWidget(widget)
+
+    def cancel_operation(self):
+        for worker in self.workers:worker.cancel.set()
+        if hasattr(self,'engineering') and self.busy:self.engineering.cancel_token.set()
+        self.cancel_operation_button.setEnabled(False);self.statusBar().showMessage('Cancelling at the next safe step…')
+
+    def open_export(self,folder=False):
+        if self.last_export:
+            path=self.last_export.parent if folder else self.last_export
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(path.resolve())))
+
+    def plot_context(self,command,pane):
+        workspace=next((w for w in self.workspaces if pane in w.panes),None)
+        if workspace is None:return
+        self.tabs.setCurrentIndex(self.workspaces.index(workspace));workspace.active=pane;workspace.activeChanged.emit(pane)
+        if command=='cursor':self.studio.cursor_lock_dialog()
+        elif command=='export':self.report()
+        elif command=='fft':
+            self.show_dock('Channel Math');self.operation.setCurrentText('FFT')
+            self.statusBar().showMessage('Select one source channel in the Data Portal, review its clock, then Apply to workspace.')
 
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
@@ -298,18 +358,31 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def mutate(self):
         if self.busy:raise ValueError('Wait for the current operation before modifying channels')
 
-    def background(self,fn,callback):
+    def background(self,fn,callback,*,title='Processing data',on_finished=None,managed_cancel=False):
         self.mutate();self.busy=True;self.apply_button.setEnabled(False)
         generation=self.generation;store=self.store
-        self.statusBar().showMessage('Working…');worker=Worker(fn);self.workers.add(worker)
+        self.statusBar().showMessage(title+'…');worker=Worker(fn);self.workers.add(worker)
+        self.operation_progress.setRange(0,0);self.operation_progress.show();self.cancel_operation_button.setEnabled(True);self.cancel_operation_button.show()
+        def progress(stage,value):
+            if generation!=self.generation or worker not in self.workers:return
+            self.statusBar().showMessage(stage)
+            self.operation_progress.setRange(0,0 if value<0 else 100)
+            if value>=0:self.operation_progress.setValue(value)
+        worker.signals.progress.connect(progress)
         def complete(result,error):
             self.workers.discard(worker)
-            if generation!=self.generation or store is not self.store:return
-            self.busy=False;self.apply_button.setEnabled(True)
-            if error:self.guard(lambda:(_ for _ in ()).throw(ValueError(error)))
+            if generation!=self.generation or store is not self.store:
+                if not self.busy and not self.workers:self.operation_progress.hide();self.cancel_operation_button.hide()
+                return
+            self.busy=False;self.operation_progress.hide();self.cancel_operation_button.hide();self.update_processing_preflight()
+            cancelled=worker.cancel.is_set() and not worker.output_committed and not managed_cancel
+            final_error=error or (InterruptedError('Operation cancelled; prior results retained.') if cancelled else None)
+            if on_finished is not None:self.guard(lambda:on_finished(final_error))
+            if isinstance(final_error,InterruptedError):self.statusBar().showMessage(str(final_error));return
+            if error:self.guard(lambda:(_ for _ in ()).throw(ValueError(str(error))))
             else:self.guard(lambda:callback(result))
-            if error:self.statusBar().showMessage(error)
-            elif not self.busy and self.statusBar().currentMessage()=='Working…':self.statusBar().showMessage('Ready')
+            if error:self.statusBar().showMessage(str(error))
+            elif not self.busy and self.statusBar().currentMessage()==title+'…':self.statusBar().showMessage('Ready')
         worker.signals.finished.connect(complete);self.pool.start(worker)
 
     def pick_file(self,field):
@@ -320,11 +393,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.mutate();paths,_=QtWidgets.QFileDialog.getOpenFileNames(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)')
         if not paths:return
         def load():
+            from app_operation_context import checkpoint
             store=ChannelStore()
-            for path in paths:ingest(store,path)
+            for index,path in enumerate(paths):
+                checkpoint(f'Loading {Path(path).name} ({index+1}/{len(paths)})',index,len(paths));ingest(store,path);checkpoint()
             return store
         workspace=self.active_workspace
-        self.background(load,lambda other:self.finish_import(other,workspace))
+        self.background(load,lambda other:self.finish_import(other,workspace),title='Opening recordings')
 
     def finish_import(self,other,workspace=None):
         if not other.channels:raise ValueError('No numeric measurement channels were found. Check the file format, coordinate column and unit settings.')
@@ -362,8 +437,21 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.mutate();datasets=list(self.store.datasets.values())
         if not datasets:return
         labels=[f'{ds.name} [{ds.id[:8]}]' for ds in datasets]
-        choice,ok=QtWidgets.QInputDialog.getItem(self,'Remove recording','Unload recording (original file is kept):',labels,0,False)
-        if ok:self.drop_recordings([datasets[labels.index(choice)].id])
+        from app_compact_forms import choose_item
+        choice,ok=choose_item(self,'Remove recording','Unload recording (original file is kept):',labels)
+        if ok:self.request_drop_recordings([datasets[labels.index(choice)].id])
+
+    def request_drop_recordings(self,dataset_ids):
+        """Confirm cross-channel consequences on user actions, not service calls."""
+        self.mutate();plan=self.store.removal_plan(dataset_ids)
+        if plan['dependent_ids']:
+            text=f"Close {len(plan['dataset_ids'])} recording(s) and unload {len(plan['channel_ids'])} channels, including {len(plan['dependent_ids'])} dependent derived channels? Original files are kept. Undo Dataset Removal can restore this workspace work."
+            dialog=QtWidgets.QMessageBox(QtWidgets.QMessageBox.Icon.Question,'Review dataset removal',text,QtWidgets.QMessageBox.StandardButton.Yes|QtWidgets.QMessageBox.StandardButton.No,self)
+            from app_channel_identity import channel_label
+            dialog.setDetailedText('Dependent channels:\n'+'\n'.join(channel_label(self.store,id,include_source=True) for id in plan['dependent_ids']))
+            dialog.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
+            if dialog.exec()!=QtWidgets.QMessageBox.StandardButton.Yes:return
+        self.drop_recordings(dataset_ids)
 
     def clear_recordings(self):
         self.mutate()
@@ -373,15 +461,71 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def drop_recordings(self,dataset_ids,clear_all=False):
         self.mutate()
+        snapshot=self.store.removal_snapshot(dataset_ids,clear_all=clear_all)
+        self.removal_undo=(snapshot,deepcopy([workspace.state() for workspace in self.workspaces]),deepcopy(self.ui_state()))
         with self.store.batch():
             self.store.remove_datasets(dataset_ids)
             if clear_all:self.store.delete(list(self.store.channels))
         self.scorecard_data=None;self.scorecard.setModel(FrameModel())
         if not self.store.channels:
             self.prop_name.clear();self.prop_unit.clear();self.prop_group.clear();self.prop_attrs.clear();self.apply_button.setEnabled(False)
+            self.prop_metadata.setRowCount(0)
+            for field in (self.warning_min,self.warning_max,self.fault_min,self.fault_max):field.clear()
         if clear_all:
             for field in (self.power_path,self.machine_path,self.simulation_path):field.clear()
-        self.sync_visibility();self._readouts();self.statusBar().showMessage('Recording removed. Original files and saved outputs were kept.')
+        self.undo_removal_action.setEnabled(bool(snapshot.channel_ids or snapshot.datasets))
+        self.sync_visibility();self._readouts();self.statusBar().showMessage('Recording removed. Original files kept. Use Channel → Undo Dataset Removal to restore unloaded work.')
+
+    def undo_recording_removal(self):
+        self.mutate()
+        if self.removal_undo is None:return
+        snapshot,saved_views,ui=self.removal_undo;views=deepcopy(saved_views)
+        # Preserve traces added since removal while reinstating the original
+        # bindings and exact cursor/sample identities in their former panes.
+        for workspace,state in zip(self.workspaces,views):
+            current=workspace.state();panes=state.setdefault('panes',[]);additional=[]
+            all_channels={**snapshot.channels,**self.store.channels}
+            for index,now in enumerate(current['panes']):
+                if index>=len(panes):panes.append(deepcopy(now));continue
+                saved=panes[index];extras=[id for id in now['ids'] if id not in saved.get('ids',[])]
+                if not extras:continue
+                if not saved.get('ids'):
+                    panes[index]=deepcopy(now);continue
+                old_coordinates={(all_channels[id].coordinate_kind,all_channels[id].coordinate_unit) for id in saved.get('ids',[]) if id in all_channels}
+                new_coordinates={(all_channels[id].coordinate_kind,all_channels[id].coordinate_unit) for id in extras if id in all_channels}
+                if old_coordinates and new_coordinates!=old_coordinates:
+                    # Time and frequency cannot share a viewport. Preserve the
+                    # user's later work in another pane instead of dropping it.
+                    extra=deepcopy(now);extra['ids']=extras;extra['bindings']={id:now.get('bindings',{}).get(id,'') for id in extras};additional.append(extra)
+                else:
+                    saved.setdefault('ids',[]).extend(extras)
+                    saved.setdefault('bindings',{}).update({id:now['bindings'][id] for id in extras if id in now.get('bindings',{})})
+                    saved_locks=saved.setdefault('cursor_locks',[None,None])
+                    for cursor,lock in enumerate(now.get('cursor_locks',[None,None])):
+                        if saved_locks[cursor] is None and lock and lock.get('channel') in self.store.channels:
+                            saved_locks[cursor]=deepcopy(lock)
+                            saved.setdefault('cursors',[0,0])[cursor]=now.get('cursors',[0,0])[cursor]
+            old_count=np.prod(LAYOUTS[state['layout']]);current_count=np.prod(LAYOUTS[current['layout']])
+            if current_count>=old_count:
+                state['layout']=current['layout'];state['active']=current.get('active',0);state['layout_proportions']=current.get('layout_proportions',{})
+            if additional:
+                for extra in additional:
+                    empty=next((index for index,pane in enumerate(panes) if not pane.get('ids')),None)
+                    if empty is None:panes.append(extra)
+                    else:panes[empty]=extra
+                required=max(index+1 for index,pane in enumerate(panes) if pane.get('ids'))
+                choices=[(rows*cols,name) for name,(rows,cols) in LAYOUTS.items() if rows*cols>=required]
+                if not choices:raise ValueError('Undo needs another viewport for a different coordinate domain. Save your current work or close an unused pane before retrying.')
+                state['layout']=min(choices)[1]
+        current_ui=self.ui_state()
+        current_ui['selection']=list(dict.fromkeys(current_ui.get('selection',[])+ui.get('selection',[])))
+        if current_ui.get('source') is None:current_ui['source']=ui.get('source')
+        for key,value in ui.get('engineering',{}).items():
+            if key in ('power','machine','simulation') and not current_ui['engineering'].get(key):current_ui['engineering'][key]=value
+        self.store.restore_removal(snapshot)
+        self.restore_loaded(self.store,views,current_ui)
+        self.removal_undo=None;self.undo_removal_action.setEnabled(False)
+        self.statusBar().showMessage('Dataset removal undone; channels, dependencies, plot bindings and cursor locks restored.')
 
     def merge_store(self,other,workspace=None,deduplicate_alignment=False):
         from app_actuators import interpret_channel
@@ -423,18 +567,52 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.source_selector.blockSignals(False);self.show_source();self.readouts()
 
     def selection(self,ids):
-        self.apply_button.setEnabled(True)
         if ids:
             c=self.store.channels[ids[0]];self.prop_name.setText(c.name);self.prop_unit.setText(c.unit);self.prop_group.setText(c.group);self.prop_kind.setCurrentText(c.kind)
             self.prop_interpretation.setCurrentIndex(max(0,self.prop_interpretation.findData(c.attributes.get('value_interpretation','auto'))))
             self.prop_attrs.setPlainText(json.dumps(c.attributes,indent=2))
+            self._metadata_snapshot=self.prop_attrs.toPlainText();self.populate_metadata(c.attributes)
             for key,field in [('warning_min',self.warning_min),('warning_max',self.warning_max),('fault_min',self.fault_min),('fault_max',self.fault_max)]:field.setText(str(c.attributes.get(key,'')))
-        self.show_source()
+        self.show_source();self.update_processing_preflight(reset_default=True)
+
+    def populate_metadata(self,attributes):
+        self.prop_metadata.setRowCount(len(attributes))
+        for row,(key,value) in enumerate(attributes.items()):
+            self.prop_metadata.setItem(row,0,QtWidgets.QTableWidgetItem(str(key)))
+            self.prop_metadata.setItem(row,1,QtWidgets.QTableWidgetItem(json.dumps(value,ensure_ascii=False)))
+
+    def structured_metadata(self):
+        result={}
+        for row in range(self.prop_metadata.rowCount()):
+            key=self.prop_metadata.item(row,0);value=self.prop_metadata.item(row,1)
+            name=key.text().strip() if key else ''
+            if not name and (value is None or not value.text().strip()):continue
+            if not name:raise ValueError('Each custom property needs a name')
+            if name in result:raise ValueError('Custom property names must be unique: '+name)
+            text=value.text() if value else ''
+            try:result[name]=json.loads(text)
+            except json.JSONDecodeError:result[name]=text
+        return result
+
+    def toggle_metadata_editor(self,advanced):
+        try:
+            if advanced:
+                self.prop_attrs.setPlainText(json.dumps(self.structured_metadata(),indent=2,ensure_ascii=False))
+                self._metadata_snapshot=self.prop_attrs.toPlainText()
+            else:
+                value=json.loads(self.prop_attrs.toPlainText() or '{}')
+                if not isinstance(value,dict):raise ValueError('Properties must be a JSON object')
+                self.populate_metadata(value);self._metadata_snapshot=self.prop_attrs.toPlainText()
+        except (ValueError,TypeError) as exc:
+            blocker=QtCore.QSignalBlocker(self.metadata_advanced);self.metadata_advanced.setChecked(not advanced);del blocker
+            self.statusBar().showMessage(str(exc));return
+        self.prop_attrs.setVisible(advanced);self.prop_metadata.setVisible(not advanced)
 
     def apply_properties(self):
         self.mutate();ids=self.portal.selected()
         if len(ids)!=1:raise ValueError('Select one channel to edit properties')
-        attrs=json.loads(self.prop_attrs.toPlainText() or '{}')
+        raw=self.prop_attrs.toPlainText()
+        attrs=json.loads(raw or '{}') if self.metadata_advanced.isChecked() or raw!=getattr(self,'_metadata_snapshot',raw) else self.structured_metadata()
         if not isinstance(attrs,dict):raise ValueError('Properties must be a JSON object')
         for key,field in [('warning_min',self.warning_min),('warning_max',self.warning_max),('fault_min',self.fault_min),('fault_max',self.fault_max)]:
             if field.text():attrs[key]=float(field.text())
@@ -496,7 +674,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             elif command=='move to dataset':
                 datasets=list(self.store.datasets.values())
                 if not datasets:raise ValueError('Import a dataset first')
-                choice,ok=QtWidgets.QInputDialog.getItem(self,'Move channels','Destination dataset',[f'{ds.name} [{ds.id[:8]}]' for ds in datasets],0,False)
+                from app_compact_forms import choose_item
+                choice,ok=choose_item(self,'Move channels','Destination dataset',[f'{ds.name} [{ds.id[:8]}]' for ds in datasets])
                 if ok:
                     ds=datasets[[f'{ds.name} [{ds.id[:8]}]' for ds in datasets].index(choice)]
                     with self.store.batch():
@@ -529,7 +708,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.guard(perform)
 
     def apply_formula(self):
-        self.mutate();c=formula(self.store,self.expression.text(),self.formula_name.text());self.store.add(c);self.active_workspace.assign([c.id])
+        self.mutate();store=self.store;workspace=self.active_workspace;expression=self.expression.text();name=self.formula_name.text()
+        def complete(channel):self.store.add(channel);workspace.assign([channel.id]);self.sync_visibility()
+        self.background(lambda:formula(store,expression,name),complete,title='Calculating formula channel')
 
     def show_parameters(self,*args):
         relevant={'Moving average':['window'],'Savitzky–Golay':['window','order'],'Butterworth low-pass':['cutoff','order'],
@@ -537,24 +718,51 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                   'Peak and valley detection':['prominence']}.get(self.operation.currentText(),[])
         for key,field in self.parameter_fields.items():
             field.setVisible(key in relevant);self.parameter_form.labelForField(field).setVisible(key in relevant)
+        if hasattr(self,'apply_button'):self.update_processing_preflight()
+
+    def update_processing_preflight(self,*args,reset_default=False):
+        if not hasattr(self,'apply_button'):return
+        from app_processing_preflight import processing_preflight
+        ids=self.portal.selected();channel=self.store.channels.get(ids[0]) if len(ids)==1 else None
+        if reset_default and channel is not None and getattr(self,'_cutoff_channel',None)!=channel.id:
+            self._cutoff_channel=channel.id
+            info=processing_preflight(channel,'Butterworth low-pass')
+            if info['nyquist']:
+                spin=self.parameter_fields['cutoff'];blocker=QtCore.QSignalBlocker(spin)
+                spin.setValue(min(1,info['nyquist']*.5));del blocker
+        check=processing_preflight(channel,self.operation.currentText(),self.parameter_fields['cutoff'].value())
+        self.parameter_help.setText(check['message']);self.parameter_help.setAccessibleName('Processing requirements: '+check['message'])
+        self.apply_button.setEnabled(check['valid'] and not self.busy)
+        self.apply_button.setToolTip('Create a derived channel; original samples are preserved.' if check['valid'] else check['message'])
 
     def apply_transform(self):
         ids=self.portal.selected()
         if len(ids)!=1:raise ValueError('Select one source channel')
         c=self.store.channels[ids[0]];workspace=self.active_workspace
         operation=self.operation.currentText();params={key:field.value() for key,field in self.parameter_fields.items()}
+        from app_processing_preflight import processing_preflight
+        check=processing_preflight(c,operation,params['cutoff'])
+        if not check['valid']:raise ValueError(check['message'])
         def complete(result):
             if self.store.channels.get(c.id) is not c:return
             self.store.add(result);workspace.assign([result.id]);self.sync_visibility()
-        self.background(lambda:transform(c,operation,**params),complete)
+        self.background(lambda:transform(c,operation,**params),complete,title=operation+' · '+c.name)
 
     def define_unit(self):
-        text,ok=QtWidgets.QInputDialog.getText(self,'Unit definition','symbol, existing reference unit, scale (for example mW,W,0.001)')
-        if not ok:return
-        symbol,reference,scale=[s.strip() for s in text.split(',')];dimension,factor=UNIT_DEFINITIONS[reference]
-        scale=float(scale)
-        if scale<=0:raise ValueError('Scale must be positive')
-        UNIT_DEFINITIONS[symbol]=(dimension,factor*scale)
+        from app_adaptive_ui import ContentDialog
+        from app_compact_forms import add_help,ElidedComboBox
+        dialog=ContentDialog(self);dialog.setWindowTitle('Define Local Unit');layout=QtWidgets.QVBoxLayout(dialog);form=QtWidgets.QFormLayout();layout.addLayout(form)
+        symbol=QtWidgets.QLineEdit();reference=ElidedComboBox();reference.addItems([key for key in UNIT_DEFINITIONS if key]);scale=QtWidgets.QDoubleSpinBox();scale.setDecimals(10);scale.setRange(1e-10,1e12);scale.setValue(1)
+        form.addRow('New unit symbol',symbol);form.addRow('Reference unit',reference);form.addRow('Scale relative to reference',scale)
+        error=QtWidgets.QLabel();error.setWordWrap(True);layout.addWidget(error)
+        add_help(layout,'One value in the new unit equals Scale values in the reference unit. For mW relative to W use 0.001. This defines a conversion; it does not change or calibrate recorded samples.')
+        buttons=QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Save|QtWidgets.QDialogButtonBox.StandardButton.Cancel);layout.addWidget(buttons);buttons.rejected.connect(dialog.reject)
+        def save():
+            key=symbol.text().strip()
+            if not key:error.setText('Enter a unit symbol.');return
+            if key in UNIT_DEFINITIONS:error.setText('That symbol is already defined; choose a new symbol.');return
+            dimension,factor=UNIT_DEFINITIONS[reference.currentText()];UNIT_DEFINITIONS[key]=(dimension,factor*scale.value());dialog.accept()
+        buttons.accepted.connect(save);dialog.open();self.unit_definition_dialog=dialog
 
     def readouts(self):
         if hasattr(self,'stats_scope'):
@@ -574,12 +782,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         locked=[]
         for index,lock in enumerate(pane.cursor_locks):
             if not lock or lock['channel'] not in self.store.channels:continue
-            channel=self.store.channels[lock['channel']];point=(a,b)[index];value=channel.sample(point)
+            channel=self.store.channels[lock['channel']];point=(a,b)[index];value=pane.cursor_value(channel.id,index)
             reading=f'{value:.6g} {html.escape(channel.unit)}' if np.isfinite(value) else 'No reading'
             if channel.attributes.get('actuator_binary'):
                 from app_actuators import state_text
                 reading=state_text(value)
-            locked.append(f'<span style="color:{CURSOR_COLORS[index]};background:#182033;padding:4px"><b>{("A","B")[index]} locked · {html.escape(channel.name)} = {reading}</b> @ {point:.6g} {html.escape(channel.coordinate_unit)}</span>')
+            from app_channel_identity import channel_label
+            label=self.interval_card.fontMetrics().elidedText(channel_label(self.store,channel),QtCore.Qt.TextElideMode.ElideMiddle,max(100,int(self.interval_card.width()*.65)))
+            locked.append(f'<span style="color:{CURSOR_COLORS[index]};background:#182033;padding:4px"><b>{("A","B")[index]} locked · {html.escape(label)} = {reading}</b> @ {point:.6g} {html.escape(channel.coordinate_unit)}</span>')
         return locked
 
     def _readouts(self):
@@ -587,7 +797,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         pane=self.active_workspace.active
         self.sync_visibility()
         a,b=[line.value() for line in pane.cursor_lines]
-        self.cursor_caption.setText(f'<span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
+        pane_number=self.active_workspace.panes.index(pane)+1
+        coordinate=pane.coordinate or ('No channels selected','')
+        self.cursor_caption.setText(f'Active pane {pane_number} · {coordinate[0]} ({coordinate[1]}) &nbsp; <span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
         self.cursor_caption.setWordWrap(True)
         if hasattr(self,'studio'):
             live=self.studio.live_readout(pane,a)
@@ -600,12 +812,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for row,(id,interval_stats) in enumerate(measurements.items()):
             stats=self.statistics_for_display(pane,id,interval_stats)
             c=self.store.channels[id]
-            cells=[c.name,c.unit,display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—',display(stats['ΔY']),display(stats['Min']),display(stats['Max']),display(stats['Mean'])]
+            from app_channel_identity import channel_label,channel_details
+            label=channel_label(self.store,c)
+            cells=[label,c.unit or 'Unknown',display(stats['A']),display(stats['B']),f"{float(c.attributes['match_percent']):.1f}%" if match_color(c.attributes.get('match_percent')) else '—',display(stats['ΔY']),display(stats['Min']),display(stats['Max']),display(stats['Mean'])]
             if c.attributes.get('actuator_binary'):
                 from app_actuators import state_text
                 cells[2]=state_text(stats['A']);cells[3]=state_text(stats['B']);cells[5]=cells[2]+' → '+cells[3];cells[6]=state_text(stats['Min']);cells[7]=state_text(stats['Max']);cells[8]=f"{100*stats['Mean']:.4g}% ON" if np.isfinite(stats['Mean']) else 'Unknown'
             for col,text in enumerate(cells):
-                item=QtWidgets.QTableWidgetItem(text);item.setToolTip(f'{c.name}: {text}')
+                item=QtWidgets.QTableWidgetItem(text);item.setToolTip(channel_details(self.store,c)+'\n'+text)
                 if col in (2,3):
                     item.setForeground(QtGui.QColor(CURSOR_COLORS[col-2]));item.setBackground(QtGui.QColor('#182033'))
                 if col==4:
@@ -614,8 +828,9 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 self.readout.setItem(row,col,item)
             labels=['ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage']
             measure_unit=c.coordinate_unit
-            units=[c.coordinate_unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit,c.unit+'/'+measure_unit,c.unit+'·'+measure_unit,'fraction']
-            self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(c.name))
+            physical=c.unit or 'Unknown unit'
+            units=[c.coordinate_unit,physical,physical,physical,physical,physical,physical,physical+'/'+measure_unit,physical+'·'+measure_unit,'fraction']
+            self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(label))
             for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(interval_stats[label])+' '+unit))
 
         self.update_interval_card()
@@ -679,12 +894,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace',str(output_path('Workspace.json','workspaces')),'Workspace (*.json)')
         if path:
             store=self.store;views=[w.state() for w in self.workspaces];ui=self.ui_state()
-            self.background(lambda:save_workspace(path,store,views,ui),lambda saved:self.statusBar().showMessage(f'Saved {saved} and adjacent NPZ; keep both files together.'))
+            self.background(lambda:save_workspace(path,store,views,ui),lambda saved:self.statusBar().showMessage(f'Saved {saved} and adjacent NPZ; keep both files together.'),title='Saving workspace')
 
     def restore(self):
         self.mutate()
         path,_=QtWidgets.QFileDialog.getOpenFileName(self,'Restore workspace','','Workspace (*.json *.xml *.ini *.cfg)')
-        if path:self.background(lambda:load_workspace(path),lambda result:self.restore_loaded(*result))
+        if path:self.background(lambda:load_workspace(path),lambda result:self.restore_loaded(*result),title='Restoring workspace')
 
     def restore_path(self,path,upgrade_defaults=False):
         store,views,ui=load_workspace(path)
@@ -713,6 +928,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         if len(views)==3:
             views=[views[2] if ui.get('tab')==2 else views[0],views[1]]
             if ui.get('tab')==2:ui['tab']=0
+        if store is not self.store:
+            self.removal_undo=None;self.undo_removal_action.setEnabled(False)
         self.generation+=1;self.busy=False;self.apply_button.setEnabled(True);self.store=store;self.portal.store=store
         # Very early source-only workspaces had no view snapshots. Never leave
         # a viewport pointing at the previous store when such a file is opened.
@@ -744,15 +961,22 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def report(self):
         from app_reporting import export_report
         if not any(p.ids for p in self.active_workspace.visible_panes()):raise ValueError('Check at least one channel before exporting')
-        filters='PDF summary (*.pdf);;Excel interval (*.xlsx);;CSV interval (*.csv);;High-resolution PNG (*.png)'
+        self.mutate()
+        filters='PDF plot and cursor summary (*.pdf);;Excel interval samples and cursor summary (*.xlsx);;CSV interval samples (*.csv);;High-resolution PNG snapshot (*.png)'
         path,selected=QtWidgets.QFileDialog.getSaveFileName(self,'Export Report',str(output_path('Signal report.pdf')),filters)
         if path:
             extensions={'PDF':'.pdf','Excel':'.xlsx','CSV':'.csv','High-resolution':'.png'}
             suffix=next((v for k,v in extensions.items() if selected.startswith(k)),'.pdf')
             if not Path(path).suffix:path+=suffix
             if Path(path).suffix.lower() not in ('.pdf','.xlsx','.csv','.png'):raise ValueError('Choose PDF, Excel, CSV or PNG')
-            export_report(path,self.store,self.active_workspace.state(),getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None,title=self.studio.options['title'])
-            self.statusBar().showMessage(f'Report saved: {path}')
+            # Capture widget state on the GUI thread. The worker only sees
+            # immutable source data and plain snapshots, never Qt plot items.
+            store=self.store;state=deepcopy(self.active_workspace.state());score=getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None
+            score=score.copy(deep=True) if score is not None else None;title=self.studio.options['title']
+            def complete(_):
+                self.last_export=Path(path);self.open_export_button.show();self.open_export_folder_button.show()
+                self.statusBar().showMessage(f'Report saved: {path}')
+            self.background(lambda:export_report(path,store,state,score,title=title),complete,title='Exporting active workspace')
 
     def set_snap(self,value):
         for pane in self.active_workspace.visible_panes():
@@ -790,7 +1014,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         if hasattr(self,'studio'):self.studio.pause()
         self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
         if self.busy:
-            self.statusBar().showMessage('Waiting for current processing to finish…');self.pool.waitForDone()
+            self.cancel_operation();self.statusBar().showMessage('Waiting for the current safe processing step before closing…');self.pool.waitForDone()
         self.info_dialog.close();self.help_dialog.close()
         event.accept()
 
@@ -807,7 +1031,22 @@ def run_workbench():
         if index+1<len(sys.argv):
             try:window.restore_path(sys.argv[index+1],upgrade_defaults=True)
             except Exception as exc:
-                startup_ready=False;window.guard(lambda:(_ for _ in ()).throw(ValueError(str(exc))))
-    if startup_ready and getattr(sys,'frozen',False) and sys.platform=='win32':
-        QtCore.QTimer.singleShot(0,lambda:window.background(finalize_installation,lambda _:None))
+                startup_ready=False
+                if '--update-request' in sys.argv:
+                    from app_update_transaction import acknowledge_startup
+                    acknowledge_startup(False,str(exc),window=window);window.close();return 1
+                window.guard(lambda:(_ for _ in ()).throw(ValueError(str(exc))))
+    def startup_complete():
+        from app_update_transaction import acknowledge_startup
+        try:acknowledged=acknowledge_startup(startup_ready,window=window)
+        except Exception as exc:
+            from app_update_transaction import acknowledge_failure
+            acknowledge_failure(str(exc));window.close();app.exit(1);return
+        if acknowledged is False:
+            window.close();app.exit(1);return
+        if startup_ready and getattr(sys,'frozen',False) and sys.platform=='win32':
+            window.background(finalize_installation,lambda _:None,title='Checking settings compatibility')
+    # A running event loop and visible restored window are part of update
+    # completion. Merely creating a child process cannot acknowledge success.
+    QtCore.QTimer.singleShot(1500,startup_complete)
     return app.exec()

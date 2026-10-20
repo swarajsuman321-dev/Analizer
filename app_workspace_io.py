@@ -1,10 +1,11 @@
 """Portable JSON/NPZ workspaces and independent presentation rendering."""
-from dataclasses import asdict
 from pathlib import Path
 import json
 import math
 import os
 import tempfile
+from copy import deepcopy
+from dataclasses import fields
 import numpy as np
 import pandas as pd
 from app_channel_store import ChannelStore,Channel,Dataset
@@ -28,52 +29,71 @@ def decode_cell(value):
 
 
 def save_workspace(path,store,views,ui=None):
+    from app_operation_context import checkpoint,mark_committed
     path=Path(path).with_suffix('.json');arrays={};channels=[];datasets=[]
+    checkpoint('Preparing workspace channels')
     for c in store.channels.values():
-        metadata=asdict(c);metadata.pop('x');metadata.pop('y');metadata.pop('raw_y');channels.append(metadata)
+        metadata={f.name:deepcopy(getattr(c,f.name)) for f in fields(c) if f.name not in ('x','y','raw_y')};channels.append(metadata)
         arrays[c.id+'_x']=c.x;arrays[c.id+'_y']=c.y
         if c.raw_y is not None:arrays[c.id+'_raw_y']=c.raw_y
-    for ds in store.datasets.values():
+    for number,ds in enumerate(store.datasets.values(),1):
         frame=ds.frame
+        cells=[]
+        for row_number,row in enumerate(frame.itertuples(index=False,name=None)):
+            if row_number%4096==0:checkpoint(f'Saving {ds.name} ({number}/{len(store.datasets)})',row_number,len(frame))
+            cells.append([encode_cell(v) for v in row])
         datasets.append({'id':ds.id,'name':ds.name,'source':ds.source,'columns':[str(c) for c in frame.columns],
                          'dtypes':[str(t) for t in frame.dtypes],
                          'index':[encode_cell(v) for v in frame.index], 'index_name':frame.index.name,
                          'attributes':frame.attrs,
-                         'cells':[[encode_cell(v) for v in row] for row in frame.itertuples(index=False,name=None)]})
+                         'cells':cells})
     # A generation-named companion keeps an interrupted save from corrupting the previous snapshot.
     from uuid import uuid4
     companion=path.with_name(path.stem+'.'+uuid4().hex[:12]+'.npz')
-    np.savez_compressed(companion,**arrays)
-    record={'version':1,'arrays':companion.name,'channels':channels,'datasets':datasets,'views':views,'ui':ui or {}}
-    fd,temp=tempfile.mkstemp(dir=path.parent,prefix=path.name,suffix='.tmp')
+    temp=None;committed=False
     try:
-        with os.fdopen(fd,'w',encoding='utf-8') as stream:json.dump(record,stream,ensure_ascii=False,allow_nan=False)
-        os.replace(temp,path)
+        checkpoint('Compressing waveform arrays');np.savez_compressed(companion,**arrays)
+        checkpoint('Writing source-preserving workspace')
+        record={'version':1,'arrays':companion.name,'channels':channels,'datasets':datasets,'views':views,'ui':ui or {}}
+        fd,temp=tempfile.mkstemp(dir=path.parent,prefix=path.name,suffix='.tmp')
+        with os.fdopen(fd,'w',encoding='utf-8') as stream:
+            for index,chunk in enumerate(json.JSONEncoder(ensure_ascii=False,allow_nan=False).iterencode(record)):
+                if index%16384==0:checkpoint()
+                stream.write(chunk)
+        checkpoint('Committing workspace');os.replace(temp,path);committed=True;mark_committed()
     finally:
-        if os.path.exists(temp):os.unlink(temp)
+        if temp and os.path.exists(temp):os.unlink(temp)
+        if not committed:companion.unlink(missing_ok=True)
     return path
 
 
 def load_workspace(path):
+    from app_operation_context import checkpoint
     path=Path(path)
     from app_config_migration import read_configuration
-    record=read_configuration(path)
+    checkpoint('Reading workspace metadata');record=read_configuration(path);checkpoint('Restoring waveform arrays')
     if record.get('version')!=1:raise ValueError('Unsupported workspace version')
     companion=Path(record['arrays'])
     if companion.name!=str(companion):raise ValueError('Workspace arrays must be an adjacent NPZ file')
     store=ChannelStore()
     with np.load(path.parent/companion,allow_pickle=False) as arrays:
         for metadata in record['channels']:
+            checkpoint()
             c=Channel(x=arrays[metadata['id']+'_x'],y=arrays[metadata['id']+'_y'],raw_y=arrays[metadata['id']+'_raw_y'] if metadata['id']+'_raw_y' in arrays else None,**metadata)
             store.add(c)
     for d in record['datasets']:
-        frame=pd.DataFrame([[decode_cell(v) for v in row] for row in d['cells']],columns=d['columns'])
+        cells=[]
+        for number,row in enumerate(d['cells']):
+            if number%4096==0:checkpoint('Restoring '+d['name'],number,len(d['cells']))
+            cells.append([decode_cell(v) for v in row])
+        frame=pd.DataFrame(cells,columns=d['columns'])
         for column,dtype in zip(frame.columns,d['dtypes']):
             frame[column]=frame[column].astype(dtype)
         frame.index=[decode_cell(v) for v in d['index']]
         frame.index.name=d.get('index_name');frame.attrs=d.get('attributes',{})
         store.datasets[d['id']]=Dataset(d['name'],frame,d['source'],d['id'])
     for c in store.channels.values():
+        checkpoint()
         if c.dataset_id and c.dataset_id not in store.datasets:raise ValueError('Channel references a missing dataset')
     views=record['views'];ui=record.get('ui',{})
     if not isinstance(views,list) or not isinstance(ui,dict):raise ValueError('Invalid workspace layout/settings')
@@ -89,7 +109,7 @@ def load_workspace(path):
                     if values.shape!=shape or not np.isfinite(values).all():raise ValueError('Invalid saved '+key)
             locks=pane.get('cursor_locks',[None,None])
             if not isinstance(locks,list) or len(locks)!=2 or any(lock is not None and (not isinstance(lock,dict) or lock.get('channel') not in store.channels or not isinstance(lock.get('index'),int)) for lock in locks):raise ValueError('Invalid saved cursor locks')
-    return store,views,ui
+    checkpoint('Workspace validated');return store,views,ui
 
 
 def export_processed(path,channels):
@@ -117,6 +137,8 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from app_plot_workspace import LAYOUTS
     from app_trace_colors import channel_colors
+    from app_channel_identity import channel_label
+    from app_operation_context import checkpoint
     colors=channel_colors(store)
     from app_presentation import CURSOR_COLORS,match_color
     from app_reporting import interval_tables
@@ -129,6 +151,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
     grid=fig.add_gridspec(rows+1+bool(score_height),cols,height_ratios=[3]*rows+[table_height]+([score_height] if score_height else []))
     fig.suptitle(title+('\nMin / Max / Average: whole recording · A / B and Δ: cursor interval' if workspace.get('statistics_scope')=='Whole recording' else ''));fig.set_facecolor('white')
     for index,view in enumerate(workspace['panes'][:rows*cols]):
+        checkpoint('Rendering graph '+str(index+1),index,rows*cols)
         axis=fig.add_subplot(grid[index//cols,index%cols]);axes={};ranges=view.get('range')
         units=list(dict.fromkeys(view.get('bindings',{}).get(id,store.channels[id].unit) for id in view['ids']))
         for id in view['ids']:
@@ -151,7 +174,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
             if view.get('normalized'):
                 finite=y[np.isfinite(y)];low,high=(float(finite.min()),float(finite.max())) if len(finite) else (0.,1.)
                 dy=np.where(np.isfinite(dy),(dy-low)/(high-low) if high>low else .5,np.nan)+view['ids'].index(id)
-            axes[key].plot(dx,dy,label=c.name,color=color,drawstyle='steps-post' if c.attributes.get('actuator_binary') else 'default',linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
+            axes[key].plot(dx,dy,label=channel_label(store,c),color=color,drawstyle='steps-post' if c.attributes.get('actuator_binary') else 'default',linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
             for cursor_index,lock in enumerate(view.get('cursor_locks',[])):
                 if not lock or lock.get('channel')!=id or not len(x) or view.get('cursor_mode')=='off':continue
                 if cursor_index==1 and view.get('cursor_mode','dual')!='dual':continue

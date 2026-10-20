@@ -20,6 +20,11 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         self.errors=[];self.warning=patch.object(QtWidgets.QMessageBox,'warning',side_effect=lambda *args:self.errors.append(args[-1]));self.warning.start()
     def tearDown(self):
         self.window.close();self.app.processEvents();self.warning.stop();self.assertEqual(self.errors,[])
+    def finish_operation(self):
+        for _ in range(1000):
+            if not self.window.busy:return
+            QtTest.QTest.qWait(10)
+        self.fail('Background operation did not complete')
     def add(self,name='Temperature',unit='°C',x=None,y=None,**kwargs):
         if x is None:x=np.arange(11,dtype=float)
         if y is None:y=np.asarray(x)*2
@@ -159,7 +164,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'quick.csv'
             with patch.object(QtWidgets.QFileDialog,'getSaveFileName',return_value=(str(path),'CSV interval (*.csv)')) as dialog:
-                w.export_button.click();dialog.assert_called_once();self.assertTrue(path.exists())
+                w.export_button.click();dialog.assert_called_once();self.finish_operation();self.assertTrue(path.exists())
             with patch.object(QtWidgets.QFileDialog,'getSaveFileName',return_value=('','')) as dialog:w.export_button.click();dialog.assert_called_once()
         self.assertNotIn('Preview sample',[a.text() for a in w.findChildren(QtGui.QAction)])
         self.assertEqual(w.tabs.count(),2);self.assertFalse(hasattr(w,'preview_plot'))
@@ -212,8 +217,9 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
     def test_analysis_report_does_not_include_unrelated_comparison(self):
         w=self.window;c=self.add();w.dashboard.assign([c.id]);w.scorecard_data=pd.DataFrame({'match_percent':[90]})
         with patch.object(QtWidgets.QFileDialog,'getSaveFileName',return_value=('/tmp/report.pdf','PDF summary (*.pdf)')),patch('app_reporting.export_report') as export:
-            w.report();self.assertIsNone(export.call_args.args[3])
-            w.tabs.setCurrentIndex(1);w.comparison.assign([c.id]);w.report();self.assertIs(export.call_args.args[3],w.scorecard_data)
+            w.report();self.finish_operation();self.assertIsNone(export.call_args.args[3])
+            w.tabs.setCurrentIndex(1);w.comparison.assign([c.id]);w.report();self.finish_operation()
+            pd.testing.assert_frame_equal(export.call_args.args[3],w.scorecard_data)
 
     def test_free_cursor_positions_survive_workspace_restore(self):
         from app_workspace_io import save_workspace

@@ -43,6 +43,9 @@ class InfoTab(QtWidgets.QWidget):
         history=QtWidgets.QTextBrowser();history.setMarkdown('\n\n'.join(p.read_text(encoding='utf-8').split('## Quick start')[0] for p in sorted(root.glob('v*.md'),key=lambda p:version_tuple(p.stem[1:]),reverse=True)));details.addTab(history,'Changelog')
         license=QtWidgets.QTextBrowser();license.setPlainText('Application license: no distribution license has been declared in this repository. Rights remain with the respective rights holders.\n\nThird-party components retain their own licenses: Qt/PySide6 (LGPLv3/GPLv3/commercial), NumPy and pandas (BSD), SciPy (BSD), Matplotlib (PSF-based), pyqtgraph (MIT), npTDMS (LGPLv3). See the component distributions for their full license notices.');details.addTab(license,'License')
         layout.insertWidget(1,QtWidgets.QLabel('Build date: '+BUILD_DATE))
+        from app_installation import distribution_kind
+        edition={'installer':'Windows Installed','portable':'Standalone EXE','portable-zip':'Standalone ZIP / Folder'}[distribution_kind()]
+        layout.insertWidget(2,QtWidgets.QLabel('Edition: '+edition))
         self.help=ManualHelp(window)
         # Keep the manual API available to existing bundle checks; its widget
         # lives exclusively in the separate nonmodal Help window.
@@ -62,9 +65,9 @@ class InfoTab(QtWidgets.QWidget):
         self.check_button.setEnabled(True);self.install_button.setEnabled(False);self.offline_button.setEnabled(True)
         if error:self.status.setText('Could not check for updates. '+network_hint(error));self.offline_button.setEnabled(True);return
         self.manifest=result
-        from app_installation import installed_root
-        if installed_root() and result.get('kind')!='installer':
-            self.status.setText('This installation requires the Setup update package. Download Setup from the official release page.');return
+        from app_updates import require_matching_edition
+        try:require_matching_edition(result)
+        except ValueError as exc:self.manifest=None;self.status.setText(str(exc));return
         if version_tuple(result['version'])<=version_tuple(VERSION):self.status.setText(f'You have the latest version ({VERSION}).');return
         self.status.setText(f"Version {result['version']} is available ({result['size']/1024/1024:.0f} MB).")
         self.notes.setText(str(result.get('notes','')))
@@ -76,7 +79,7 @@ class InfoTab(QtWidgets.QWidget):
             return
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Select approved update manifest', '',
-            'Update manifests (update.json installer-update.json);;JSON files (*.json)')
+            'Update manifests (update.json installer-update.json zip-update.json);;JSON files (*.json)')
         if not filename:
             return
         self.progress.setValue(0)
@@ -93,9 +96,9 @@ class InfoTab(QtWidgets.QWidget):
             self.status.setText('Offline update rejected: ' + str(error))
             return
         manifest, download = result
-        from app_installation import installed_root
-        if installed_root() and manifest.get('kind')!='installer':
-            self.status.setText('Offline update rejected: choose installer-update.json and its matching Setup package.');return
+        from app_updates import require_matching_edition
+        try:require_matching_edition(manifest)
+        except ValueError as exc:self.manifest=None;self.download=None;self.install_button.setEnabled(False);self.status.setText('Offline update rejected: '+str(exc));return
         if version_tuple(manifest['version']) <= version_tuple(VERSION):
             self.status.setText('This package is not newer than the installed version.')
             return
@@ -113,17 +116,37 @@ class InfoTab(QtWidgets.QWidget):
         if self.download:
             try:
                 from app_workspace_io import save_workspace
-                directory=self.update_directory();recovery=directory/'recovery.json'
-                self.window.mutate();save_workspace(str(recovery),self.window.store,[w.state() for w in self.window.workspaces],self.window.ui_state())
-                launch_installer(self.download,recovery,directory,self.manifest['sha256'],manifest=self.manifest)
-                self.window.close()
-            except Exception as exc:self.status.setText('Could not install update. '+str(exc))
+                from app_updates import require_matching_edition
+                from app_operation_context import checkpoint,mark_committed
+                from uuid import uuid4
+                payload=Path(self.download);manifest=dict(self.manifest);require_matching_edition(manifest)
+                directory=self.update_directory();recovery_folder=directory/('recovery-'+uuid4().hex);recovery_folder.mkdir()
+                recovery=recovery_folder/'recovery.json'
+                self.window.mutate();store=self.window.store;views=[w.state() for w in self.window.workspaces];ui=self.window.ui_state()
+                self.check_button.setEnabled(False);self.install_button.setEnabled(False);self.offline_button.setEnabled(False)
+                def stage():
+                    save_workspace(str(recovery),store,views,ui)
+                    checkpoint('Staging verified update package')
+                    transaction=launch_installer(payload,recovery,directory,manifest['sha256'],manifest=manifest)
+                    mark_committed()  # Detached helper now waits for this app to close.
+                    return transaction
+                def finished(error):
+                    if error:
+                        self.check_button.setEnabled(True);self.install_button.setEnabled(True);self.offline_button.setEnabled(True)
+                        self.status.setText('Update preparation stopped; the current app is unchanged. '+str(error))
+                def restart(_):self.window.close()
+                self.status.setText('Saving a source-preserving recovery workspace before restarting…')
+                self.window.background(stage,restart,title='Saving and staging update recovery',on_finished=finished)
+            except Exception as exc:
+                self.check_button.setEnabled(True);self.install_button.setEnabled(True);self.offline_button.setEnabled(True)
+                self.status.setText('Could not install update. '+str(exc))
             return
         self.progress.setValue(0);self.progress.show();self.cancel_button.show();self.status.setText('Downloading and verifying the update. You can continue working.')
         self.run_task(lambda:download_update(self.manifest,self.update_directory(),self.download_progress),self.downloaded)
 
     def update_directory(self):
-        path=Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.StandardLocation.AppLocalDataLocation))/'updates'
+        from app_installation import distribution_kind
+        path=Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.StandardLocation.AppLocalDataLocation))/'updates'/distribution_kind()
         path.mkdir(parents=True,exist_ok=True);return path
 
     def downloaded(self,result,error):
@@ -132,7 +155,7 @@ class InfoTab(QtWidgets.QWidget):
         self.download=result
         if sys.platform=='win32' and getattr(sys,'frozen',False):
             self.install_button.setText('Install update & restart');self.install_button.setEnabled(True)
-            self.status.setText('Update verified. Install saves a recovery workspace and restarts the app. The previous executable is kept as a backup.')
+            self.status.setText('Update verified. Install saves recovery data and restarts the matching edition. The previous runtime is retained until startup and recovery are verified.')
         else:self.status.setText(f'Update verified and saved to {result}. Automatic installation requires the Windows app.')
 
     def download_progress(self,value):

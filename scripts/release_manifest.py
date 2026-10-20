@@ -19,3 +19,10 @@ with setup.open('rb') as stream:setup_hash=hashlib.file_digest(stream,'sha256').
 installer={**data,'kind':'installer','url':f'{RELEASES}/download/v{VERSION}/{setup.name}',
            'size':setup.stat().st_size,'sha256':setup_hash}
 Path('dist/installer-update.json').write_text(json.dumps(validate_manifest(installer),indent=2),encoding='utf-8')
+
+# Folder users receive the complete runtime rather than a single-EXE conversion.
+archive=Path('dist/ApplianceSignalStudio_Portable.zip')
+with archive.open('rb') as stream:archive_hash=hashlib.file_digest(stream,'sha256').hexdigest()
+folder={**data,'kind':'portable-zip','url':f'{RELEASES}/download/v{VERSION}/{archive.name}',
+        'size':archive.stat().st_size,'sha256':archive_hash}
+Path('dist/zip-update.json').write_text(json.dumps(validate_manifest(folder),indent=2),encoding='utf-8')

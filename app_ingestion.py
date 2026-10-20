@@ -36,12 +36,15 @@ def read_tables(path):
 
 
 def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=False):
+    from app_operation_context import checkpoint
+    checkpoint('Reading '+Path(path).name)
     if Path(path).suffix.lower()=='.tdms':
         from app_tdms import ingest_tdms
         return ingest_tdms(store,path,time_column,coordinate_unit,force_sample)
     ids = []
     with store.batch():
         for name, frame in read_tables(path):
+            checkpoint('Preparing '+name)
             ds = Dataset(name, frame.copy(deep=True), str(path))
             store.datasets[ds.id] = ds
             from app_unit_detection import detect_unit,projection_frame
@@ -90,7 +93,8 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                 x=x*minute_factor(unit);unit='min'
             good = np.isfinite(x)
             order = np.flatnonzero(good)[np.argsort(x[good], kind='stable')]
-            for col in frame.columns:
+            for column_number,col in enumerate(frame.columns):
+                checkpoint('Loading '+name+' · '+str(col),column_number,len(frame.columns))
                 if col in clock_columns:
                     continue
                 from app_actuators import interpret_channel

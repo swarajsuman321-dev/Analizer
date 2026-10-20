@@ -3,7 +3,7 @@ def self_test():
     import tempfile
     from pathlib import Path
     import numpy as np
-    from PySide6 import QtWidgets
+    from PySide6 import QtWidgets,QtCore
     from app_workbench import AdvancedStudioWindow
     from app_signal_processing import transform
     from app_workspace_io import save_workspace,load_workspace,render_report
@@ -71,7 +71,8 @@ def self_test():
             hover_pane._mouse_hover((hover_pane.getViewBox().sceneBoundingRect().center(),))
             if hover_pane.hover_state is None:raise RuntimeError('Mouse XY hover failed')
             if hasattr(hover_pane,'hover_label') or 'Mouse X' not in window.dashboard.hover_readout.toolTip():raise RuntimeError('Mouse readout must stay outside the canvas')
-            if window.dashboard.navigation_bar.parentWidget() is not window or not {'x','y','xy','pan','reset'}<=window.dashboard.navigation_actions.keys():raise RuntimeError('Header navigation controls are missing')
+            header=window.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner)
+            if header is None or window.dashboard.navigation_bar.parentWidget() is not header or not {'x','y','xy','pan','reset'}<=window.dashboard.navigation_actions.keys():raise RuntimeError('Graph-header navigation controls are missing')
             if window.about_menu.actions()!=[window.help_action,window.info_action]:raise RuntimeError('About menu navigation is missing')
             if [line.value() for line in hover_pane.cursor_lines]!=positions:raise RuntimeError('Hover moved measurement cursors')
             hover_pane.clear_hover()

@@ -2,7 +2,8 @@
 from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
-NOTES={'2.1.0':'Streamlined standalone analysis with retained engineering, processing and reporting tools.',
+NOTES={'2.4.0':'Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and ten-page four-section report summaries with complete evidence. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.',
+       '2.1.0':'Streamlined standalone analysis with retained engineering, processing and reporting tools.',
        '2.1.1':'Unit detection improvements, visible navigation shortcuts, cursor locks and duplicate-free realignment.',
        '2.1.2':'Pinned lock values, extended readouts/statistics scope and quick event notes.',
        '2.1.3':'Rectangle zoom respects X-only, Y-only and XY modes.',
@@ -53,6 +54,22 @@ def generate(versions=None):
             if number>=(2,3,0):
                 if title=='Quick zoom beside Analysis and Comparison':body='\nNavigation uses a single primary control set in the top application toolbar. Duplicate quick controls beside graph tabs were removed with user approval. Zoom In/Out, Reset and Pan have accessible icons; X/Y/XY retain text and shortcuts.\n\n'
                 body=body.replace('The unused top-right space on the same row as the **Analysis / Comparison** tabs now provides','The top toolbar provides')
+            if number>=(2,4,0):
+                body=body.replace('The previous EXE is retained until a successful new startup/recovery restore, then removed by verified lifecycle cleanup;', 'The previous runtime is retained for recovery after verified new startup;')
+                body=body.replace('**About → Updates**','**About → About / Updates**')
+                if title in ('File isolation and graph navigation','Quick zoom beside Analysis and Comparison','Upper navigation toolbar and clear hover view'):
+                    body='\nOne navigation toolbar sits inside the graph header beside Analysis and Comparison. Zoom X/Y/XY, Hand/Pan, magnifiers, Reset View, Lock Time Axes and Lock Cursors share actions with menus/shortcuts. Narrow headers use accessible overflow. Lock Time Axes adopts the active numerical interval immediately and keeps compatible temporal panes at identical bounds; frequency/sample panes remain independent. The fixed Mouse X/Y strip stays outside the canvas.\n\n'
+                    if title=='Upper navigation toolbar and clear hover view':title='Graph-header navigation and clear hover view'
+                if title=='Properties and channel metadata':
+                    body='\nSelect one channel. Edit name, declared unit, group, interpretation and warning/fault limits, then Apply Properties and Limits. Custom metadata uses a structured key/value table; nested values may use JSON. Advanced JSON Editor remains available as an explicit toggle. Invalid JSON is preserved for correction and cannot silently replace metadata. Declaring a source unit does not rescale or calibrate raw samples.\n\n'
+                if title=='Updates and recovery':
+                    body='\nOpen About → About / Updates, choose Check for Updates, Download, then Install Update & Restart. Installed copies use complete Setup; standalone EXEs use EXE replacement; standalone ZIP/folder copies use complete-folder staging, including _internal. Each verifies official metadata, size and SHA-256. Recovery JSON and arrays are independently copied per attempt. A visible new application must restore that recovery and acknowledge its version/path before update success is recorded. Failed startup/restore restarts the retained previous runtime. Backups are kept; source files, outputs and settings are preserved. Folder/EXE/Setup updates cannot silently change edition.\n\n'
+                if title=='Generate Engineering Report':
+                    body='\nChoose Generate Engineering Report, review Whole Recording / Active Cursor Interval / Both scope and expected pages, then Choose Output and Generate. The default PDF has ten readable pages across four sections: readiness/source quality; phase/graph evidence; results/comparison; events/conclusions/traceability. It groups repeated events and shows representative evidence. Every original event, KPI, mapping and configuration remains in adjacent .evidence.xlsx, .events.csv and .evidence.json files with a shared report ID. An optional full-event PDF appendix adds pages only when explicitly checked. Raw JSON is kept in companion evidence rather than filling the summary.\n\nProgress and safe cancellation are available. Keep all companion files together. Readiness distinguishes missing source, unreviewed mapping, unknown units, inadequate timing support, unsupported phases and absent acceptance limits. Unknown evidence never becomes a Pass. Whole-run and cursor results are scoped consistently; cursor positions and reviewed source roles appear when applicable.\n\n'
+                if title=='Install, upgrade and uninstall on Windows':
+                    body=body.replace('Setup-2.3.2.exe',f'Setup-{version}.exe').replace('checks that the copied runtime starts before registering','stages and checks the complete runtime before changing the installation, then verifies')
+                if title=='Removing recordings and clearing the workspace':
+                    body='\nClose Dataset unloads only that recording plus its dependent derived channels, never the source disk file. When derived work is affected, review counts and expanded channel names before confirming. Channel → Undo Dataset Removal (Ctrl+Alt+Z) restores the last removal, stable IDs, dependencies, plot bindings and cursor locks. Newer channels and source metadata remain intact. Clear Workspace confirms the entire unload and can also be undone until the next removal or an explicit different-workspace restore. Save important work before closing the app.\n\n'
             text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 

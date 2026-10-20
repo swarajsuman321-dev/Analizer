@@ -18,7 +18,7 @@ jobs:
     env:
       PYTHONUTF8: "1"
       PYTHONIOENCODING: utf-8
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,10 +117,36 @@ jobs:
             Write-Output "::error title=Installer lifecycle failure::$tail"
           }
           exit $code
+      - name: Verify real recording workflows inside all packaged editions
+        shell: pwsh
+        run: |
+          $output = & .venv-exe\Scripts\python.exe scripts/check_windows_acceptance.py 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 40) -join "`n"
+            if ($tail.Length -gt 2600) { $tail = $tail.Substring($tail.Length - 2600) }
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Packaged user workflow failure::$tail"
+          }
+          exit $code
+      - name: Verify real application updates and workspace recovery
+        shell: pwsh
+        run: |
+          $output = & .venv-exe\Scripts\python.exe scripts/check_application_updates.py 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 50) -join "`n"
+            if ($tail.Length -gt 2600) { $tail = $tail.Substring($tail.Length - 2600) }
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Application update recovery failure::$tail"
+          }
+          exit $code
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: ApplianceSignalStudio-Windows-v2.3.2
+          name: ApplianceSignalStudio-Windows-v2.4.0
           path: |
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip
@@ -135,6 +161,11 @@ jobs:
           path: |
             build/build.log
             build/*_smoke_report.json
+            build/packaged-acceptance/**/packaged-acceptance.json
+            build/packaged-acceptance/**/process-stderr.txt
+            build/packaged-acceptance/**/process-result.json
+            build/packaged-acceptance/**/acceptance.json
+            build/packaged-acceptance/*.log
           if-no-files-found: ignore
       - name: Publish tested version to GitHub Releases
         if: success() && github.ref == 'refs/heads/main'
@@ -150,9 +181,9 @@ jobs:
           $draft = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft' 2>$null
           if ($LASTEXITCODE -eq 0) {
             if ($draft -eq 'false') { Write-Output "Version already published; keeping immutable release."; exit 0 }
-            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
+            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
           } else {
-            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
+            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
           }
           $publishCode = $LASTEXITCODE
           $publication | Write-Output

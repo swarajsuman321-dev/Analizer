@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 from PySide6 import QtCore,QtWidgets
+from app_compact_forms import add_help
 from app_output import output_path
 
 
@@ -103,7 +104,12 @@ class ParameterReview(QtWidgets.QDialog):
         self.channels=list({identity(c):c for c in channels}.values())
         layout=QtWidgets.QVBoxLayout(self)
         text='Review new parameters once. Edit short names and units; choose ON/OFF only for actual actuator commands. Raw measurements and original names are preserved. Known parameters use your saved template automatically.'
-        label=QtWidgets.QLabel(text+('\n'+warning if warning else ''));label.setWordWrap(True);layout.addWidget(label)
+        # Optional guidance must not force the review table wider or taller.
+        # Template failures remain visible because the user must act on them.
+        self.help=add_help(layout,text)
+        if warning:
+            self.warning=QtWidgets.QLabel(warning);self.warning.setWordWrap(True)
+            self.warning.setAccessibleName('Template warning');layout.addWidget(self.warning)
         self.table=QtWidgets.QTableWidget(len(self.channels),5);self.table.setHorizontalHeaderLabels(['Original parameter','Display name','Unit','Interpretation','Samples / range'])
         layout.addWidget(self.table)
         for row,c in enumerate(self.channels):
@@ -119,7 +125,8 @@ class ParameterReview(QtWidgets.QDialog):
             item=QtWidgets.QTableWidgetItem(summary);item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable);self.table.setItem(row,4,item)
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents);self.table.horizontalHeader().setSectionResizeMode(1,QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Interactive);self.table.setColumnWidth(0,280)
-        self.error=QtWidgets.QLabel();layout.addWidget(self.error)
+        self.error=QtWidgets.QLabel();self.error.setWordWrap(True)
+        self.error.setAccessibleName('Parameter validation error');layout.addWidget(self.error)
         buttons=QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Save|QtWidgets.QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Save).setText('Save template and load');buttons.accepted.connect(self.accept);buttons.rejected.connect(self.reject);layout.addWidget(buttons)
 

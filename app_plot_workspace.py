@@ -1,15 +1,79 @@
 """Linked multi-axis plotting and portable per-view state."""
 from PySide6 import QtCore, QtWidgets, QtGui
+import html
 import numpy as np
 import pyqtgraph as pg
 from app_fast_plot import EnvelopeCache
-from app_presentation import CURSOR_COLORS,cursor_sample
+from app_presentation import CURSOR_COLORS
 from app_signal_processing import IntervalSummary
 from app_trace_colors import channel_colors
+from app_cursor_identity import nearest_index, cursor_value, locked_index, interval_statistics
+from app_channel_identity import channel_label, channel_details
 
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
 COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
 LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
+
+
+class GraphHeaderNavigation(QtWidgets.QStackedWidget):
+    """One native-overflow toolbar beside the graph's Analysis/Comparison tabs."""
+    def __init__(self,tabs,workspaces):
+        super().__init__(tabs);self.tabs=tabs;self._header_width=40;self._header_height=30;self._fitting_header=False;self._tab_style=tabs.tabBar().styleSheet();self.setObjectName('graphHeaderNavigation')
+        self.setMinimumWidth(0);self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,QtWidgets.QSizePolicy.Policy.Fixed)
+        for workspace in workspaces:
+            workspace.layout().removeWidget(workspace.navigation_bar)
+            workspace.navigation_bar.setMinimumWidth(0)
+            workspace.navigation_bar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Fixed)
+            self.addWidget(workspace.navigation_bar)
+        tabs.tabBar().setExpanding(False);tabs.installEventFilter(self);tabs.tabBar().installEventFilter(self)
+        tabs.currentChanged.connect(self.setCurrentIndex)
+        self.setCurrentIndex(max(0,tabs.currentIndex()))
+        tabs.setCornerWidget(self,QtCore.Qt.Corner.TopRightCorner)
+        self._fit_header()
+
+    def _fit_header(self):
+        if self._fitting_header:return
+        self._fitting_header=True
+        try:self._fit_header_geometry()
+        finally:self._fitting_header=False
+
+    def _fit_header_geometry(self):
+        # QTabWidget gives corner widgets their size hint; cap that width so a
+        # long action set never steals the Analysis/Comparison tab labels.
+        available=max(40,self.tabs.width()-self.tabs.tabBar().sizeHint().width()-8)
+        self._header_width=available
+        self.setFixedWidth(available)
+        # QTabWidget lays out its frame from actual tab rectangles, not the
+        # QTabBar widget's minimumHeight. Size the tabs themselves so the corner
+        # toolbar cannot extend into the page. Use toolbar intrinsic height only
+        # to avoid a padding/size-hint feedback loop after applying the style.
+        height=max([30,*[self.widget(i).sizeHint().height() for i in range(self.count())]])
+        if self.tabs.tabBar().property('navigationHeaderHeight')!=height:
+            self.tabs.tabBar().setProperty('navigationHeaderHeight',height)
+            self.tabs.tabBar().setStyleSheet(self._tab_style+f'\nQTabBar::tab {{ min-height: {height}px; padding-top: 0px; padding-bottom: 0px; }}')
+        self._header_height=height
+        self.setFixedHeight(height)
+        self.tabs.tabBar().setMinimumHeight(height)
+        self.updateGeometry()
+
+    def sizeHint(self):
+        # A stacked page deliberately uses Ignored width so QToolBar can
+        # overflow. The corner widget must still advertise its real width:
+        # otherwise QTabWidget positions a zero-width corner outside the tabs.
+        return QtCore.QSize(self._header_width,self._header_height)
+
+    def minimumSizeHint(self):return self.sizeHint()
+
+    def eventFilter(self,obj,event):
+        if event.type() in (QtCore.QEvent.Type.Resize,QtCore.QEvent.Type.Show,QtCore.QEvent.Type.FontChange):self._fit_header()
+        return super().eventFilter(obj,event)
+
+
+def install_graph_navigation(tabs,workspaces):
+    """Mount existing actions once; shortcuts, menu state and icons survive."""
+    header=GraphHeaderNavigation(tabs,workspaces)
+    tabs.graph_navigation_header=header
+    return header
 
 
 class NavigationViewBox(pg.ViewBox):
@@ -18,10 +82,13 @@ class NavigationViewBox(pg.ViewBox):
 
     def _gesture(self,method,event,axis):
         if self.owner is None:return method(event,axis=axis)
+        workspace=getattr(self.owner,'workspace',None)
+        if workspace:workspace.set_active(self.owner)
         primary=self.owner.getViewBox()
         if self is not primary:
             return getattr(primary,'wheelEvent' if method.__name__=='wheelEvent' else 'mouseDragEvent')(event,axis=axis)
         before={view:list(view.viewRange()[1]) for view in self.owner.y_views()}
+        self.owner.remember_view()
         method(event,axis=axis)
         self.owner.sync_y_gesture(self,before)
         self.owner.remember_view()
@@ -48,6 +115,16 @@ class NavigationViewBox(pg.ViewBox):
     def mouseDragEvent(self,event,axis=None):self._gesture(super().mouseDragEvent,event,axis)
     def wheelEvent(self,event,axis=None):self._gesture(super().wheelEvent,event,axis)
 
+    def raiseContextMenu(self,event):
+        """Do not append framework transforms to the supported chart menu."""
+        if self.owner is None:return super().raiseContextMenu(event)
+        self.owner._context_position=float(self.owner.getViewBox().mapSceneToView(event.scenePos()).x())
+        menu=self.owner.create_context_menu()
+        menu.popup(event.screenPos().toPoint())
+
+    def getMenu(self,event=None):
+        return self.owner.create_context_menu() if self.owner else super().getMenu(event)
+
 
 class PreparedCurve(pg.GraphicsObject):
     """Paint a prepared path with stable source bounds, avoiding scene churn."""
@@ -69,6 +146,7 @@ class PreparedCurve(pg.GraphicsObject):
 class PlotPane(pg.PlotWidget):
     cursorsChanged=QtCore.Signal()
     hoverChanged=QtCore.Signal(object)
+    contextRequested=QtCore.Signal(str,object)
 
     def __init__(self, store):
         view=NavigationViewBox();super().__init__(viewBox=view);view.owner=self
@@ -77,10 +155,12 @@ class PlotPane(pg.PlotWidget):
         self._normalizing=False;self._synchronizing=False;self.normalized=False;self.normalization_bindings={};self._normalization={}
         self.show_legends=True;self.show_grid=True;self.history=[];self.history_index=-1;self._history_restoring=False
         self.coordinate=None;self.snap=True;self.cursor_mode='dual';self.cursor_locks=[None,None]
-        self.annotations=[];self.annotation_items=[]
+        self.annotations=[];self.annotation_items=[];self.cycle_boundaries=[];self.cycle_snap=False;self.comments_movable=False
+        self.setMinimumSize(380,230)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.showGrid(x=True,y=True,alpha=.2)
         self.getPlotItem().hideButtons()
+        self._supported_processing_only()
         self.getPlotItem().layout.setContentsMargins(0,0,0,0)
         self.getViewBox().sigResized.connect(self._resize)
         self.getViewBox().sigYRangeChanged.connect(self.clear_hover)
@@ -104,9 +184,45 @@ class PlotPane(pg.PlotWidget):
         self._build_hover()
         self.legend=self.addLegend(offset=(12,12));self.legend.hide()
 
+    def _supported_processing_only(self):
+        """Keep graphics decorations outside native numerical transforms.
+
+        Prepared paths and scatter cursor markers are not PlotDataItem curves.
+        The application's FFT service validates clocks/units and creates a
+        separate frequency channel; native FFT/log/decimation menus cannot do
+        this safely. Reset old framework control state and expose app routes.
+        """
+        plot=self.getPlotItem();plot.setMenuEnabled(False)
+        controls=plot.ctrl
+        for name,slot in [('fftCheck','updateSpectrumMode'),('logXCheck','updateLogMode'),
+                          ('logYCheck','updateLogMode'),('derivativeCheck','updateDerivativeMode'),
+                          ('phasemapCheck','updatePhasemapMode'),('subtractMeanCheck','updateSubtractMeanMode'),
+                          ('downsampleCheck','updateDownsampling'),('autoDownsampleCheck','updateDownsampling'),
+                          ('subsampleRadio','updateDownsampling'),('meanRadio','updateDownsampling'),
+                          ('clipToViewCheck','updateDownsampling')]:
+            control=getattr(controls,name,None)
+            if control is None:continue
+            try:control.toggled.disconnect(getattr(plot,slot))
+            except (RuntimeError,TypeError):pass
+            control.setEnabled(False)
+            control.setToolTip('Use Calculate Channel for validated application processing.')
+            def reset(checked,c=control):
+                blocker=QtCore.QSignalBlocker(c);c.setChecked(False);del blocker
+            control.toggled.connect(reset)
+            reset(False)
+
+    def cursor_value(self,channel_id,index):
+        """Single source of truth for locked readings in every UI surface."""
+        channel=self.store.channels[channel_id]
+        return cursor_value(channel,self.cursor_lines[index].value(),self.snap,self.cursor_locks[index])
+
     def close(self):
         if self.plotItem is None:return True
         self._closing=True;self.timer.stop();self.hover_proxy.disconnect();self.clear_hover()
+        # Clear framework hover owners while PlotItem and its auto button
+        # still exist. Reparenting during PlotWidget.close emits a later Leave
+        # event, after that button has already been destroyed.
+        self.scene().leaveEvent(QtCore.QEvent(QtCore.QEvent.Type.Leave))
         return super().close()
 
     def _build_hover(self):
@@ -153,7 +269,7 @@ class PlotPane(pg.PlotWidget):
             scene=view.mapViewToScene(QtCore.QPointF(float(xs[index]),float(display)))
             distance=(scene.x()-position.x())**2+(scene.y()-position.y())**2
             if nearest is None or distance<nearest['distance']:
-                nearest={'channel':id,'name':channel.name,'x':float(xs[index]),'y':float(value),'unit':channel.unit,'distance':distance,'scene':scene}
+                nearest={'channel':id,'name':channel_label(self.store,channel),'x':float(xs[index]),'y':float(value),'unit':channel.unit,'distance':distance,'scene':scene}
         return {'x':x,'coordinate_unit':self.coordinate[1] if self.coordinate else '', 'axes':axes,'nearest':nearest}
 
     def _live_hover(self,args):
@@ -200,12 +316,16 @@ class PlotPane(pg.PlotWidget):
                             x=self.store.channels[lock['channel']].values()[0]
                             if len(x):
                                 if sender is line:
-                                    i=int(np.searchsorted(x,line.value()));i=min(len(x)-1,i);j=max(0,i-1)
-                                    lock['index']=i if abs(x[i]-line.value())<abs(x[j]-line.value()) else j
+                                    lock['index']=nearest_index(x,line.value(),lock.get('index'))
                                 lock['index']=int(np.clip(lock['index'],0,len(x)-1))
                                 line.setValue(float(x[lock['index']]))
                                 continue
                         value=float(np.clip(line.value(),low,high))
+                        if self.cycle_snap and self.cycle_boundaries:
+                            boundaries=np.asarray(self.cycle_boundaries)
+                            choices=boundaries[(boundaries>=low)&(boundaries<=high)]
+                            if len(choices):
+                                line.setValue(float(choices[np.argmin(np.abs(choices-value))]));continue
                         if self.snap and len(candidates):
                             i=min(len(candidates)-1,int(np.searchsorted(candidates,value)));j=max(0,i-1)
                             value=float(candidates[i] if abs(candidates[i]-value)<abs(candidates[j]-value) else candidates[j])
@@ -221,7 +341,9 @@ class PlotPane(pg.PlotWidget):
             if not lock or lock['channel'] not in self.curves or self.cursor_mode=='off':marker.hide();continue
             channel=self.store.channels[lock['channel']];x,y=channel.values()
             if not len(x):marker.hide();continue
-            sample=int(np.clip(lock['index'],0,len(x)-1));value=y[sample]
+            sample=locked_index(channel,lock)
+            if sample is None:marker.hide();continue
+            value=self.cursor_value(channel.id,index)
             if not np.isfinite(value):marker.hide();continue
             if lock['channel'] in self._normalization:
                 low,high,offset=self._normalization[lock['channel']];value=((value-low)/(high-low) if high>low else .5)+offset
@@ -238,10 +360,11 @@ class PlotPane(pg.PlotWidget):
             if channel_id not in self.ids:raise ValueError('Choose a visible channel in this plot')
             x=self.store.channels[channel_id].values()[0]
             if not len(x):raise ValueError('This channel has no samples')
-            point=self.cursor_lines[index].value();i=min(len(x)-1,int(np.searchsorted(x,point)));j=max(0,i-1)
-            self.cursor_locks[index]={'channel':channel_id,'index':i if abs(x[i]-point)<abs(x[j]-point) else j}
+            point=self.cursor_lines[index].value()
+            previous=locked_index(self.store.channels[channel_id],self.cursor_locks[index])
+            self.cursor_locks[index]={'channel':channel_id,'index':nearest_index(x,point,previous)}
         lock=self.cursor_locks[index];name=('A','B')[index]
-        self.cursor_lines[index].label.setFormat(name+(' · '+self.store.channels[channel_id].name.replace('{','{{').replace('}','}}') if lock else ''))
+        self.cursor_lines[index].label.setFormat(name+(' · '+channel_label(self.store,channel_id).replace('{','{{').replace('}','}}') if lock else ''))
         self._cursor_changed()
 
     def step_cursor(self,index,direction):
@@ -260,7 +383,9 @@ class PlotPane(pg.PlotWidget):
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
+        if getattr(self,'_closing',False):return
         self.clear_hover()
+        self._compact_legend_labels()
         if hasattr(self,'empty_label'):self.empty_label.setGeometry(self.rect().adjusted(60,40,-60,-40))
 
     def _click(self,event):
@@ -280,14 +405,97 @@ class PlotPane(pg.PlotWidget):
         if event.key() in (QtCore.Qt.Key.Key_Left,QtCore.Qt.Key.Key_Right):
             self.step_cursor(1 if event.modifiers()&QtCore.Qt.KeyboardModifier.ShiftModifier else 0,1 if event.key()==QtCore.Qt.Key.Key_Right else -1);return
         if event.key()==QtCore.Qt.Key.Key_Escape:
-            self.getViewBox().setMouseMode(pg.ViewBox.PanMode);self.getViewBox().setMouseEnabled(x=True,y=True);return
+            workspace=getattr(self,'workspace',None)
+            if workspace:workspace.set_active(self);workspace.navigate('pan')
+            else:self.getViewBox().setMouseMode(pg.ViewBox.PanMode);self.getViewBox().setMouseEnabled(x=True,y=True)
+            return
         if event.key()==QtCore.Qt.Key.Key_R:
-            self.fit();return
+            workspace=getattr(self,'workspace',None)
+            if workspace:workspace.set_active(self);workspace.navigate('reset')
+            else:self.fit()
+            return
         if event.key()==QtCore.Qt.Key.Key_C:
             self.set_cursor_mode('off' if self.cursor_mode!='off' else 'dual');return
         if event.key()==QtCore.Qt.Key.Key_Space:
-            self.getViewBox().setMouseMode(pg.ViewBox.PanMode);return
+            workspace=getattr(self,'workspace',None)
+            if workspace:workspace.set_active(self);workspace.navigate('pan')
+            else:self.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+            return
         super().keyPressEvent(event)
+
+    def create_context_menu(self):
+        """Build one pane-scoped menu using the same navigation actions."""
+        workspace=getattr(self,'workspace',None)
+        if workspace:workspace.set_active(self)
+        previous=getattr(self,'_context_menu',None)
+        if previous is not None:previous.deleteLater()
+        menu=QtWidgets.QMenu(self);menu.setObjectName('paneChartMenu')
+        self._context_menu=menu  # retain the nonblocking popup until closed
+        if workspace:
+            for command in ('pan','cursor','xy','x','y'):
+                menu.addAction(workspace.navigation_actions[command])
+        menu.addSeparator()
+        cycles=menu.addAction('Snap to Cycles');cycles.setCheckable(True);cycles.setChecked(self.cycle_snap)
+        cycles.setEnabled(len(self.cycle_boundaries)>=2)
+        cycles.setToolTip('Snap to reviewed cycle boundaries.' if cycles.isEnabled() else 'Configure at least two reviewed cycle boundaries before enabling cycle snapping.')
+        cycles.toggled.connect(lambda checked:setattr(self,'cycle_snap',checked));menu.setToolTipsVisible(True)
+        revert=menu.addAction('Revert Zoom');revert.setEnabled(self.history_index>0)
+        revert.setToolTip('Restore the preceding chart view; Fit shows the full recording.')
+        revert.triggered.connect(lambda:self.navigate_history(-1))
+        definition=menu.addAction('Configure Cycle Boundaries…');definition.setEnabled(bool(self.coordinate and self.coordinate[0]=='time'))
+        definition.setToolTip('Enter reviewed positions in this pane’s time unit; no appliance cycles are inferred.');definition.triggered.connect(self.configure_cycle_boundaries)
+        menu.addSeparator()
+        comments=menu.addMenu('Comments')
+        add=comments.addAction('Add Annotation…');add.setEnabled(bool(self.ids));add.triggered.connect(self.add_context_annotation)
+        move=comments.addAction('Move Comments');move.setCheckable(True);move.setChecked(self.comments_movable);move.setEnabled(bool(self.annotations))
+        move.setToolTip('Enable dragging existing annotation lines or interval edges.');move.toggled.connect(self.set_comments_movable)
+        menu.addSeparator()
+        menu.addAction('Copy Chart',self.copy_chart)
+        export=menu.addAction('Export Report…');export.setEnabled(bool(self.ids));export.triggered.connect(lambda:self.contextRequested.emit('export',self))
+        processing=menu.addMenu('Calculate Channel')
+        fft=processing.addAction('FFT — Frequency Spectrum…');fft.setEnabled(bool(self.ids) and self.coordinate is not None and self.coordinate[0]=='time')
+        fft.setToolTip('Open the application FFT calculation. A supported regular time clock is required.');fft.triggered.connect(lambda:self.contextRequested.emit('fft',self))
+        return menu
+
+    def set_cycle_boundaries(self,values):
+        boundaries=np.asarray(values,dtype=float)
+        if boundaries.ndim!=1 or len(boundaries)<2 or not np.isfinite(boundaries).all() or np.any(np.diff(boundaries)<=0):
+            raise ValueError('Cycle boundaries must contain at least two increasing finite positions in this pane’s coordinate unit')
+        if not self.coordinate or self.coordinate[0]!='time':raise ValueError('Cycle snapping requires a temporal pane')
+        self.cycle_boundaries=boundaries.tolist()
+
+    def configure_cycle_boundaries(self):
+        unit=self.coordinate[1] if self.coordinate else ''
+        initial=', '.join(f'{value:.8g}' for value in self.cycle_boundaries)
+        text,ok=QtWidgets.QInputDialog.getText(self,'Cycle Boundaries',f'Reviewed positions ({unit}), separated by commas',text=initial)
+        if not ok:return
+        try:self.set_cycle_boundaries([float(value.strip()) for value in text.split(',')])
+        except (ValueError,TypeError) as exc:QtWidgets.QMessageBox.warning(self,'Invalid Cycle Boundaries',str(exc));return
+        self.contextRequested.emit('changed',self)
+
+    def add_context_annotation(self):
+        if not self.ids:return
+        guard=getattr(getattr(self,'workspace',None),'mutation_guard',None)
+        if guard:
+            try:guard()
+            except ValueError as exc:QtWidgets.QMessageBox.information(self,'Annotation unavailable',str(exc));return
+        point=getattr(self,'_context_position',self.cursor_lines[0].value())
+        text,ok=QtWidgets.QInputDialog.getText(self,'Add Annotation',f'Comment at {point:.6g} {self.coordinate[1]}')
+        if ok and text.strip():
+            if guard:
+                try:guard()
+                except ValueError as exc:QtWidgets.QMessageBox.information(self,'Annotation unavailable',str(exc));return
+            self.annotate('Marker',point,text=text.strip())
+            self.contextRequested.emit('changed',self)
+
+    def set_comments_movable(self,enabled):
+        self.comments_movable=bool(enabled)
+        for _,item in self.annotation_items:
+            if hasattr(item,'setMovable'):item.setMovable(self.comments_movable)
+
+    def copy_chart(self):
+        """Copy the clicked pane, including its axes, legends and cursors."""
+        QtWidgets.QApplication.clipboard().setPixmap(self.grab())
 
     def bind(self, ids, assignments=None, fit=True):
         self.clear_hover()
@@ -329,7 +537,7 @@ class PlotPane(pg.PlotWidget):
             else:
                 side=self.store.channels[next(id for id in self.ids if self.bindings[id]==unit)].attributes.get('plot_style',{}).get('side','right')
                 axis=pg.AxisItem('left' if side=='left' else 'right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
-                vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb);vb.setXLink(primary)
+                vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb)
                 self.axes[unit]=(axis,vb);vb.sigYRangeChanged.connect(self.clear_hover)
             if unit=='Actuators':axis.setTicks([[(0,'OFF'),(1,'ON')]])
             else:axis.setTicks(None)
@@ -350,7 +558,11 @@ class PlotPane(pg.PlotWidget):
                 if j==0:axis.setPen(color);axis.setTextPen(color)
                 if c.unit=='min':axis.enableAutoSIPrefix(False)
                 vb.addItem(curve);self.curves[id]=(vb,curve)
-                if hasattr(self,'legend') and len(self.ids)<=12:self.legend.addItem(pg.PlotDataItem(pen=curve.pen),c.name)
+                if hasattr(self,'legend') and len(self.ids)<=12:
+                    self.legend.addItem(pg.PlotDataItem(pen=curve.pen),channel_label(self.store,c))
+                    sample,label=self.legend.items[-1]
+                    label.full_channel_label=channel_label(self.store,c)
+                    sample.setToolTip(channel_details(self.store,c));label.setToolTip(channel_details(self.store,c));label.item.setToolTip(channel_details(self.store,c))
                 key=(id,c.revision)
                 if key not in self.cache:
                     self.cache={k:v for k,v in self.cache.items() if k[0]!=id}
@@ -381,6 +593,7 @@ class PlotPane(pg.PlotWidget):
             self.legend.layout.setVerticalSpacing(0)
             self.legend.setColumnCount(max(1,min(4,(len(self.ids)+5)//6)))
             self.legend.setVisible(self.show_legends and bool(self.ids) and len(self.ids)<=12)
+            self._compact_legend_labels()
         self.showGrid(x=self.show_grid,y=self.show_grid,alpha=.2)
         for unit in units:
             bounds=next((self.store.channels[id].attributes.get('plot_style',{}) for id in self.ids if self.bindings[id]==unit),{})
@@ -424,12 +637,38 @@ class PlotPane(pg.PlotWidget):
         primary=self.getViewBox();enabled=primary.state['mouseEnabled'];primary.scaleBy((factor if enabled[0] else 1.,factor if enabled[1] else 1.));self.sync_y_gesture(primary,before);self.remember_view()
 
     def _resize(self):
+        if getattr(self,'_closing',False):return
         for axis,vb in self.axes.values():
-            vb.setGeometry(self.getViewBox().sceneBoundingRect());vb.linkedViewChanged(self.getViewBox(),vb.XAxis)
+            vb.setGeometry(self.getViewBox().sceneBoundingRect());vb.setXRange(*self.getViewBox().viewRange()[0],padding=0)
+        self._compact_legend_labels()
+
+    def _compact_legend_labels(self):
+        """Keep the inline legend bounded without discarding channel identity."""
+        # PlotWidget.close clears plotItem before detaching its viewport, which
+        # emits a final resize. Graphics callbacks must not dereference that
+        # released view or its legend labels during shutdown.
+        if getattr(self,'_closing',False) or self.__dict__.get('plotItem') is None:return
+        if not hasattr(self,'legend') or not self.legend.items:return
+        columns=max(1,self.legend.columnCount)
+        available=max(100.,min(460.,self.getViewBox().width()*.55))
+        width=max(24.,available/columns-38.)
+        for _,label in self.legend.items:
+            full=getattr(label,'full_channel_label',label.text)
+            text=QtGui.QFontMetricsF(label.item.font()).elidedText(full,QtCore.Qt.TextElideMode.ElideMiddle,int(width))
+            escaped=html.escape(text)
+            if label.text!=escaped:label.setText(escaped)
+            # LabelItem updates its minimum hint when text changes but retains
+            # the old width until its parent layout runs. LegendItem measures
+            # current widths, so shrink this geometry before measuring it.
+            label.resize(label.minimumWidth(),label.minimumHeight())
+        self.legend.updateSize()
 
     def _schedule(self,*args):
         if getattr(self,'_closing',False):return
         self.clear_hover()
+        # Numerical copying avoids pyqtgraph's screen-edge offset when axes
+        # have unequal widths. Independent Y viewboxes share the same clock.
+        for _,view in self.axes.values():view.setXRange(*self.getViewBox().viewRange()[0],padding=0)
         if self.ids and not getattr(self,'_restored_positions',False):self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
@@ -454,6 +693,7 @@ class PlotPane(pg.PlotWidget):
         channels=[self.store.channels[id] for id in self.ids if len(self.store.channels[id].x)]
         if not channels:
             return
+        self.remember_view()
         left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
         self.setXRange(left,right if right>left else left+1,padding=.02)
         for unit in dict.fromkeys(self.bindings.values()):
@@ -492,9 +732,8 @@ class PlotPane(pg.PlotWidget):
             revision,summary=self.summaries[id]
             if revision!=c.revision:
                 summary=IntervalSummary(c);self.summaries[id]=(c.revision,summary)
-            va,vb=cursor_sample(c,a,self.snap),cursor_sample(c,b,self.snap)
             from app_time_units import presentation_statistics
-            result[id]={**presentation_statistics(c,summary.query(a,b)),'A':va,'B':vb,'ΔY':vb-va}
+            result[id]=presentation_statistics(c,interval_statistics(c,summary,a,b,self.cursor_locks,self.snap))
         return result
 
     def annotate(self,kind,start,end=None,text='',axis=None):
@@ -510,12 +749,19 @@ class PlotPane(pg.PlotWidget):
                                  pen=pg.mkPen('#cfa3ff',style=QtCore.Qt.PenStyle.DashLine),label=record['text'].replace('{','{{').replace('}','}}'))
         unit=record.get('axis');vb=self.axes[unit][1] if unit in self.axes else self.getViewBox()
         vb.addItem(item,ignoreBounds=True);self.annotation_items.append((vb,item))
+        if hasattr(item,'setMovable'):item.setMovable(self.comments_movable)
+        def moved():
+            if kind=='ROI':record['start'],record['end']=map(float,item.getRegion())
+            else:record['start']=float(item.value());record['end']=float(item.value())
+            self.contextRequested.emit('changed',self)
+        if kind=='ROI':item.sigRegionChangeFinished.connect(moved)
+        else:item.sigPositionChangeFinished.connect(moved)
 
     def state(self):
         return {'ids':list(self.ids),'bindings':dict(self.bindings),'range':self.getViewBox().viewRange(),
                 'axes':{unit:vb.viewRange()[1] for unit,(axis,vb) in self.axes.items()},
                 'cursors':[l.value() for l in self.cursor_lines],'cursor_mode':self.cursor_mode,
-                'cursor_locks':[dict(lock) if lock else None for lock in self.cursor_locks],'snap':self.snap,'annotations':list(self.annotations),'normalized':self.normalized,'normalization_bindings':self.normalization_bindings,'show_grid':self.show_grid,'show_legends':self.show_legends}
+                'cursor_locks':[dict(lock) if lock else None for lock in self.cursor_locks],'snap':self.snap,'annotations':list(self.annotations),'cycle_boundaries':list(self.cycle_boundaries),'cycle_snap':self.cycle_snap,'normalized':self.normalized,'normalization_bindings':self.normalization_bindings,'show_grid':self.show_grid,'show_legends':self.show_legends}
 
     def restore_ranges(self,state):
         # Restore serialized anchors atomically. Geometry/range notifications
@@ -535,15 +781,21 @@ class PlotPane(pg.PlotWidget):
                 lock=self.cursor_locks[index]
                 if lock and lock['channel'] in self.store.channels:
                     x=self.store.channels[lock['channel']].values()[0]
-                    if len(x):pos=float(x[int(np.clip(lock['index'],0,len(x)-1))])
+                    sample=locked_index(self.store.channels[lock['channel']],lock)
+                    if sample is not None:lock['index']=sample;pos=float(x[sample])
                 line.setValue(pos)
-                line.label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
+                line.label.setFormat(('A','B')[index]+(' · '+channel_label(self.store,lock['channel']).replace('{','{{').replace('}','}}') if lock else ''))
         finally:
             self._synchronizing=previous;self._restoring_cursors=False
             del blocker
         self.update_cursor_markers()
 
     def restore(self,state):
+        try:
+            boundaries=np.asarray(state.get('cycle_boundaries',[]),dtype=float)
+            self.cycle_boundaries=boundaries.tolist() if boundaries.ndim==1 and len(boundaries)>=2 and np.isfinite(boundaries).all() and np.all(np.diff(boundaries)>0) else []
+        except (ValueError,TypeError):self.cycle_boundaries=[]
+        self.cycle_snap=bool(state.get('cycle_snap',False) and len(self.cycle_boundaries)>=2)
         self.snap=state.get('snap',True);self.normalized=state.get('normalized',False);self.normalization_bindings=state.get('normalization_bindings',{})
         self.show_grid=state.get('show_grid',True);self.show_legends=state.get('show_legends',True)
         self.bind(state['ids'],state.get('bindings'),fit=False);self.restore_ranges(state)
@@ -556,25 +808,28 @@ class PlotPane(pg.PlotWidget):
 class PlotWorkspace(QtWidgets.QWidget):
     activeChanged=QtCore.Signal(object)
     measurementsChanged=QtCore.Signal()
+    contextRequested=QtCore.Signal(str,object)
 
     def __init__(self,store):
-        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None
+        super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self._range_syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None;self.layout_proportions={}
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
         self.grid=QtWidgets.QGridLayout(self.container);self.grid.setContentsMargins(0,0,0,0)
-        # The main window mounts this toolbar in its upper toolbar area. A
-        # standalone workspace also gets a normal layout row, never an overlay.
+        # The main window mounts this same toolbar beside its graph tabs. A
+        # standalone workspace retains a normal layout row, never an overlay.
         self.navigation_bar=QtWidgets.QToolBar('Graph Navigation',self)
         self.navigation_bar.setObjectName('graphNavigation');self.navigation_bar.setMovable(False)
         self.navigation_actions={};self.mode_group=QtGui.QActionGroup(self);self.mode_group.setExclusive(True)
-        for label,command in [('Zoom X','x'),('Zoom Y','y'),('Zoom XY','xy'),('Pan','pan'),('Zoom In','in'),('Zoom Out','out'),('Reset View','reset')]:
+        for label,command in [('Zoom X','x'),('Zoom Y','y'),('Zoom XY','xy'),('Hand / Pan','pan'),('Zoom In','in'),('Zoom Out','out'),('Reset View','reset')]:
             action=self.navigation_bar.addAction(label);action.triggered.connect(lambda checked=False,c=command:self.navigate(c));self.navigation_actions[command]=action
             if command in ('x','y','xy','pan'):
                 action.setCheckable(True);self.mode_group.addAction(action)
                 action.setToolTip({'x':'Box zoom in time only (Ctrl+1)','y':'Box zoom in value axes only (Ctrl+2)','xy':'Box zoom in time and values (Ctrl+3)','pan':'Drag to pan the graph (Ctrl+4)'}[command])
         self.navigation_actions['pan'].setChecked(True)
         self.navigation_actions['box']=self.navigation_actions['xy']
+        cursor_action=QtGui.QAction('Cursor',self);cursor_action.setCheckable(True);self.mode_group.addAction(cursor_action)
+        cursor_action.setToolTip('Inspect values with Cursor A; Shift-click positions Cursor B.');cursor_action.triggered.connect(lambda:self.navigate('cursor'));self.navigation_actions['cursor']=cursor_action
         self.time_lock_action=self.navigation_bar.addAction('Lock Time Axes');self.time_lock_action.setCheckable(True);self.time_lock_action.setChecked(True)
         self.time_lock_action.toggled.connect(self.set_time_lock)
         outer.insertWidget(0,self.navigation_bar)
@@ -599,11 +854,11 @@ class PlotWorkspace(QtWidgets.QWidget):
         if not hasattr(self,'channel_legend') or self.active is None:return
         pane=self.active;visible=pane.show_legends and len(pane.ids)>12
         self.channel_legend.setVisible(visible)
-        signature=tuple((id,pane.curves[id][1].pen.color().name(),self.store.channels[id].name) for id in pane.ids if id in pane.curves and id in self.store.channels)
+        signature=tuple((id,pane.curves[id][1].pen.color().name(),channel_label(self.store,id)) for id in pane.ids if id in pane.curves and id in self.store.channels)
         if signature==getattr(self,'_legend_signature',None):return
         self._legend_signature=signature;self.channel_legend.clear()
         for id,color,name in signature:
-            item=QtWidgets.QListWidgetItem('━ '+name);item.setForeground(QtGui.QColor(color));item.setToolTip(name+' · '+self.store.channels[id].unit);self.channel_legend.addItem(item)
+            item=QtWidgets.QListWidgetItem('━ '+name);item.setForeground(QtGui.QColor(color));item.setToolTip(channel_details(self.store,id));self.channel_legend.addItem(item)
 
     def _hover_changed(self,pane,state):
         if state is None and pane is not self._hover_pane:return
@@ -628,13 +883,15 @@ class PlotWorkspace(QtWidgets.QWidget):
     def navigate(self,command,factor=None):
         """Scale synchronized X once, and every independent Y axis once."""
         active=self.active
-        targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and active.coordinate and p.coordinate==active.coordinate)]
-        if command in ('x','y','xy','box','pan'):
+        if active is None:return
+        targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and self._temporal_group(active)==self._temporal_group(p) and self._temporal_group(active) is not None)]
+        if command in ('x','y','xy','box','pan','cursor'):
             self.navigation_mode='xy' if command=='box' else command
             self.navigation_actions[self.navigation_mode].setChecked(True)
             for pane in self.visible_panes():
-                view=pane.getViewBox();view.setMouseMode(view.PanMode if command=='pan' else view.RectMode)
-                view.setMouseEnabled(x=command!='y',y=command!='x')
+                view=pane.getViewBox();view.setMouseMode(view.PanMode if command in ('pan','cursor') else view.RectMode)
+                view.setMouseEnabled(x=command not in ('y','cursor'),y=command not in ('x','cursor'))
+                if command=='cursor' and pane.cursor_mode=='off':pane.set_cursor_mode('dual')
         elif command=='reset':
             for pane in targets:pane.fit()
             channels=[self.store.channels[id] for pane in targets for id in pane.ids if len(self.store.channels[id].x)]
@@ -651,42 +908,92 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.measurementsChanged.emit()
 
     def set_time_lock(self,locked):
-        self.time_axes_locked=bool(locked);self.link()
+        self.time_axes_locked=bool(locked)
+        blocker=QtCore.QSignalBlocker(self.time_lock_action);self.time_lock_action.setChecked(self.time_axes_locked);del blocker
+        self.link()
+
+    def set_active(self,pane):
+        if pane not in self.visible_panes():return
+        if self.active is not pane:self.active=pane;self.activeChanged.emit(pane)
+
+    @staticmethod
+    def _temporal_group(pane):
+        return pane.coordinate if pane.coordinate and pane.coordinate[0]=='time' else None
+
+    def _time_range_changed(self,pane,bounds):
+        """Synchronize numbers, never screen edges or source timestamps."""
+        if self._range_syncing or not self.time_axes_locked or pane not in self.visible_panes():return
+        group=self._temporal_group(pane)
+        if group is None or not np.isfinite(bounds).all():return
+        self._range_syncing=True
+        try:
+            for target in self.visible_panes():
+                if target is not pane and self._temporal_group(target)==group:
+                    target.setXRange(float(bounds[0]),float(bounds[1]),padding=0)
+        finally:self._range_syncing=False
+
+    def set_pane_proportions(self,rows=None,columns=None):
+        """Retain explicit layout weights without reusing stale grid rows."""
+        height,width=LAYOUTS[self.layout_name];saved=self.layout_proportions.setdefault(self.layout_name,{})
+        for name,values,count in [('rows',rows,height),('columns',columns,width)]:
+            if values is not None:
+                if len(values)!=count or any(not np.isfinite(v) or v<=0 for v in values):raise ValueError('Pane proportions must be finite positive weights for every visible row/column')
+                saved[name]=list(map(float,values))
+        self._apply_proportions()
+
+    def _apply_proportions(self):
+        rows,cols=LAYOUTS[self.layout_name];saved=self.layout_proportions.get(self.layout_name,{})
+        for row in range(max(self.grid.rowCount(),rows)):
+            weights=saved.get('rows',[]);weight=weights[row] if row<len(weights) else 1
+            self.grid.setRowStretch(row,max(1,int(weight*100)) if row<rows else 0)
+            self.grid.setRowMinimumHeight(row,230 if row<rows else 0)
+        for col in range(max(self.grid.columnCount(),cols)):
+            weights=saved.get('columns',[]);weight=weights[col] if col<len(weights) else 1
+            self.grid.setColumnStretch(col,max(1,int(weight*100)) if col<cols else 0)
+            self.grid.setColumnMinimumWidth(col,380 if col<cols else 0)
 
     def set_layout(self,name):
         rows,cols=LAYOUTS[name];required=rows*cols
+        previous=self.active
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
             pane=PlotPane(self.store);pane.installEventFilter(self)
+            pane.workspace=self
             pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
             pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
+            pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
+            pane.contextRequested.connect(self.contextRequested)
             self.panes.append(pane)
         for i,pane in enumerate(self.panes):
             pane.dark=self.panes[0].dark;pane.setBackground(self.panes[0].backgroundBrush())
             pane.snap=self.active.snap if self.active else True
             pane.set_cursor_mode(self.active.cursor_mode if self.active else 'dual')
-            pane.setMinimumHeight(180 if required>=3 else 0)
+            pane.setMinimumHeight(230)
             pane.display_budget=12000/required
             if i<required:self.grid.addWidget(pane,i//cols,i%cols)
             # Reparenting into a visible layout hides newly created widgets.
             pane.setVisible(i<required)
-        self.layout_name=name;self.active=self.panes[0];self.activeChanged.emit(self.active)
+        self.layout_name=name;self._apply_proportions();self.active=previous if previous in self.visible_panes() else self.panes[0];self.activeChanged.emit(self.active)
         self.navigate(self.navigation_mode);self.link()
 
     def eventFilter(self,obj,event):
         if event.type()==QtCore.QEvent.Type.FocusIn and obj in self.panes:
-            self.active=obj;self.activeChanged.emit(obj)
+            self.set_active(obj)
         return super().eventFilter(obj,event)
 
     def link(self):
+        # Explicit numerical propagation is stable across unequal axis widths,
+        # scroll positions and DPI. setXLink aligns scene pixels and can silently
+        # change a requested 40–80 interval to 40.7463–80 on a narrower pane.
         groups={}
         for pane in self.visible_panes():
             pane.setXLink(None)
-            if not self.time_axes_locked:continue
-            if pane.coordinate in groups and pane.coordinate:
-                pane.setXLink(groups[pane.coordinate])
-            elif pane.coordinate:
-                groups[pane.coordinate]=pane
+            group=self._temporal_group(pane)
+            if group is not None:groups.setdefault(group,[]).append(pane)
+        if not self.time_axes_locked:return
+        for panes in groups.values():
+            source=self.active if self.active in panes else panes[0]
+            self._time_range_changed(source,source.getViewBox().viewRange()[0])
 
     def visible_panes(self):
         rows,cols=LAYOUTS[self.layout_name]
@@ -697,14 +1004,15 @@ class PlotWorkspace(QtWidgets.QWidget):
         self._syncing=True
         try:
             for target in self.visible_panes():
-                if target is not pane and target.coordinate==pane.coordinate:
+                if target is not pane and target.coordinate==pane.coordinate and self._temporal_group(pane) is not None:
                     target.cursor_locks=[dict(lock) if lock and lock['channel'] in self.store.channels else None for lock in pane.cursor_locks]
                     for index,lock in enumerate(target.cursor_locks):
-                        target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+self.store.channels[lock['channel']].name.replace('{','{{').replace('}','}}') if lock else ''))
+                        target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+channel_label(self.store,lock['channel']).replace('{','{{').replace('}','}}') if lock else ''))
                     target._synchronizing=True
                     try:
                         for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())
                     finally:target._synchronizing=False
+                    target.update_cursor_markers()
             self.measurementsChanged.emit()
         finally:self._syncing=False
 
@@ -764,12 +1072,13 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.link()
 
     def state(self):
-        return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
+        return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'layout_proportions':self.layout_proportions,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
                 'display_options':getattr(self,'display_options',{}),'playback_speed':getattr(self,'playback_speed',10),'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        self.layout_proportions=dict(state.get('layout_proportions',{}))
         self.display_options=dict(state.get('display_options',{}));self.playback_speed=float(np.clip(state.get('playback_speed',10),.1,128))
-        mode=state.get('navigation_mode','pan');self.navigation_mode=mode if mode in ('x','y','xy','pan') else 'pan'
+        mode=state.get('navigation_mode','pan');self.navigation_mode=mode if mode in ('x','y','xy','pan','cursor') else 'pan'
         if self._hover_pane:self._hover_changed(self._hover_pane,None)
         self.time_axes_locked=bool(state.get('time_axes_locked',True))
         blocker=QtCore.QSignalBlocker(self.time_lock_action);self.time_lock_action.setChecked(self.time_axes_locked);del blocker

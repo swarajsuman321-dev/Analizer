@@ -99,8 +99,8 @@ class CompactControls(QtCore.QObject):
         workspace.layout().insertWidget(1,strip);tools.seek(pane.cursor_lines[0].value());strip.show();return strip
 
     def step(self,pane,direction):
-        import numpy as np
-        channels=[self.w.store.channels[id] for id in pane.ids if len(self.w.store.channels[id].x)]
-        if channels:
-            x=channels[0].values()[0];point=pane.cursor_lines[0].value();index=int(np.searchsorted(x,point,side='right' if direction>0 else 'left'))
-            index=index if direction>0 else index-1;self.w.studio.seek(float(x[np.clip(index,0,len(x)-1)]))
+        # Playback buttons use the same source-row identity as arrow keys,
+        # including rows with equal timestamps and a lock on any trace.
+        if not any(channel_id in pane.store.channels and len(pane.store.channels[channel_id].x) for channel_id in pane.ids):return
+        pane.step_cursor(0,direction)
+        self.w.studio.seek(pane.cursor_lines[0].value())

@@ -127,19 +127,20 @@ def check(legacy_only=False):
             if legacy_only:
                 # Exercise the hard pre-install gate in the short feedback loop.
                 install_package(setup);runtime_check(version);preserved()
-                bad=compile_installer(root/'ApplianceSignalStudio','2.3.3','ci-legacy-bad',fail_health=True,legacy=True)
+                bad=compile_installer(root/'ApplianceSignalStudio',VERSION.rsplit('.',1)[0]+'.'+str(int(VERSION.rsplit('.',1)[1])+1),'ci-legacy-bad',fail_health=True,legacy=True)
                 assert install_package(bad,False)!=0,'Health gate did not stop Setup'
                 assert registration()['DisplayVersion']==version
                 runtime_check(version);preserved();remove();assert not registration()
                 checks.append('failed health gate leaves the previous installation intact')
-                print(json.dumps({'ok':True,'scope':'Installer engine on actual v2.3.1 runtime; not final v2.3.2 validation','checks':checks}),flush=True)
+                print(json.dumps({'ok':True,'scope':f'Installer engine on actual v2.3.1 runtime; not final v{VERSION} validation','checks':checks}),flush=True)
                 return
             old=compile_installer(previous_runtime(root),'2.3.1','ci-old-setup',legacy=True)
             install_package(old);assert registration()['DisplayVersion']=='2.3.1';preserved()
             install_package(setup);runtime_check(VERSION);preserved()
             assert (install/'versions/2.3.1/ApplianceSignalStudio.exe').is_file()
             checks.append('upgrade from real v2.3.1 runtime preserves settings and previous runtime')
-            bad=compile_installer(version='2.3.3',output='ci-failed-setup',fail_health=True)
+            future_version=VERSION.rsplit('.',1)[0]+'.'+str(int(VERSION.rsplit('.',1)[1])+1)
+            bad=compile_installer(version=future_version,output='ci-failed-setup',fail_health=True)
             code=install_package(bad,False);assert code!=0,'Failed health check incorrectly reported installation success'
             assert registration()['DisplayVersion']==VERSION,'Failed upgrade replaced active registration'
             assert shortcut_target()==(install/'versions'/VERSION/'ApplianceSignalStudio.exe').resolve()

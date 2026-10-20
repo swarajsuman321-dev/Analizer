@@ -4,6 +4,8 @@ Reviewed 18 October 2026 against `origin/main` at `d9d9b2d17e61a97061ce37d1ddf2a
 
 The user has confirmed that v2.3.2 installs, opens and works on their PC. That is useful installation feedback, not acceptance of every analysis or update scenario.
 
+**Approval received:** the user selected **“Approve all A–H (Recommended)”**. All 26 core items are authorized; I1–I3 remain excluded. The [v2.4.0 implementation and verification record](RELEASE_2.4.0.md) tracks delivery. Checkboxes below preserve the original requested scope and are not a claim that every native/human acceptance check has already run.
+
 ## Decisions already confirmed
 
 - Maintain **Windows Installed** and **Standalone** together: one source implementation, feature set, version, manual and release cycle, with working updates for each. Preserve the existing standalone EXE and ZIP forms. See the [distribution policy](DUAL_DISTRIBUTION_POLICY.md).
@@ -35,7 +37,7 @@ These earlier findings are not new implementation requests:
 
 ## Selectable approval groups
 
-Every checkbox below is **pending**. Approving A–H includes their numbered acceptance items. Optional I items require explicit selection. Priorities indicate recommended implementation order, not a claim that the audits established data loss or a Critical-severity defect.
+Groups A–H are **approved**. Optional I items still require explicit selection. Priorities indicate implementation order, not a claim that the audits established data loss or a Critical-severity defect.
 
 ### A — Plot and cursor correctness — first priority
 
@@ -101,7 +103,7 @@ These are product improvements suggested in audits, not reproduced correctness f
 
 Choose **All A–H**, **Priority A/B/D/E/G/H**, or list group/item IDs. Optional I1–I3 are excluded unless named. A proposed order after approval is A → B → D → E → C/F, with G developed alongside and H validating each completed stage. Prioritize correctness and report interpretation before additional shortcuts.
 
-Approval must be recorded from the user's explicit response. Unchecked tasks and this document's publication do not authorize implementation. If a selected task requires deleting/hiding a capability beyond the described relocation/replacement, ask again with the exact change.
+Approval is recorded above from the user's explicit response. Optional unchecked tasks remain outside scope. If a selected task requires deleting/hiding a capability beyond the described relocation/replacement, ask again with the exact change.
 
 ## Sources and current code anchors
 

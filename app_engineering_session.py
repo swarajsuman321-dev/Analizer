@@ -1,7 +1,7 @@
 """Serializable engineering-session configuration and cancellable analysis orchestration."""
 import copy
 from app_appliance_profiles import load_profile,validate_profile
-from app_engineering_analytics import analyze_run
+from app_engineering_analytics import analyze_run,scoped_run
 from app_engineering_compare import anchor_seconds,compare_runs,recording_origin
 
 
@@ -30,8 +30,10 @@ def validate_session(record,store=None):
     return result
 
 
-def analyze_session(store,session,comparison=False,cancel=None):
+def analyze_session(store,session,comparison=False,cancel=None,report_scope="whole_recording",cursor_interval_s=None):
     session=validate_session(session,store)
+    if report_scope not in ('whole_recording','cursor_interval','both'):raise ValueError('Unknown engineering report scope')
+    if report_scope!='whole_recording' and (not cursor_interval_s or len(cursor_interval_s)!=2):raise ValueError('Cursor interval reporting requires two cursor positions')
     if not session['profile']['channels']:raise ValueError('Configure or import a valid appliance profile in Engineering Setup before analysis')
     roles=['reference','candidate'] if comparison else ['analysis']
     if comparison and session['runs'].get('golden') is not None:roles.append('golden')
@@ -52,4 +54,10 @@ def analyze_session(store,session,comparison=False,cancel=None):
         if comparison and anchor.get('mode')=='recorded' and (base is None or origins.get(role) is None):result['warnings'].append('Absolute recorded clock unavailable; existing numeric coordinates preserved without an additional shift')
         result['role']=role;runs.append(result)
     comp=compare_runs(runs[0],runs[1],session['profile'],runs[2] if len(runs)>2 else None,cancel) if comparison else None
-    return {'runs':runs,'comparison':comp,'session':session}
+    interval_comp=None
+    if report_scope!='whole_recording':
+        scoped=[scoped_run(run,*cursor_interval_s) for run in runs]
+        interval_comp=compare_runs(scoped[0],scoped[1],session['profile'],scoped[2] if len(scoped)>2 else None,cancel) if comparison else None
+        runs=runs+scoped if report_scope=='both' else scoped
+        if report_scope=='cursor_interval':comp=interval_comp
+    return {'runs':runs,'comparison':comp,'interval_comparison':interval_comp,'session':session,'report_scope':report_scope}

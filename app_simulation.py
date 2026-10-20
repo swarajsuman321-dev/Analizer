@@ -152,7 +152,7 @@ class SimulationCsvAdapter:
             curve = pd.DataFrame({'time_min': self.frame['time_min'], 'value': values})
             curve.attrs.update(source_type='csv', source_column=source, source_unit=source_unit,
                                unit=target_unit, x_calibration_verified=True,
-                               y_calibration_verified=target_unit != 'unknown')
+                               y_calibration_verified=target_unit != 'unknown' and not (key=='pressure' and self.preserve_pressure_numbers and source_unit!=target_unit))
             if key == 'pressure':
                 curve.attrs['preserve_pressure_numbers'] = self.preserve_pressure_numbers
             self.curves[key] = curve

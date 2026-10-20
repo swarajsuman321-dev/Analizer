@@ -155,9 +155,15 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
                 if spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital':unit='state'
                 column=columns.get(spec['key']) if source=='bench' else None
                 template_attrs=tdms_columns.get(column,{})
+                # Preserve the legacy numeric display mode, but do not promote a
+                # display label into verified physical pressure for engineering.
+                pressure_trust={}
+                if spec['key']=='pressure':
+                    original_unit=get_column_unit(original,column) if column else None
+                    pressure_trust={'engineering_unit_verified':bool(original_unit and original_unit==unit) if spec.get('preserve_pressure_numbers') else bool(original_unit),'underlying_source_unit':original_unit or 'unknown','unit_detection':'source metadata' if original_unit else 'unverified comparison display'}
                 store.add(Channel(f'{spec["label"]} · {source}',x,y,source=machine if source=='bench' else simulation,unit=unit,kind='analog' if kind=='analog' else 'discrete',coordinate_unit='min',
                                   dataset_id=reference.id if source=='sim' else bench.id,group='Comparison',
-                                  attributes={**template_attrs,'source_column':column or spec['key'],'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital',**({'reference_calibration_verified':ComparisonEngine._calibration_flags(curves.get(spec['key']))['calibration_verified'],'values_estimated_from_pixels':image} if source=='sim' else {})}))
+                                  attributes={**template_attrs,**(pressure_trust if source=='bench' else {}),'source_column':column or spec['key'],'parameter':spec['key'],'comparison_source':source,'signal_kind':kind,'actuator_command':spec['key']=='heater_power' and source=='bench' and entries['bench_kind']=='digital',**({'reference_calibration_verified':ComparisonEngine._calibration_flags(curves.get(spec['key']))['calibration_verified'],'reference_time_verified':ComparisonEngine._calibration_flags(curves.get(spec['key']))['x_calibration_verified'],'reference_type':'image' if image else 'table','values_estimated_from_pixels':image} if source=='sim' else {})}))
             if spec['key'] in curves:add_table(store,spec['label']+' reference',curves[spec['key']],simulation,'Sim_'+spec['key'])
         from app_reporting import match_scorecard
         add_table(store,'Comparison scorecard',match_scorecard(score),sheet='Scorecard_Summary')
@@ -179,6 +185,7 @@ def compare_recordings(machine,simulation,*,reference_settings=None,calibration=
 def load_reference(path,settings=None,calibration=None):
     """Open a simulation CSV/ZIP/image without requiring a bench recording."""
     from app_simulation import load_simulation_reference,specs_for_curves
+    from app_comparator import ComparisonEngine
     image=Path(path).suffix.lower() in ('.png','.jpg','.jpeg','.bmp','.tif','.tiff')
     if image:
         from app_reference_image import SimulationImageAnalyzer
@@ -192,7 +199,7 @@ def load_reference(path,settings=None,calibration=None):
             if curve is None or curve.empty:continue
             store.add(Channel(spec['label'],curve['time_min'].to_numpy(float),curve['value'].to_numpy(float),unit=spec['unit'],
                               kind='analog' if spec['kind']=='analog' and not spec.get('step') else 'discrete',coordinate_unit='min',dataset_id=source.id,source=str(path),
-                              attributes={'parameter':spec['key'],'signal_kind':spec['kind'],'reference_type':'image' if image else 'table'}))
+                              attributes={'parameter':spec['key'],'signal_kind':spec['kind'],'reference_type':'image' if image else 'table','reference_calibration_verified':ComparisonEngine._calibration_flags(curve)['calibration_verified'],'reference_time_verified':ComparisonEngine._calibration_flags(curve)['x_calibration_verified'],'values_estimated_from_pixels':image,'underlying_source_unit':curve.attrs.get('source_unit','unknown')}))
         add_table(store,'Reference quality',adapter.report_dataframe(),sheet='Image_Trace_Quality' if image else 'CSV_Trace_Quality')
         add_table(store,'Reference details',metadata_frame(adapter.analysis_info()),sheet='Image_Calibration' if image else 'CSV_Units')
         if hasattr(adapter,'file_report'):

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from test_dual_distribution_updates import workspace,native_restart_stub
 from app_installation import installed_root
 from app_updates import RELEASES,INSTALLER_MANIFEST_URL,validate_manifest,check_latest,import_offline_update,launch_installer
 
@@ -74,11 +75,12 @@ class InstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);download=root/'setup.exe';download.write_bytes(b'setup')
             install=root/"User's App";old=install/'versions/2.3.2/ApplianceSignalStudio.exe'
-            with patch('sys.platform','win32'),patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_installed_updates.subprocess.Popen') as launch:
-                launch_installer(download,root/'restore.json',root,package()['sha256'],manifest=package())
-                script=(root/'install-setup-update.ps1').read_text(encoding='utf-8-sig')
+            old.parent.mkdir(parents=True);old.write_bytes(b'previous-runtime');recovery=workspace(root/'snapshot')
+            with patch('sys.platform','win32'),patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_update_launcher.subprocess.Popen') as launch:
+                launch_installer(download,recovery,root,package()['sha256'],manifest=package())
+                script=next((root/'transactions').rglob('install-setup-update.ps1')).read_text(encoding='utf-8-sig')
                 self.assertIn("User''s App",script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('$setup.ExitCode',script)
-                self.assertNotIn('Move-Item',script);self.assertIn('FilePath $previous',script)
+                self.assertNotIn('Move-Item',script);self.assertIn('FilePath $previous',script);self.assertIn('Start-AndConfirm',script)
                 self.assertEqual(launch.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'],'1')
 
     @unittest.skipUnless(sys.platform=='win32','Native installed-update transaction is exercised on Windows CI')
@@ -88,15 +90,16 @@ class InstallerTests(unittest.TestCase):
             root=Path(directory);download=root/'setup.exe';download.write_bytes(b'setup');install=root/"User's App"
             old=install/'versions/2.3.2/ApplianceSignalStudio.exe';new=install/'versions/2.3.3/ApplianceSignalStudio.exe'
             for file in (old,new):file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'runtime')
+            recovery=workspace(root/'snapshot')
             for fail in (False,True):
-                with patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('app_installed_updates.subprocess.Popen'):
-                    launch_installer(download,root/'restore.json',root,package()['sha256'],manifest=package())
+                with patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('app_update_launcher.subprocess.Popen'):
+                    transaction=launch_installer(download,recovery,root,package()['sha256'],manifest=package())
                 restart=root/'restart.txt';wrapper=root/'exercise.ps1'
-                wrapper.write_text("function Wait-Process {}\nfunction Start-Process { param($FilePath,$ArgumentList,[switch]$Wait,[switch]$PassThru)\nif ($Wait) { return [pscustomobject]@{ExitCode="+('1' if fail else '0')+"} }\nSet-Content -LiteralPath "+ps_quote(restart)+" -Value $FilePath\n}\n. "+ps_quote(root/'install-setup-update.ps1'),encoding='utf-8-sig')
+                wrapper.write_text(native_restart_stub(restart,fail=fail,setup=True)+". "+ps_quote(transaction['script']),encoding='utf-8-sig')
                 result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(wrapper)],capture_output=True,text=True,timeout=30)
                 self.assertEqual(result.returncode,0,result.stderr)
                 started=Path(restart.read_text(encoding='utf-8-sig').strip())
-                transaction=root/'setup-update.log'
-                details=transaction.read_text(encoding='utf-16',errors='replace')[-2400:] if transaction.exists() else 'No transaction error log'
-                self.assertTrue(started.samefile(old if fail else new),f'fail={fail}; started={started}; expected={old if fail else new}; transaction={details}; stderr={result.stderr}')
+                outcome=json.loads((transaction['directory']/'transaction.json').read_text(encoding='utf-8-sig'))
+                self.assertTrue(started.samefile(old if fail else new),outcome)
+                self.assertEqual(outcome['status'],'recovered-previous' if fail else 'ready',outcome)
                 self.assertEqual(old.read_bytes(),b'runtime')

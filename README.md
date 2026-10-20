@@ -1,11 +1,11 @@
-# Appliance Signal Studio 2.3.2
+# Appliance Signal Studio 2.4.0
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
 **Windows installer: [Download Setup v2.3.2](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.3.2/ApplianceSignalStudio-Setup-2.3.2.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Portable downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.3.2) · [User manual](manuals/v2.3.2.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. [Native verification](docs/validation/release-v2.3.2.json) passed; existing UI/report audit limitations remain documented.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Downloads above remain the verified v2.3.2 release while v2.4.0 native builds run. The [v2.4.0 implementation record](docs/RELEASE_2.4.0.md) tracks the approved audit improvements and verification; source/offscreen checks do not establish native release acceptance.
 
 Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy and current update gaps](docs/DUAL_DISTRIBUTION_POLICY.md), and the [audit improvement approval checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md) before implementing the next changes.
 
@@ -156,17 +156,17 @@ the interpretation and original numeric codes; source tables stay unchanged.
 The existing app icon is now assigned to the Qt application/window and the
 Windows taskbar identity, in addition to being embedded in the executable.
 
-### Updates and the Info tab (2.1.5)
+### Updates and recovery
 
-Open **Info** for the offline user manual and select a version. Choose **Check for updates → Download update → Install update & restart** to move to the latest stable GitHub release. The app verifies the SHA-256 checksum, saves a recovery workspace, keeps the previous EXE as a backup and restores your workspace after restarting. Update checks are manual and never upload recordings. Cancellation or a failed download leaves the installed app unchanged. Automatic installation requires the Windows app in a writable folder; source users update their checkout as usual.
+Open **About → About / Updates** and choose **Check for updates → Download update → Install update & restart**. Installed Setup, standalone EXE and complete standalone ZIP use matching verified feeds. Preparation saves independent recovery JSON/NPZ, stages the correct package in a worker and verifies the actual restored new startup; recovery runtimes remain available. Cancellation/failed preparation preserves the current app. Update checks never upload recordings. Use **About → User Manual** or F1 for the separate searchable version manual. Source users update their checkout as usual.
 
-The 2.1.4 app needs one manual upgrade to 2.1.5 to gain the updater. Public, non-expiring downloads are published under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests and both frozen-app checks pass. Future releases must increment `app_version.py`, Windows version metadata and the bundled manual. CI creates `update.json` from the exact tested EXE and publishes it with the release; an already published version is immutable.
+Older ZIP builds need one full v2.4.0 ZIP download/extraction to gain folder-preserving updates; retain the old folder and outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.4.0.md).
 
 ## TDMS recordings and mouse X/Y hover (2.1.6)
 
 **Open** now accepts `.tdms` directly, including LabSys `dTime / Value / Status` groups and NI waveform channels. Each measurement keeps its own timestamps and sample count; time is displayed in minutes. Declared engineering units, source metadata and quality flags are retained. Invalid-quality points remain unknown. Existing engineering values are not scaled a second time, and metadata expressions are never executed. Undeclared units remain editable in Properties. The reader is bundled: no NI installation is required.
 
-Move the mouse over a plot for a live crosshair, pointer X/Y coordinates on the independent axis scales, and the nearest trace's actual sample time/value/unit. Hovering leaves A/B cursors and their locks unchanged. State traces show ON/OFF; hover guides disappear outside the plot and stay out of saved reports. The reader was checked against the supplied 27-channel recording (305,779 measurements, approximately 232.37 minutes), with source-value comparisons, workspace restoration and PDF/PNG/CSV exports. Uploaded recordings are not included in the repository or executable.
+Move the mouse over a plot for a live crosshair, pointer X/Y coordinates on the independent axis scales, and the nearest trace's actual sample time/value/unit. Hovering leaves A/B cursors and their locks unchanged. State traces show ON/OFF; hover guides disappear outside the plot and stay out of saved reports. The reader was checked against the supplied 27-channel recording (305,779 measurements, approximately 232.37 minutes), with source-value comparisons, workspace restoration and PDF/PNG/CSV exports. Approved reusable fixtures are committed under tests/samples/recordings; raw measurement fixtures are not bundled in executables.
 
 TDMS also works in recording alignment and bench comparison. Those workflows use a derived union of the recorded timestamps, carrying only earlier readings for at most five seconds (the synchronization engine’s existing tolerance). The direct Analysis view keeps the native channel clocks. Alignment retains the untouched TDMS source table separately from this synchronized projection.
 
@@ -180,7 +180,7 @@ Maintain the manuals in `manuals/feature-guide.md` (each topic includes its firs
 
 ### Current status and future reference
 
-See [application status, user requirements, real-file audit and maintenance reference](docs/APP_STATUS_AND_REFERENCE.md) for the v2.1.9 recording-removal/TDMS-template/output-folder work, reproducible test commands, confirmed fixes, expected data limitations and release verification. Raw uploaded recordings and generated measurement outputs are not stored in this repository.
+See the [current v2.4.0 implementation/verification record](docs/RELEASE_2.4.0.md), [full manual](manuals/v2.4.0.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
 
 ### Desktop finalization (v2.2.0)
 
@@ -218,3 +218,5 @@ The [v2.3.1 UI retest](docs/audits/2026-10-18-v2.3.1-retest/README.md) includes 
 ### Real-recording user workflow audit (18 October 2026)
 
 [Findings, screenshots and reproducible evidence](docs/audits/2026-10-18-real-user-workflows/README.md) document unresolved time-lock, cursor, context-menu and graph-header issues. [Reusable original test recordings](tests/samples/recordings/README.md) are committed with SHA-256 verification. [Latest user acceptance requirements](docs/USER_WORKFLOW_ACCEPTANCE.md) supersede older global-toolbar placement criteria.
+
+The [approved v2.4.0 implementation](docs/RELEASE_2.4.0.md) addresses those source-level findings and the [engineering PDF review](docs/audits/2026-10-18-engineering-pdf-usefulness-review.md). Dated audits remain historical evidence; follow the release record for final acceptance status and limitations.

@@ -126,13 +126,20 @@ def entry_main():
     parser = argparse.ArgumentParser(description='Appliance Signal Studio')
     parser.add_argument('--self-test',action='store_true')
     parser.add_argument('--installation-check',action='store_true')
+    parser.add_argument('--acceptance-check',action='store_true')
+    parser.add_argument('--samples',type=Path)
+    parser.add_argument('--output',type=Path)
     parser.add_argument('--report',type=Path)
     parser.add_argument('--restore',type=Path,help='Restore a recovery workspace after an update')
+    parser.add_argument('--update-request',type=Path,help=argparse.SUPPRESS)
     args = parser.parse_args()
     report = args.report.resolve() if args.report else None
-    if args.self_test or args.installation_check:
+    if args.self_test or args.installation_check or args.acceptance_check:
         try:
-            if args.installation_check:
+            if args.acceptance_check:
+                from app_release_acceptance import run_acceptance
+                result = run_acceptance(args.samples, args.output or Path(tempfile.mkdtemp(prefix='signal-acceptance-')))
+            elif args.installation_check:
                 from app_installation import installation_check
                 result = installation_check()
             else:
@@ -151,7 +158,10 @@ def entry_main():
         from main import run
         return run()
     except Exception:
-        startup_error(traceback.format_exc())
+        details=traceback.format_exc()
+        from app_update_transaction import acknowledge_failure
+        acknowledge_failure(details)
+        if not args.update_request:startup_error(details)
         return 1
 
 

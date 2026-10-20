@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "version": "2.4.0",
+  "status": "source verified; native Windows verification pending",
+  "source_base_commit": "7dd90747b7e6e6c85fbe0d955e4703af630e7c16",
+  "platform": "linux",
+  "qt_platform": "offscreen",
+  "frozen": false,
+  "approved_scope": "All A-H; optional I1-I3 excluded",
+  "unit_tests": {
+    "discovered": 364,
+    "passed": 362,
+    "skipped": 2,
+    "errors": 0,
+    "failures": 0,
+    "seconds": 146.971,
+    "skip_reason": "Native Windows only"
+  },
+  "source_smoke": {
+    "passed": true,
+    "version": "2.4.0",
+    "frozen": false
+  },
+  "real_recording_acceptance": {
+    "passed": 42,
+    "total": 42,
+    "application_or_runner_errors": 0,
+    "expected_safety_rejections": 7,
+    "combinations": 15,
+    "inputs": [
+      {
+        "role": "tdms",
+        "filename": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+        "bytes": 6771896,
+        "sha256": "328bea1d56b1942d6aa90ccfea01874d2d12cd23c62a4d0f92ce2ac762ecb99f",
+        "channels": 27,
+        "source_rows": [
+          11363
+        ]
+      },
+      {
+        "role": "power",
+        "filename": "Cotton 60 label with IEC 4kg load PD T-3.CSV",
+        "bytes": 2405437,
+        "sha256": "dd18f9d61878dcecf237cbc824452d7a1d8925bede965fe67d3bb74e993f9f20",
+        "channels": 11,
+        "source_rows": [
+          15898
+        ]
+      },
+      {
+        "role": "machine",
+        "filename": "Cotton 60 label with 4kg IEC load RD T-3 (1).csv",
+        "bytes": 5515475,
+        "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558",
+        "channels": 24,
+        "source_rows": [
+          57494
+        ]
+      },
+      {
+        "role": "simulation",
+        "filename": "SB30LF0_Cottons_VT0022_var4_7000g_20260731_1332_800RPM_40deg_Standard_R027_0000002_simulated_values.csv",
+        "bytes": 16759584,
+        "sha256": "0e857e07a7cb5dba6aab3b471801f7f62586c8d409fd6580a463beacbcab339d",
+        "channels": 29,
+        "source_rows": [
+          106148
+        ]
+      }
+    ]
+  },
+  "original_workflow_diagnostic": {
+    "passed": 20,
+    "total": 20,
+    "application_or_runner_errors": 0,
+    "expected_irregular_clock_rejections": 1
+  },
+  "engineering_report": {
+    "report_id": "bcc63d25104c43bd8b52e81e5a63d04a",
+    "pdf_pages": 10,
+    "expected_pages": 10,
+    "event_records": 30613,
+    "event_ids_unique": 30613,
+    "event_categories": {
+      "Data Quality": 30613
+    },
+    "event_groups": 31,
+    "run_scope": "whole_recording",
+    "source_hashes": [
+      {
+        "source": "tests/samples/recordings/Cotton 60 label with 4kg IEC load RD T-3 (1).csv",
+        "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558",
+        "method": "SHA-256 source file"
+      }
+    ],
+    "readiness": {
+      "calculation": "Complete",
+      "usable_results": 1,
+      "total_results": 31,
+      "data_adequacy": "Needs review",
+      "acceptance": "Not Evaluated",
+      "top_blockers": [
+        {
+          "result_id": "total_energy",
+          "name": "Integrated energy",
+          "state": "Missing source",
+          "reason": "No source selected for canonical role power",
+          "next_action": "Add the required recording or review its channel mapping in Engineering Setup",
+          "usable": false,
+          "acceptance": "Not Evaluated"
+        },
+        {
+          "result_id": "average_power",
+          "name": "Average power",
+          "state": "Missing source",
+          "reason": "No source selected for canonical role power",
+          "next_action": "Add the required recording or review its channel mapping in Engineering Setup",
+          "usable": false,
+          "acceptance": "Not Evaluated"
+        },
+        {
+          "result_id": "peak_power",
+          "name": "Peak power",
+          "state": "Missing source",
+          "reason": "No source selected for canonical role power",
+          "next_action": "Add the required recording or review its channel mapping in Engineering Setup",
+          "usable": false,
+          "acceptance": "Not Evaluated"
+        }
+      ]
+    },
+    "files": {
+      "Summary.pdf": 1357743,
+      "Summary.evidence.xlsx": 4055272,
+      "Summary.evidence.json": 68345839,
+      "Summary.events.csv": 20008607
+    }
+  },
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "limits": [
+    "Source/offscreen verification does not certify native Windows packages or update transactions.",
+    "Physical calibration, manufacturer phase mappings and acceptance thresholds remain configurable and are not invented.",
+    "Complete generated measurement outputs are not committed."
+  ]
+}

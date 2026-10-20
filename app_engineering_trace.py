@@ -4,12 +4,14 @@ from app_engineering_units import seconds,convert,calibrated
 
 
 class Trace:
-    def __init__(self,channel,target=None,calibration=None,max_gap_seconds=None,offset=0,source_unit=None):
+    def __init__(self,channel,target=None,calibration=None,max_gap_seconds=None,offset=0,source_unit=None,acquisition_policy=None):
         self.channel=channel;self.kind=channel.kind;self._stats_cache={}
+        self.acquisition_policy=dict(acquisition_policy or {})
+        self.gap_policy="Configured gap threshold" if max_gap_seconds is not None else "Conservative fallback: 3 × median positive sample interval"
         t=seconds(channel)+offset;y=channel.values()[1]
         # Last duplicate is the established cursor convention. Original arrays are untouched.
         keep=np.r_[np.diff(t)>0,True] if len(t) else np.array([],bool)
-        self.raw_t=t;self.raw_y=y;self.unit=target or source_unit or channel.unit;source_unit=source_unit if source_unit is not None else channel.unit
+        self.raw_t=t;self.raw_y=y;self.raw_indices=np.arange(len(t));self.unit=target or source_unit or channel.unit;source_unit=source_unit if source_unit is not None else channel.unit
         if calibration:
             if not calibration.get('input_unit'):raise ValueError('Calibration must declare its input unit')
             self.raw_y=calibrated(convert(y,source_unit,calibration['input_unit']),calibration,self.unit)
@@ -25,8 +27,24 @@ class Trace:
         if target in self._unit_views:return self._unit_views[target]
         import copy
         converted=copy.copy(self);converted.y=convert(self.y,self.unit,target);converted.raw_y=convert(self.raw_y,self.unit,target);converted.unit=target;converted._stats_cache={};converted._unit_views={}
+        if hasattr(self,'cursor_source'):converted.cursor_source=self.cursor_source.to_unit(target)
         self._unit_views[target]=converted
         return converted
+
+    def scoped(self,start,end):
+        """Copy a bounded projection; never invent support inside a missing gap."""
+        import copy
+        a,b=sorted((float(start),float(end)));result=copy.copy(self)
+        result.t,result.y=self.window(a,b)
+        left=np.searchsorted(self.raw_t,a,side='left');right=np.searchsorted(self.raw_t,b,side='right')
+        result.raw_t=self.raw_t[left:right];result.raw_y=self.raw_y[left:right]
+        # Cursor locks refer to the original source observation, even when the
+        # report interval keeps only a subset of those observations.
+        result.raw_indices=self.raw_indices[left:right]
+        result.cursor_source=getattr(self,'cursor_source',self)
+        result.duplicates=int(len(result.raw_t)-len(np.unique(result.raw_t)))
+        result._stats_cache={};result._quality_cache={};result._unit_views={}
+        return result
 
     def sample(self,points):
         points=np.asarray(points,float);out=np.full(points.shape,np.nan)
@@ -70,10 +88,10 @@ class Trace:
         key=(start,end)
         if key in self._stats_cache:return self._stats_cache[key]
         t,y=self.window(start,end)
-        if not len(t):return {'coverage':0.,'duration_s':0.,'samples':0}
+        if not len(t):return {'coverage':0.,'duration_s':max(0.,float(end-start)) if start is not None and end is not None else 0.,'known_s':0.,'samples':0}
         from app_signal_processing import interval_moments
         area,square,d,valid=interval_moments(t,y,self.kind);valid&=d<=self.max_gap
-        covered=float(d[valid].sum());duration=float(t[-1]-t[0]);left=np.searchsorted(self.raw_t,t[0],side='left');right=np.searchsorted(self.raw_t,t[-1],side='right')
+        covered=float(d[valid].sum());duration=max(0.,float((end if end is not None else t[-1])-(start if start is not None else t[0])));left=np.searchsorted(self.raw_t,t[0],side='left');right=np.searchsorted(self.raw_t,t[-1],side='right')
         readings=np.r_[y,self.raw_y[left:right]];finite=readings[np.isfinite(readings)];timed=y[np.isfinite(y)]
         integral=float(area[valid].sum());square=float(square[valid].sum());mean=integral/covered if covered else np.nan
         centered_square=interval_moments(t,y-mean,self.kind)[1]
@@ -83,3 +101,41 @@ class Trace:
         if len(timed):result.update(first=float(timed[0]),last=float(timed[-1]))
         self._stats_cache[key]=result
         return result
+
+
+    def quality(self,start=None,end=None):
+        """Disclose acquisition assumptions independently of numerical KPI status.
+
+        Duplicates are counted from original observations, not the timing projection.
+        Unsupported intervals never contribute to duration or integral totals.
+        """
+        cache=getattr(self,'_quality_cache',{})
+        key=(start,end)
+        if key in cache:return {**cache[key],'quality_flags':list(cache[key]['quality_flags'])}
+        stats=self.stats(start,end)
+        a=self.raw_t[0] if start is None and len(self.raw_t) else start
+        b=self.raw_t[-1] if end is None and len(self.raw_t) else end
+        a,b=(0.,0.) if a is None or b is None else (float(a),float(b))
+        left=np.searchsorted(self.raw_t,a,side='left');right=np.searchsorted(self.raw_t,b,side='right')
+        raw_t=self.raw_t[left:right];raw_y=self.raw_y[left:right]
+        unique=np.unique(raw_t);d=np.diff(unique)
+        flags=[]
+        coverage=float(stats.get('coverage',0.))
+        duplicates=int(len(raw_t)-len(unique));missing=int((~np.isfinite(raw_y)).sum())
+        gap_count=int((d>self.max_gap).sum())
+        if coverage<1-1e-9:flags.append('Partial coverage')
+        if duplicates:flags.append('Duplicate timestamps')
+        if missing:flags.append('Missing readings')
+        if gap_count:flags.append('Unsupported gaps')
+        if not self.acquisition_policy.get('reviewed',False):flags.append('Acquisition policy not reviewed')
+        result={'observed_span_s':float(unique[-1]-unique[0]) if len(unique)>1 else 0.,
+                'requested_span_s':max(0.,b-a),'supported_duration_s':float(stats.get('known_s',0.)),
+                'coverage':coverage,'duplicate_timestamps':duplicates,'missing_readings':missing,
+                'recorded_samples':int(len(raw_t)),'gap_count':gap_count,'gap_threshold_s':self.max_gap,
+                'acquisition_policy':self.acquisition_policy.get('name') or self.gap_policy,
+                'policy_reviewed':bool(self.acquisition_policy.get('reviewed',False)),
+                'duplicate_policy':'Last sample at each timestamp for timing; all source observations retained for peaks',
+                'interval_policy':'No extrapolation; supported analog linear / discrete held intervals only',
+                'quality_flags':flags}
+        cache[key]=result;self._quality_cache=cache
+        return {**result,'quality_flags':list(flags)}

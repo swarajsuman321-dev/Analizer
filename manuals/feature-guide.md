@@ -584,3 +584,63 @@ Application files live under `%LOCALAPPDATA%\Programs\ApplianceSignalStudio\vers
 Choose **About → Updates → Check for updates**. The installed app uses `installer-update.json` and downloads a complete Setup package. **Install update & restart** saves a recovery workspace, closes the app, verifies Setup again and restarts the new runtime. If Setup fails, the previous runtime is restarted. For an offline update, put the matching Setup EXE and `installer-update.json` in one folder and choose **Import offline update**. Portable EXE updates remain supported separately and cannot replace an installed runtime.
 
 To upgrade manually, close the app and run the newer Setup. To uninstall, use **Windows Settings → Apps → Installed apps → Appliance Signal Studio → Uninstall**. Uninstall removes only tracked application files and shortcuts. It preserves settings, templates, reports, workspaces and unowned files; delete personal data separately only when you intend to. Keep saved workspaces and source recordings outside application-version folders.
+
+## Reviewed recording identity and safe removal | 2.4.0
+
+With more than one recording loaded, legends, Readout, hover details, cursor selectors and reports show a short unique recording alias beside each channel. Full original identities remain available in tooltips and evidence exports. The Readout caption identifies the active pane; selecting another pane changes the inspected channels without losing other panes' traces.
+
+Each file retains its own Select All / Deselect All checkbox. When filtering, use the separately labelled filtered-channel actions to affect matching channels only; file-wide actions still mean the complete file. Counts disclose matching/total channels. Invalid regular expressions display an explanation and no matching channel results until corrected. File roots and Close Dataset remain available. Switch to ordinary search when regular expressions are unnecessary.
+
+Close Dataset keeps original files. If derived channels depend on that dataset, review the affected counts and expandable channel list before confirming. **Channel → Undo Dataset Removal** restores the last unload and its stable data/plot/cursor identities. New work created after the unload remains. Undo is an in-memory recovery action, not a replacement for saving a workspace, and does not survive closing the application.
+
+## Graph header, pane menu and precise cursors | 2.4.0
+
+Use the single navigation set beside **Analysis / Comparison**. At narrow widths, open its overflow menu to reach remaining controls. Toolbar, Tools menu, pane menu and shortcuts share commands and mode state. **Zoom X** changes only time, **Zoom Y** only values and **Zoom XY** both; magnifiers and mouse gestures respect the selected mode. **Hand / Pan** drags the view; **Esc** returns to Hand/Pan. Reset View fits data; **Revert Zoom** restores the preceding view instead.
+
+Right-click the pane to inspect Cursor, Hand/Pan, X/Y/XY zoom, Revert, comments/move comments, Copy Chart and export. Cycle snapping is unavailable until reviewed cycle boundaries exist; it does not guess appliance phases. Frequency analysis uses the supported FFT operation with explicit clock validation rather than a framework transform of every plot item.
+
+**Lock Time Axes** immediately adopts the active pane's numeric bounds for compatible temporal panes and preserves them through zoom, pan, resize, themes, layout changes and restore. Disable it for independent windows. This does not align physical recording events or shift original timestamps. Frequency/histogram/sample domains stay separate.
+
+Cursor A is cyan `#00D2FF`; Cursor B is orange `#FF9F1C`. Choose a lock channel to identify an actual source row, then drag or step samples. Even at equal timestamps with different values, marker, Readout, pinned card and exports refer to the same locked row. Other channels are sampled at that time according to their supported interpolation/state policy. Crossed cursor HUDs show positive spans; detailed signed differences remain available. Split views allocate usable drawing space and scroll when necessary, rather than crushing traces.
+
+## Compact forms, unit definitions and processing requirements | 2.4.0
+
+Simple forms show required fields and actions first. Expand **Help** for optional explanations; it is reachable by keyboard. Long selectors elide display text but preserve the full selected identity in tooltips and accessible descriptions. Larger mapping/TDMS tables remain resizable and scrollable.
+
+**Define Local Unit** has separate Symbol, Reference Unit and Scale fields. One value in the new unit equals Scale values in the reference unit: for mW relative to W enter 0.001. This defines a conversion, not a sensor calibration. Custom properties use a key/value editor; **Advanced JSON Editor** remains available for nested expert editing. Invalid edits are retained for correction without changing the channel.
+
+For signal processing, select one source channel and review its requirements before Apply. Spectral operations display sample rate, Nyquist frequency and valid filter range. Duplicates, irregular clocks and missing/masked support require explicit reviewed resampling or another suitable operation; changing cutoff alone cannot fix an irregular clock. Unknown physical units remain labelled unknown and cannot imply energy or other engineering quantities.
+
+Long operations show file/stage progress and Cancel Operation. Cancellation takes effect at safe checkpoints; a compression/writer/native numerical step may finish first. Cancelled calculations are not added, and cancelled exports do not replace the previous complete output. Normal Save/Restore and quick exports run in workers. Once an atomic output commit has completed, the completed file is retained and reported accurately. **Open File / Open Folder** appears after a successful quick export.
+
+## Engineering readiness and supported-time results | 2.4.0
+
+1. Open **Engineering Setup**, select profile and run roles, then **Review Channel Mapping**.
+2. Confirm the actual physical role and logger unit. Target/command speed differs from actual/feedback speed. Choose the correct source; ambiguous proposals do not become accepted actual-speed results. Pressure pulse time needs a verified calibration before becoming pressure.
+3. Check **Reviewed Role / Unit** only after review. Confirmed mappings persist; changing a friendly display name alone is not calibration evidence. Unknown units, ambiguous mappings and unsupported conversions block affected conclusions with an actionable reason.
+4. Configure phases, calibration, test metadata and acceptance limits from your test plan; no manufacturer codes or limits are invented.
+5. Analyze Engineering Data and inspect Readiness, Source Review and Timing Quality before interpreting KPIs.
+
+Timing results show recorded span, supported duration/coverage, duplicate and missing counts, the effective gap rule and its acquisition policy. The conservative fallback uses three times the median positive interval; confirm an explicit acquisition policy where appropriate. This is not a universal coverage acceptance threshold. Supported-time actuator/integration totals do not assert a complete-cycle total. Missing intervals never become known OFF time or zero energy. Duplicate and partial-coverage flags remain visible together.
+
+Data Quality, Rule Evaluation and Appliance Events are separate. Sampling gaps do not prove a motor/appliance fault. Missing rule inputs remain Not Evaluated. A peak observed sample, elapsed-time quantity and formal acceptance need different adequacy checks. Filename load/program hints are not reviewed test metadata or evidence of compliance.
+
+## Concise PDF and complete report evidence | 2.4.0
+
+Choose **Generate Engineering Report**, review the explicit whole-recording/cursor/both scope and expected PDF length, then choose the output. The audited regression fixture produces a ten-page default summary across four main sections. Event count alone does not expand that summary; an explicitly checked complete event appendix can add many pages. Summary tables identify any displayed subset and direct you to complete evidence. Use readable pagination rather than shrinking text to force exactly four pages.
+
+The PDF explains readiness, usable results, blockers and next actions; reviewed source roles, timing coverage, plots, KPIs and grouped events follow. The grouped view reports counts, interval-union affected time, longest interval, first/last times and representative event IDs. Grouping never merges or deletes the original evidence.
+
+For a PDF named `Test.pdf`, keep `Test.evidence.xlsx`, `Test.events.csv` and `Test.evidence.json` beside it. They share the report ID and preserve every original event/KPI, mappings, definitions, source fingerprints and full configuration. The complete workbook retains its nine sheets. Shareable PDF metadata uses basenames instead of absolute workstation paths; the local evidence package retains full provenance. All files are staged before publication, with previous outputs restored if bundle publication fails.
+
+Whole Recording is the default engineering scope. Active Cursor Interval and Both recompute timing-dependent results and comparisons consistently for the selected interval; displayed A/B values preserve locked sample identity. Unavailable required results retain reasons and corrective actions. Never interpret a deviation color as an acceptance verdict without configured limits.
+
+## Installed and standalone updates together | 2.4.0
+
+Installed Setup, standalone EXE and standalone ZIP/folder builds share the same code, features, version and manual. About / Updates identifies the edition and actual settings/output locations. Matching feeds are `installer-update.json`, `update.json` and `zip-update.json` respectively. Offline import requires the matching manifest and payload; changing edition is a deliberate separate installation, not an update side effect.
+
+Updates stage verified complete payloads, save separate recovery JSON/NPZ snapshots, and wait for the old application to close. A visible new application restores the recovery workspace and acknowledges its version and executable path. Failure keeps the previous runtime and valid recovery snapshot. Complete ZIP updates replace the executable and `_internal` together, retaining unrelated files and measurements. Installed late-startup failure restarts the prior runtime; the recovery log explains when rerunning its previous official Setup is necessary to restore installation shortcuts/registration fully.
+
+**One-time older ZIP migration:** v2.3.2 and earlier folder builds predate the ZIP update feed. Download the full v2.4.0 ZIP once, extract it into a separate writable folder and launch its EXE; retain the old folder and existing outputs until verified. Subsequent folder updates use the new complete-runtime mechanism. Older installed/onefile builds can use their matching existing update routes or a manual official download.
+
+User settings/templates and outputs stay outside runtime replacements. Standalone and installed copies may coexist; updating one does not delete another supported edition or its backup. Keep saved source data outside runtime-version folders and retain recovery copies until you choose to remove them. This unsigned release may still require your organization's normal publisher approval.

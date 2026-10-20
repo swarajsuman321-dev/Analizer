@@ -1,6 +1,7 @@
 """Hierarchical channel browser with stable-ID drag and selection."""
 import re
 from PySide6 import QtCore,QtWidgets,QtGui
+from app_channel_identity import channel_details,dataset_aliases
 
 
 class ChannelTree(QtWidgets.QTreeWidget):
@@ -24,10 +25,16 @@ class ChannelPortal(QtWidgets.QWidget):
         layout=QtWidgets.QVBoxLayout(self)
         row=QtWidgets.QHBoxLayout();self.search=QtWidgets.QLineEdit();self.search.setPlaceholderText('Filter name, unit, source, properties…')
         self.regex=QtWidgets.QCheckBox('Regular expression');row.addWidget(self.search);row.addWidget(self.regex);layout.addLayout(row)
+        self.search_error=QtWidgets.QLabel();self.search_error.setWordWrap(True)
+        self.search_error.setAccessibleName('Search error');self.search_error.hide();layout.addWidget(self.search_error)
+        self.search.setAccessibleName('Filter channels')
         self.tree=ChannelTree();self.tree.setHeaderLabels(['Channel','Unit','Kind','File actions']);self.tree.setColumnHidden(2,True)
         self.tree.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.tree.setDragEnabled(True);self.tree.setMinimumWidth(380);self.tree.setIndentation(16);self.tree.setColumnWidth(0,240);self.tree.setColumnWidth(1,65)
+        self.tree.setDragEnabled(True);self.tree.setMinimumWidth(300);self.tree.setIndentation(16);self.tree.setColumnWidth(0,240);self.tree.setColumnWidth(1,65)
         self.tree.header().setStretchLastSection(False)
+        # File actions must not squeeze the check indicator out of the first
+        # column when filtering adds a second button in a narrow dock.
+        self.tree.header().setMinimumSectionSize(64)
         self.tree.header().setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.tree.header().setSectionResizeMode(1,QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.tree.header().setSectionResizeMode(2,QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -55,28 +62,33 @@ class ChannelPortal(QtWidgets.QWidget):
 
     def rebuild(self,*args):
         self.remove_button.setEnabled(bool(self.store.datasets));self.clear_button.setEnabled(bool(self.store.datasets or self.store.channels))
-        selected=set(self.selected());query=self.search.text();regex=None
+        selected=set(self.selected());query=self.search.text();regex=None;error=None
         try:
             if self.regex.isChecked():regex=re.compile(query,re.I)
-        except re.error:
-            self.search.setStyleSheet('border:1px solid #ff8096');return
-        self.search.setStyleSheet('');self.tree.blockSignals(True);self.tree.clear();groups={};datasets={};self.dataset_roots=datasets
+        except re.error as exc:
+            error=f'Invalid expression: {exc}. Fix the expression, clear the filter, or turn off Regular expression. No matching results are shown.'
+        self.search.setStyleSheet('border:1px solid #ff8096' if error else '')
+        self.search.setAccessibleDescription(error or 'Filters channels by name, unit, source and properties')
+        self.search_error.setText(error or '');self.search_error.setVisible(bool(error));self.filter_valid=not error
+        self.tree.blockSignals(True);self.tree.clear();groups={};datasets={};self.dataset_roots=datasets
+        self.filtered_ids={id:[] for id in self.store.datasets};self.filter_buttons={}
+        for c in self.store.channels.values():self.filtered_ids.setdefault(c.dataset_id,[])
+        matches=[]
         for c in self.store.channels.values():
             metadata=' '.join([c.name,c.unit,c.kind,c.source,str(c.attributes)])
-            if query and not (regex.search(metadata) if regex else query.casefold() in metadata.casefold()):continue
-            if c.dataset_id not in datasets:
-                root=self.add_dataset_root(c.dataset_id);datasets[c.dataset_id]=root
+            if error or (query and not (regex.search(metadata) if regex else query.casefold() in metadata.casefold())):continue
+            self.filtered_ids[c.dataset_id].append(c.id);matches.append(c)
+        # Keep source roots and Close Dataset reachable even when no channel matches.
+        for dataset_id in self.filtered_ids:
+            datasets[dataset_id]=self.add_dataset_root(dataset_id)
+        for c in matches:
             key=(c.dataset_id,c.group)
             if key not in groups:
                 groups[key]=QtWidgets.QTreeWidgetItem(datasets[c.dataset_id],[c.group])
             item=QtWidgets.QTreeWidgetItem(groups[key],[c.name,c.unit,c.kind]);item.setData(0,QtCore.Qt.ItemDataRole.UserRole,c.id)
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(0,QtCore.Qt.CheckState.Checked if c.id in self.visible_ids else QtCore.Qt.CheckState.Unchecked)
-            item.setToolTip(0,c.name+'\n'+c.source);item.setSelected(c.id in selected)
-        # Source-only datasets remain removable even when they have no traces.
-        if not query:
-            for dataset_id in self.store.datasets:
-                if dataset_id not in datasets:datasets[dataset_id]=self.add_dataset_root(dataset_id)
+            item.setToolTip(0,channel_details(self.store,c));item.setSelected(c.id in selected)
         self.tree.expandAll();self.update_dataset_checks();self.tree.blockSignals(False)
 
     def dataset_channels(self,dataset_id):
@@ -84,15 +96,27 @@ class ChannelPortal(QtWidgets.QWidget):
 
     def add_dataset_root(self,dataset_id):
         ds=self.store.datasets.get(dataset_id)
-        root=QtWidgets.QTreeWidgetItem([ds.name if ds else 'Generated channels'])
+        root=QtWidgets.QTreeWidgetItem([dataset_aliases(self.store).get(dataset_id,'Generated channels')])
         root.setData(0,QtCore.Qt.ItemDataRole.UserRole+1,dataset_id)
         root.setFlags(root.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
         root.setToolTip(0,'Select or deselect channels in this file only'+('\n'+ds.source if ds else ''))
         self.tree.addTopLevelItem(root)
-        if ds:
+        if ds and not self.search.text():
             button=QtWidgets.QPushButton('Close Dataset');button.setToolTip('Unload '+ds.name+'; keep the original file')
             button.clicked.connect(lambda checked=False,id=dataset_id:self.datasetRemovalRequested.emit(id))
             self.tree.setItemWidget(root,3,button)
+        elif ds or self.search.text():
+            container=QtWidgets.QWidget();row=QtWidgets.QHBoxLayout(container);row.setContentsMargins(0,0,0,0);row.setSpacing(3)
+            if self.search.text():
+                filtered=QtWidgets.QPushButton('Select Results');filtered.setEnabled(self.filter_valid and bool(self.filtered_ids.get(dataset_id)))
+                filtered.setAccessibleName('Select filtered results in '+(ds.name if ds else 'Generated channels'))
+                filtered.clicked.connect(lambda checked=False,id=dataset_id:self.toggle_filtered(id))
+                row.addWidget(filtered);self.filter_buttons[dataset_id]=filtered
+            if ds:
+                button=QtWidgets.QPushButton('Close Dataset');button.setToolTip('Unload '+ds.name+'; keep the original file')
+                button.clicked.connect(lambda checked=False,id=dataset_id:self.datasetRemovalRequested.emit(id))
+                row.addWidget(button)
+            self.tree.setItemWidget(root,3,container)
         return root
 
     def update_dataset_checks(self):
@@ -100,8 +124,19 @@ class ChannelPortal(QtWidgets.QWidget):
             ids=set(self.dataset_channels(dataset_id));checked=ids & self.visible_ids
             root.setCheckState(0,QtCore.Qt.CheckState.Checked if ids and checked==ids else QtCore.Qt.CheckState.PartiallyChecked if checked else QtCore.Qt.CheckState.Unchecked)
             label='Deselect All' if ids and checked==ids else 'Select All'
-            ds=self.store.datasets.get(dataset_id);root.setText(0,(ds.name if ds else 'Generated channels')+' — '+label)
-            root.setToolTip(0,(ds.source+'\n' if ds else '')+label+' channels in this file only')
+            ds=self.store.datasets.get(dataset_id);filtered=set(self.filtered_ids.get(dataset_id,[]));matching=len(filtered)
+            count=f'{matching}/{len(ids)} results' if self.search.text() else f'{len(ids)} channels'
+            root.setText(0,dataset_aliases(self.store).get(dataset_id,'Generated channels')+' — '+label+f' · {count} · {len(checked)} plotted')
+            root.setToolTip(0,((ds.name+'\n'+ds.source+'\n') if ds else '')+label+' channels in this file only. '+count+'. File checkbox includes channels hidden by the filter.')
+            if dataset_id in getattr(self,'filter_buttons',{}):
+                button=self.filter_buttons[dataset_id];all_selected=bool(filtered) and filtered<=self.visible_ids
+                button.setText('Deselect Results' if all_selected else 'Select Results')
+                button.setToolTip(('Hide' if all_selected else 'Show')+f' only the {matching} matching channels in this file; other channels keep their current state.')
+
+    def toggle_filtered(self,dataset_id):
+        """Filter selection is deliberately separate from the file-wide checkbox."""
+        ids=self.filtered_ids.get(dataset_id,[])
+        if self.filter_valid and ids:self.visibilityRequested.emit(list(ids),not set(ids)<=self.visible_ids)
 
     def context_menu(self,position):
         item=self.tree.itemAt(position)
@@ -112,6 +147,11 @@ class ChannelPortal(QtWidgets.QWidget):
         menu=QtWidgets.QMenu(self);ids=self.dataset_channels(dataset_id)
         menu.addAction('Select All in This File',lambda:self.visibilityRequested.emit(ids,True))
         menu.addAction('Deselect All in This File',lambda:self.visibilityRequested.emit(ids,False))
+        if self.search.text():
+            filtered=self.filtered_ids.get(dataset_id,[])
+            for label,show in [('Select Filtered Results in This File',True),('Deselect Filtered Results in This File',False)]:
+                action=menu.addAction(label,lambda checked=False,show=show:self.visibilityRequested.emit(list(filtered),show))
+                action.setEnabled(self.filter_valid and bool(filtered))
         menu.addSeparator();menu.addAction('Close Dataset',lambda:self.datasetRemovalRequested.emit(dataset_id))
         menu.exec(self.tree.viewport().mapToGlobal(position))
 

@@ -10,7 +10,9 @@ Confirmed by the user on 18 October 2026: future development must support both t
 - Preserve personal settings, reviewed TDMS mappings, presets, legacy templates, saved workspaces, outputs and source recordings across updates. Retain supported backward migration and recovery mechanisms.
 - Ask before removing or hiding capabilities. Keep both existing standalone download forms; new implementations must not silently drop the ZIP option.
 
-## Present support and remaining gaps — v2.3.2
+## Baseline support and remaining gaps — v2.3.2
+
+This table records the pre-implementation baseline. The approved v2.4.0 source now adds complete ZIP updates, stricter mode isolation and restored-startup acknowledgement; its [implementation and verification record](RELEASE_2.4.0.md) separates completed source checks from native release gates.
 
 | Delivery form | Current package and update path | Existing evidence | Remaining improvement |
 | --- | --- | --- | --- |

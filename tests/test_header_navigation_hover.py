@@ -39,11 +39,14 @@ class HeaderNavigationTests(unittest.TestCase):
         w=self.w;w.resize(1024,768);self.app.processEvents()
         for index,ws in enumerate(w.workspaces):
             w.tabs.setCurrentIndex(index);self.app.processEvents()
-            bar=ws.navigation_bar;self.assertIs(bar.parentWidget(),w);self.assertTrue(bar.isVisible())
+            header=w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner)
+            bar=ws.navigation_bar;self.assertIs(bar.parentWidget(),header);self.assertTrue(bar.isVisible())
             self.assertFalse(w.workspaces[1-index].navigation_bar.isVisible())
             self.assertLess(bar.mapToGlobal(bar.rect().bottomLeft()).y(),ws.active.mapToGlobal(ws.active.rect().topLeft()).y())
+            overflow=bar.findChild(QtWidgets.QToolButton,'qt_toolbar_ext_button')
             for command in ('x','y','xy','pan','reset'):
-                self.assertTrue(bar.widgetForAction(ws.navigation_actions[command]).isVisible())
+                button=bar.widgetForAction(ws.navigation_actions[command])
+                self.assertTrue(button.isVisible() or (overflow is not None and overflow.isVisible()),command+' must be visible or reachable through overflow')
             lock=next(action for action in bar.actions() if action.text()=='Lock Cursors…')
             with patch.object(w.studio,'cursor_lock_dialog') as dialog:lock.trigger();dialog.assert_called_once()
         w.tabs.setCurrentIndex(0);w.dashboard.navigate('x');w.tabs.setCurrentIndex(1);w.comparison.navigate('y');w.tabs.setCurrentIndex(0)
@@ -95,7 +98,8 @@ class HeaderNavigationTests(unittest.TestCase):
         w=self.w
         for index,ws in enumerate(w.workspaces):
             w.tabs.setCurrentIndex(index);self.app.processEvents()
-            self.assertIsNone(w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner))
+            header=w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner)
+            self.assertIsNotNone(header);self.assertIs(ws.navigation_bar.parentWidget(),header)
             self.assertFalse(hasattr(ws,'quick_zoom_bar'))
             for key in ('in','out','reset','pan'):
                 action=ws.navigation_actions[key];self.assertFalse(action.icon().isNull());self.assertTrue(action.toolTip())

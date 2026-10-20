@@ -1,5 +1,6 @@
 """Widget-independent, observable channel domain model."""
 from contextlib import contextmanager
+from copy import copy, deepcopy
 from dataclasses import dataclass, field, replace
 from uuid import uuid4
 import numpy as np
@@ -83,6 +84,25 @@ class Dataset:
     id: str = field(default_factory=identity)
 
 
+@dataclass
+class RemovalSnapshot:
+    """Recoverable removal state; immutable numerical samples are shared safely.
+
+    Mutable metadata and source tables are copied so later changes cannot alter
+    the saved version.  UI owners separately capture bindings and cursor locks.
+    """
+    datasets: dict
+    channels: dict
+    dataset_order: tuple
+    channel_order: tuple
+    requested_dataset_ids: frozenset
+    dependent_ids: frozenset
+
+    @property
+    def channel_ids(self):
+        return frozenset(self.channels)
+
+
 class ChannelStore:
     def __init__(self):
         self.datasets = {}
@@ -92,7 +112,10 @@ class ChannelStore:
         self._pending = set()
 
     def observe(self, callback):
-        self.listeners.append(callback)
+        # Undo can restore views onto the same store.  Registering an existing
+        # bound callback again would repeat every plot rebuild thereafter.
+        if callback not in self.listeners:
+            self.listeners.append(callback)
 
     def changed(self, *ids):
         self._pending.update(ids)
@@ -131,18 +154,64 @@ class ChannelStore:
                 self.channels.pop(id, None)
                 self.changed(id)
 
-    def remove_datasets(self, dataset_ids):
-        """Drop complete recordings and dependent derived traces, in one notification."""
+    def removal_plan(self, dataset_ids, clear_all=False):
+        """Preview the complete transitive dependency closure without mutation."""
         dataset_ids=set(dataset_ids)
-        removed={c.id for c in self.channels.values() if c.dataset_id in dataset_ids}
+        direct={c.id for c in self.channels.values() if c.dataset_id in dataset_ids}
+        removed=set(self.channels) if clear_all else set(direct)
         while True:
             dependent={c.id for c in self.channels.values() if removed.intersection(c.parents)}
             if dependent<=removed:break
             removed.update(dependent)
+        return {'dataset_ids':set(self.datasets) if clear_all else dataset_ids & self.datasets.keys(),
+                'channel_ids':removed,
+                # Most derived channels live in the source's own dataset. They
+                # still need to appear in the removal preview, not just cross-
+                # recording descendants discovered by the closure above.
+                'dependent_ids':{id for id in removed if self.channels[id].parents}}
+
+    def removal_snapshot(self, dataset_ids, clear_all=False):
+        """Capture an exact undo version before removing source or derived data."""
+        plan=self.removal_plan(dataset_ids,clear_all)
+        datasets={}
+        for id in plan['dataset_ids']:
+            dataset=copy(self.datasets[id]);dataset.frame=dataset.frame.copy(deep=True)
+            dataset.frame.attrs=deepcopy(dataset.frame.attrs);datasets[id]=dataset
+        channels={}
+        for id in plan['channel_ids']:
+            channel=copy(self.channels[id])
+            for key in ('attributes','parents','recipe','masks'):
+                setattr(channel,key,deepcopy(getattr(channel,key)))
+            channels[id]=channel
+        return RemovalSnapshot(datasets,channels,tuple(self.datasets),tuple(self.channels),
+                               frozenset(plan['dataset_ids']),frozenset(plan['dependent_ids']))
+
+    def restore_removal(self, snapshot):
+        """Restore stable identities without overwriting work created after removal.
+
+        A collision is rejected atomically.  Original ordering is recovered for
+        restored entries while subsequently added entries keep their order.
+        """
+        if set(snapshot.datasets) & self.datasets.keys() or set(snapshot.channels) & self.channels.keys():
+            raise ValueError('Cannot undo removal because a saved identity is already in use')
+        missing_parents={parent for channel in snapshot.channels.values() for parent in channel.parents
+                         if parent not in self.channels and parent not in snapshot.channels}
+        if missing_parents:
+            raise ValueError('Cannot undo removal because a required parent channel is no longer available')
         with self.batch():
-            for id in dataset_ids:self.datasets.pop(id,None)
-            self.delete(removed)
-        return removed
+            self.datasets.update(snapshot.datasets);self.channels.update(snapshot.channels)
+            self.datasets={id:self.datasets[id] for id in dict.fromkeys((*snapshot.dataset_order,*self.datasets)) if id in self.datasets}
+            self.channels={id:self.channels[id] for id in dict.fromkeys((*snapshot.channel_order,*self.channels)) if id in self.channels}
+            self.changed(*snapshot.channels)
+        return set(snapshot.channels)
+
+    def remove_datasets(self, dataset_ids):
+        """Drop complete recordings and dependent derived traces, in one notification."""
+        plan=self.removal_plan(dataset_ids)
+        with self.batch():
+            for id in plan['dataset_ids']:self.datasets.pop(id,None)
+            self.delete(plan['channel_ids'])
+        return plan['channel_ids']
 
     def duplicate(self, id):
         c = self.channels[id]

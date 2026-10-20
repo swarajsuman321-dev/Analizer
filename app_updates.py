@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,7 @@ REPOSITORY='swarajsuman321-dev/Analizer'
 RELEASES=f'https://github.com/{REPOSITORY}/releases'
 MANIFEST_URL=RELEASES+'/latest/download/update.json'
 INSTALLER_MANIFEST_URL=RELEASES+'/latest/download/installer-update.json'
+ZIP_MANIFEST_URL=RELEASES+'/latest/download/zip-update.json'
 MAX_DOWNLOAD=600*1024*1024
 
 
@@ -27,7 +29,7 @@ def version_tuple(value):
 def validate_manifest(data):
     if not isinstance(data,dict):raise ValueError('Invalid update information')
     version_tuple(data.get('version'))
-    if data.get('kind','portable') not in ('portable','installer'):raise ValueError('Unknown update distribution')
+    if data.get('kind','portable') not in ('portable','portable-zip','installer'):raise ValueError('Unknown update distribution')
     expected=RELEASES+f"/download/v{data['version']}/"+asset_name(data)
     if data.get('url')!=expected:raise ValueError('Unexpected update download location')
     if not re.fullmatch('[0-9a-f]{64}',str(data.get('sha256',''))):raise ValueError('Missing update checksum')
@@ -36,7 +38,23 @@ def validate_manifest(data):
 
 
 def asset_name(manifest):
-    return f"ApplianceSignalStudio-Setup-{manifest['version']}.exe" if manifest.get('kind')=='installer' else 'ApplianceSignalStudio.exe'
+    if manifest.get('kind')=='installer':return f"ApplianceSignalStudio-Setup-{manifest['version']}.exe"
+    if manifest.get('kind')=='portable-zip':return 'ApplianceSignalStudio_Portable.zip'
+    return 'ApplianceSignalStudio.exe'
+
+
+def require_matching_edition(manifest):
+    """Conversion is a separate deliberate installation, never an update side effect."""
+    from app_installation import distribution_kind
+    kind=distribution_kind();actual=validate_manifest(manifest).get('kind','portable')
+    if kind!=actual:
+        labels={'installer':'Installed Setup','portable':'Standalone EXE','portable-zip':'Standalone ZIP/folder'}
+        raise ValueError(f"This is the {labels[kind]} edition. Select its matching update package; {labels[actual]} changes edition. To change edition deliberately, download it separately from the official release page.")
+    return manifest
+
+
+def cache_name(manifest):
+    return asset_name(manifest) if manifest.get('kind') in ('installer','portable-zip') else f"ApplianceSignalStudio-{manifest['version']}.exe"
 
 
 def request(url):
@@ -156,8 +174,8 @@ def network_hint(exc):
 def import_offline_update(manifest_path, directory, progress=lambda value: None):
     """Import IT-approved update.json + matching EXE without contacting GitHub."""
     manifest_path = Path(manifest_path)
-    if manifest_path.name not in ('update.json','installer-update.json'):
-        raise ValueError('Select update.json or installer-update.json supplied with the release.')
+    if manifest_path.name not in ('update.json','installer-update.json','zip-update.json'):
+        raise ValueError('Select update.json, zip-update.json or installer-update.json supplied with the release.')
     if manifest_path.stat().st_size > 256 * 1024:
         raise ValueError('Update manifest is too large.')
     manifest = validate_manifest(json.loads(manifest_path.read_text(encoding='utf-8')))
@@ -166,8 +184,10 @@ def import_offline_update(manifest_path, directory, progress=lambda value: None)
         raise ValueError('Place '+asset_name(manifest)+' alongside the update manifest.')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    target = directory / (asset_name(manifest) if manifest.get('kind')=='installer' else f"ApplianceSignalStudio-{manifest['version']}.exe")
-    part = target.with_suffix('.part')
+    target = directory / cache_name(manifest)
+    # Different app instances may share their edition's download cache. Each
+    # writer owns its partial file, then atomically publishes verified bytes.
+    part = target.with_name(target.name + '.' + secrets.token_hex(8) + '.part')
     digest = hashlib.sha256()
     count = 0
     try:
@@ -188,17 +208,18 @@ def import_offline_update(manifest_path, directory, progress=lambda value: None)
 
 
 def check_latest():
-    from app_installation import installed_root
-    with request(INSTALLER_MANIFEST_URL if installed_root() else MANIFEST_URL) as response:
+    from app_installation import distribution_kind
+    feed={'installer':INSTALLER_MANIFEST_URL,'portable':MANIFEST_URL,'portable-zip':ZIP_MANIFEST_URL}[distribution_kind()]
+    with request(feed) as response:
         data=response.read(256*1024+1)
     if len(data)>256*1024:raise ValueError('Update information is too large')
-    return validate_manifest(json.loads(data))
+    return require_matching_edition(json.loads(data))
 
 
 def download_update(manifest,directory,progress=lambda value:None):
     manifest=validate_manifest(manifest);directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
-    name=asset_name(manifest) if manifest.get('kind')=='installer' else f"ApplianceSignalStudio-{manifest['version']}.exe"
-    target=directory/name;part=target.with_suffix('.part')
+    name=cache_name(manifest)
+    target=directory/name;part=target.with_name(target.name+'.'+secrets.token_hex(8)+'.part')
     digest=hashlib.sha256();size=0
     try:
         with request(manifest['url']) as response,part.open('wb') as stream:
@@ -217,54 +238,22 @@ def ps_quote(value):return "'"+str(value).replace("'","''")+"'"
 
 
 def launch_installer(download,recovery,directory,expected_hash,manifest=None):
-    if sys.platform!='win32' or not getattr(sys,'frozen',False):raise ValueError('Automatic installation is available in the downloaded Windows app')
+    """Schedule a verified matching-edition transaction after this app closes."""
+    if sys.platform!='win32' or not getattr(sys,'frozen',False):
+        raise ValueError('Automatic installation is available in the downloaded Windows app')
     with Path(download).open('rb') as stream:
-        if hashlib.file_digest(stream,'sha256').hexdigest()!=expected_hash:raise ValueError('The downloaded update changed; download it again')
-    from app_installation import installed_root
-    if installed_root() or (manifest and manifest.get('kind')=='installer'):
-        if not manifest or validate_manifest(manifest).get('kind')!='installer':
+        if hashlib.file_digest(stream,'sha256').hexdigest()!=expected_hash:
+            raise ValueError('The downloaded update changed; download it again')
+    from app_installation import distribution_kind
+    if manifest is None:
+        if distribution_kind()=='installer':
             raise ValueError('Installed applications require the Setup package, not the portable EXE')
-        if manifest['sha256']!=expected_hash:raise ValueError('Installer checksum does not match the verified manifest')
-        from app_installed_updates import launch_setup_update
-        return launch_setup_update(download,recovery,directory,manifest)
-    target=Path(sys.executable).resolve();backup=target.with_suffix('.previous.exe')
-    # Check write access before asking the app to exit. No elevation or shell interpolation.
-    try:
-        with tempfile.TemporaryFile(dir=target.parent):pass
-    except OSError as exc:raise ValueError('Move the app to a writable folder before installing an update') from exc
-    script=Path(directory)/'install-update.ps1'
-    script.write_text(f'''$ErrorActionPreference = 'Stop'
-# This process outlives the old one-file extraction directory. Both successful
-# restart and rollback must start a fresh PyInstaller bootloader, not a worker.
-$env:PYINSTALLER_RESET_ENVIRONMENT = '1'
-Get-ChildItem Env: | Where-Object {{ $_.Name -like '_PYI_*' -or $_.Name -eq '_MEIPASS2' }} | ForEach-Object {{ Remove-Item -LiteralPath ('Env:' + $_.Name) }}
-$target = {ps_quote(target)}
-$backup = {ps_quote(backup)}
-$download = {ps_quote(download)}
-$recovery = {ps_quote(recovery)}
-$log = {ps_quote(Path(directory)/'install.log')}
-Wait-Process -Id {os.getpid()} -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 2
-try {{
-    $stream = [System.IO.File]::OpenRead($download)
-    $sha = [System.Security.Cryptography.SHA256]::Create()
-    try {{ $actualHash = [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }}
-    finally {{ $stream.Dispose(); $sha.Dispose() }}
-    if ($actualHash -ne {ps_quote(expected_hash)}) {{ throw 'Update checksum changed' }}
-    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
-    Move-Item -LiteralPath $target -Destination $backup
-    try {{
-        Move-Item -LiteralPath $download -Destination $target
-        Start-Process -FilePath $target -ArgumentList @('--restore', ('"' + $recovery + '"'))
-    }} catch {{
-        Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
-        Move-Item -LiteralPath $backup -Destination $target
-        Start-Process -FilePath $target -ArgumentList @('--restore', ('"' + $recovery + '"'))
-        throw
-    }}
-}} catch {{ $_ | Out-File -LiteralPath $log }}
-''',encoding='utf-8-sig')
-    subprocess.Popen(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(script)],creationflags=subprocess.CREATE_NO_WINDOW,close_fds=True,env=restart_environment())
+        raise ValueError('A verified release manifest is required to update safely')
+    manifest=require_matching_edition(manifest)
+    if manifest['sha256']!=expected_hash:
+        raise ValueError('Update checksum does not match the verified manifest')
+    from app_update_launcher import launch_transaction
+    return launch_transaction(download,recovery,directory,manifest)
 
 
 def restart_environment():

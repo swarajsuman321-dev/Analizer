@@ -113,7 +113,10 @@ class Quantity:
 
 def formula(store, expression, name='Formula'):
     """AST evaluator: no Python evaluation, attributes, indexing, or arbitrary calls."""
+    from app_operation_context import checkpoint
+    checkpoint('Validating formula inputs')
     def visit(node):
+        checkpoint()
         if isinstance(node,ast.Constant) and isinstance(node.value,(int,float)):
             return float(node.value)
         if isinstance(node,ast.UnaryOp) and isinstance(node.op,(ast.USub,ast.UAdd)):
@@ -166,13 +169,15 @@ def formula(store, expression, name='Formula'):
     value=visit(ast.parse(expression,mode='eval').body)
     if not isinstance(value,Quantity):
         raise ValueError('Formula must reference at least one channel')
-    parent=store.channels[value.parents[0]]
+    checkpoint('Preparing formula result');parent=store.channels[value.parents[0]]
     return Channel(name,value.x,value.y,unit=value.unit,coordinate_unit=value.coordinate_unit,
                    coordinate_kind=value.coordinate_kind,kind=value.kind,dataset_id=parent.dataset_id,group='Derived',
                    parents=value.parents,recipe={'operation':'formula','expression':expression})
 
 
 def transform(c, operation, **p):
+    from app_operation_context import checkpoint
+    checkpoint('Calculating '+operation+' · '+c.name)
     x,y=c.values();unit=c.unit;cu=c.coordinate_unit;ck=c.coordinate_kind;kind=c.kind
     def parameter(name, default):
         return float(p.get(name,default))
@@ -259,6 +264,7 @@ def transform(c, operation, **p):
         attrs={'metric_labels':['Mean','RMS','Min','Max','Peak-to-Peak','Standard deviation','Count'],
                'metric_units':[c.unit]*6+['count']}
         unit='mixed'
+    checkpoint('Preparing '+operation+' result')
     return Channel(f'{c.name} · {operation}',x,y,unit=unit,kind=kind,coordinate_unit=cu,coordinate_kind=ck,
                    dataset_id=c.dataset_id,group='Derived',parents=[c.id],attributes=attrs,
                    recipe={'operation':operation,'parameters':p})

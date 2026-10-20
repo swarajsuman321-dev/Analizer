@@ -7,6 +7,17 @@ MUTEX_NAME = r'Local\ApplianceSignalStudio.Workbench'
 _mutex_handle = None
 
 
+def distribution_kind():
+    """Identify the running payload, never infer folder mode from stray files."""
+    if installed_root():
+        return 'installer'
+    if getattr(sys, 'frozen', False):
+        folder = Path(sys.executable).resolve().parent
+        if Path(getattr(sys, '_MEIPASS', '')).resolve() == (folder / '_internal').resolve():
+            return 'portable-zip'
+    return 'portable'
+
+
 def installed_root():
     """Only a marked versioned runtime is managed by the Windows installer."""
     if sys.platform != 'win32' or not getattr(sys, 'frozen', False):
@@ -53,10 +64,14 @@ def installation_check():
     from app_identity import apply_identity
     from app_workbench import AdvancedStudioWindow  # Check the complete frontend import graph.
     from app_version import VERSION
+    from app_update_transaction import update_wait_pids
+    import os
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     icon = apply_identity()
     if icon.isNull() or not load_profile()['channels']:
         raise RuntimeError('Bundled icon or appliance profiles are missing')
     return {'ok': True, 'version': VERSION, 'frozen': bool(getattr(sys, 'frozen', False)),
             'installed_root': str(installed_root() or ''),
-            'runtime_directory': str(getattr(sys, '_MEIPASS', 'source'))}
+            'runtime_directory': str(getattr(sys, '_MEIPASS', 'source')),
+            'pid': os.getpid(), 'parent_pid': os.getppid(),
+            'update_wait_pids': update_wait_pids()}

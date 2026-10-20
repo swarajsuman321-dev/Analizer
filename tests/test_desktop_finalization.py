@@ -56,14 +56,15 @@ class DesktopFinalizationTests(unittest.TestCase):
     def test_header_bar_scales_synchronized_views_once_and_follows_focus(self):
         w=self.w;_,a=self.add_file('A');_,b=self.add_file('B','W');workspace=w.dashboard;workspace.set_layout('Vertical split')
         p,q=workspace.visible_panes();p.bind(a);q.bind(b);workspace.link();workspace.active=p;workspace.activeChanged.emit(p);self.app.processEvents()
-        bar=workspace.navigation_bar;self.assertIs(bar.parentWidget(),w);self.assertEqual(w.toolBarArea(bar),QtCore.Qt.ToolBarArea.TopToolBarArea)
+        bar=workspace.navigation_bar;header=w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner)
+        self.assertIs(bar.parentWidget(),header);self.assertEqual(w.toolBarArea(bar),QtCore.Qt.ToolBarArea.NoToolBarArea)
         self.assertLess(bar.mapToGlobal(bar.rect().bottomLeft()).y(),p.mapToGlobal(p.rect().topLeft()).y())
         beforex=list(p.getViewBox().viewRange()[0]);beforey=[list(v.viewRange()[1]) for pane in (p,q) for v in pane.y_views()]
         workspace.navigation_actions['in'].trigger();self.app.processEvents()
         np.testing.assert_allclose(p.getViewBox().viewRange()[0],q.getViewBox().viewRange()[0]);self.assertAlmostEqual(np.diff(p.getViewBox().viewRange()[0])[0]/np.diff(beforex)[0],.8)
         aftery=[v.viewRange()[1] for pane in (p,q) for v in pane.y_views()]
         for old,new in zip(beforey,aftery):self.assertAlmostEqual(np.diff(new)[0]/np.diff(old)[0],.8)
-        workspace.active=q;workspace.activeChanged.emit(q);self.assertIs(bar.parentWidget(),w)
+        workspace.active=q;workspace.activeChanged.emit(q);self.assertIs(bar.parentWidget(),header)
         workspace.navigation_actions['box'].trigger();self.assertTrue(all(pane.getViewBox().state['mouseMode']==pane.getViewBox().RectMode for pane in (p,q)))
         workspace.navigation_actions['reset'].trigger();self.app.processEvents();self.assertLessEqual(p.viewRange()[0][0],0);self.assertGreaterEqual(q.viewRange()[0][1],10)
     def test_previous_workspace_axis_rules_and_locked_cursors_restore(self):

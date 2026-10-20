@@ -8,6 +8,8 @@ import pandas as pd
 from PySide6 import QtCore,QtGui,QtWidgets
 from app_channel_store import Channel,ChannelStore
 from app_trace_colors import channel_colors
+from app_channel_identity import channel_label,channel_details
+from app_compact_forms import ElidedComboBox,add_help,choose_item
 from app_extensions import PluginManager
 from app_studio_state import (STYLES,channel_preset,validate_preset,recorded_phases,export_full_workbook)
 
@@ -53,22 +55,48 @@ class StudioTools(QtCore.QObject):
                 'Plot': [('Channel mapping & appearance…',self.channel_settings),('Display options…',self.display_options),('Playback & recorded phases…',self.playback),('Subsystem view…',self.subsystem),('Normalized stacked tracks',self.toggle_normalized),('Back',lambda:self.pane.navigate_history(-1)),('Forward',lambda:self.pane.navigate_history(1)),('Fit',lambda:self.window.active_workspace.navigate('reset')),('Zoom in',lambda:self.zoom(.8)),('Zoom out',lambda:self.zoom(1.25)),('Pan',lambda:self.navigation('pan')),('Zoom X',lambda:self.navigation('x')),('Zoom Y',lambda:self.navigation('y')),('Zoom XY',lambda:self.navigation('xy')),('Lock cursors to channel…',self.cursor_lock_dialog),('Move cursors…',self.cursor_positions),('Copy cursor readout',self.copy_readout)],
                 'Processing': [('Channel math & filters',lambda:w.show_dock('Channel Math')),('Preview selected operation…',self.preview_processing)],
                 'Engineering': [('Recording controls',lambda:w.show_dock('Engineering Controls')),('KPIs & data quality…',self.diagnostics),('Comparison signal mapping…',self.comparison_mapping),('Reference units…',self.reference_units),('Image reference calibration…',self.image_calibration),('Reference details…',self.reference_details)],
-                'Export': [('Full diagnostic workbook…',self.export_workbook),('Full synchronized CSV…',self.export_aligned_csv),('Complete processed channels…',self.export_channels),('SVG / HTML / Markdown…',self.export_presentation)],
+                'Export': [('Export All Diagnostic Tables as Excel…',self.export_workbook),('Export All Aligned Samples as CSV…',self.export_aligned_csv),('Export Selected or Active-Pane Channels…',self.export_channels),('Export Active Workspace as SVG / HTML / Markdown…',self.export_presentation)],
                 'Extensions': [('Manage plugins…',self.extensions_dialog),('Run plot extensions…',self.plugin_plots)],
                 'Examples': [('Load illustrative cycle into workspace',self.illustrative)]}
-        self.submenus={}
+        self.submenus={};self.navigation_menu_actions={}
+        navigation={'Fit':'reset','Zoom in':'in','Zoom out':'out','Pan':'pan','Zoom X':'x','Zoom Y':'y','Zoom XY':'xy'}
         for name,items in groups.items():
             submenu=menu.addMenu(name);self.submenus[name]=submenu
             for text,fn in items:
                 display={'Zoom X':'Zoom Time Axis','Zoom Y':'Zoom Value Axes','Zoom XY':'Zoom Both Axes','Fit':'Reset View','Pan':'Pan Graph','Back':'Previous View','Forward':'Next View','KPIs & data quality…':'Measurements and Data Quality…','Channel math & filters':'Calculate Channels and Apply Filters','ROI':'Mark Interval'}.get(text,text)
-                action=submenu.addAction(display)
+                command=navigation.get(text) if name=='Plot' else None
+                if command:
+                    # A menu is another presentation of the graph's actual
+                    # action, so mode checks and context-menu state cannot drift.
+                    action=w.active_workspace.navigation_actions[command]
+                    submenu.addAction(action);self.navigation_menu_actions[command]=action
+                else:action=submenu.addAction(display)
                 shortcut={'Back':'Alt+Left','Forward':'Alt+Right','Zoom in':'Ctrl+=','Zoom out':'Ctrl+-','Fit':'Ctrl+0','Pan':'Ctrl+4','Zoom X':'Ctrl+1','Zoom Y':'Ctrl+2','Zoom XY':'Ctrl+3','Lock cursors to channel…':'Ctrl+L'}.get(text)
                 if shortcut:action.setShortcut(shortcut)
-                action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
+                if not command:action.triggered.connect(lambda checked=False,f=fn:w.guard(f))
+
+        self._navigation_menu_owner=w.active_workspace
+        w.tabs.currentChanged.connect(self.sync_navigation_menu)
 
         from app_version import VERSION
         about=menu.addAction(f'About version {VERSION}')
         about.triggered.connect(w.show_info)
+
+    def sync_navigation_menu(self,*_):
+        """Move menu references/shortcuts to the active graph, preserving order."""
+        workspace=self.window.active_workspace
+        if workspace is self._navigation_menu_owner:return
+        shortcuts={'x':'Ctrl+1','y':'Ctrl+2','xy':'Ctrl+3','pan':'Ctrl+4',
+                   'in':'Ctrl+=','out':'Ctrl+-','reset':'Ctrl+0'}
+        menu=self.submenus['Plot']
+        for command,old in tuple(self.navigation_menu_actions.items()):
+            order=menu.actions();index=order.index(old)
+            before=order[index+1] if index+1<len(order) else None
+            old.setShortcut(QtGui.QKeySequence());menu.removeAction(old)
+            action=workspace.navigation_actions[command]
+            menu.insertAction(before,action) if before else menu.addAction(action)
+            action.setShortcut(shortcuts[command]);self.navigation_menu_actions[command]=action
+        self._navigation_menu_owner=workspace
 
     @property
     def pane(self):return self.window.active_workspace.active
@@ -121,9 +149,9 @@ class StudioTools(QtCore.QObject):
         from app_ingestion import read_tables,ingest
         frames=read_tables(path)
         if not frames:raise ValueError('No tables found')
-        clock,ok=QtWidgets.QInputDialog.getItem(w,'Coordinates','Coordinate column (first table)', ['Automatic','Sample index',*[str(c) for c in frames[0][1].columns]],0,False)
+        clock,ok=choose_item(w,'Coordinates','Coordinate column (first table)', ['Automatic','Sample index',*[str(c) for c in frames[0][1].columns]])
         if not ok:return
-        unit,ok=QtWidgets.QInputDialog.getItem(w,'Coordinates','Coordinate unit',['Auto','s','min','h','sample'],0,False)
+        unit,ok=choose_item(w,'Coordinates','Coordinate unit',['Auto','s','min','h','sample'])
         if not ok:return
         workspace=w.active_workspace
         def load():
@@ -212,7 +240,7 @@ class StudioTools(QtCore.QObject):
         for row,c in enumerate(w.store.channels.values()):
             table.insertRow(row);style=c.attributes.get('plot_style',{})
             show=QtWidgets.QCheckBox();show.setChecked(c.id in visible);table.setCellWidget(row,0,show)
-            original=QtWidgets.QTableWidgetItem(c.attributes.get('source_column',c.name));original.setFlags(original.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable);table.setItem(row,1,original)
+            original=QtWidgets.QTableWidgetItem(channel_label(w.store,c,include_source=True));original.setToolTip(channel_details(w.store,c));original.setFlags(original.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable);table.setItem(row,1,original)
             for col,value in ((2,c.name),(3,c.unit),(7,str(style.get('width',1))),(8,colors[c.id]),(9,f"{style.get('ymin','')},{style.get('ymax','')}")):table.setItem(row,col,QtWidgets.QTableWidgetItem(value))
             panel=QtWidgets.QComboBox();panel.addItems([f'Panel {i}' for i in range(1,11)]);panel.setCurrentIndex(next((i for i,p in enumerate(w.active_workspace.panes) if c.id in p.ids),0));table.setCellWidget(row,4,panel)
             right=QtWidgets.QCheckBox();right.setChecked(style.get('side')=='right');table.setCellWidget(row,5,right)
@@ -255,8 +283,11 @@ class StudioTools(QtCore.QObject):
         def complete(result):
             from app_plot_workspace import PlotWorkspace
             dialog,layout=self.dialog('Processing result — not yet applied');store=ChannelStore();store.add(result)
+            source_row=QtWidgets.QFormLayout();source_name=QtWidgets.QLineEdit(channel_label(w.store,source,include_source=True));source_name.setReadOnly(True)
+            source_name.setToolTip(channel_details(w.store,source));source_name.setAccessibleDescription(channel_details(w.store,source));source_row.addRow('Source',source_name);layout.addLayout(source_row)
             plot=PlotWorkspace(store);plot.assign([result.id]);layout.addWidget(plot)
-            layout.addWidget(QtWidgets.QLabel(f'{result.name}: {len(result.x):,} samples. Original data remains unchanged.'))
+            summary=QtWidgets.QLabel(f'{len(result.x):,} calculated samples · not yet added');layout.addWidget(summary)
+            add_help(layout,f'Source: {channel_label(w.store,source,include_source=True)}\n{channel_details(w.store,source)}\nOriginal data remains unchanged until Apply to workspace is chosen.')
             apply=QtWidgets.QPushButton('Apply to workspace');layout.addWidget(apply)
             def save():
                 w.mutate()
@@ -346,13 +377,13 @@ class StudioTools(QtCore.QObject):
 
     def cursor_lock_dialog(self):
         pane=self.pane;dialog,layout=self.dialog('Lock cursors to channel');form=QtWidgets.QFormLayout();layout.addLayout(form);fields=[]
-        layout.addWidget(QtWidgets.QLabel('Locked cursors stay on real samples while panning. Drag to scrub; ←/→ steps A, Shift+←/→ steps B. Other channels update at the same time.'))
         for index,name in enumerate(('A','B')):
-            field=QtWidgets.QComboBox();field.addItem('Unlocked',None)
-            for id in pane.ids:field.addItem(self.window.store.channels[id].name,id)
+            field=ElidedComboBox();field.setAccessibleName('Cursor '+name+' source channel');field.addItem('Unlocked',None)
+            for id in pane.ids:field.addItem(channel_label(self.window.store,id),id,channel_details(self.window.store,id))
             lock=pane.cursor_locks[index]
             if lock:field.setCurrentIndex(max(0,field.findData(lock['channel'])))
             form.addRow('Cursor '+name,field);fields.append(field)
+        add_help(layout,'Locked cursors stay on real source samples while panning. Drag to scrub; ←/→ steps Cursor A, Shift+←/→ steps Cursor B. Other channels update at that time. The matching locked value and source are shown in Readout. Choose Unlocked to release a cursor.')
         apply=QtWidgets.QPushButton('Apply');layout.addWidget(apply)
         def save():
             for index,field in enumerate(fields):pane.lock_cursor(index,field.currentData())
@@ -369,8 +400,9 @@ class StudioTools(QtCore.QObject):
         apply.clicked.connect(lambda:([line.setValue(field.value()) for line,field in zip(self.pane.cursor_lines,fields)],dialog.accept()));dialog.show()
 
     def copy_readout(self):
-        w=self.window;w._readouts();rows=[['Channel','Unit','A','B','Match']]
-        for row in range(w.readout.rowCount()):rows.append([w.readout.item(row,col).text() for col in range(5)])
+        w=self.window;w._readouts();columns=w.readout.columnCount()
+        rows=[[w.readout.horizontalHeaderItem(col).text() for col in range(columns)]]
+        for row in range(w.readout.rowCount()):rows.append([w.readout.item(row,col).text() if w.readout.item(row,col) else '' for col in range(columns)])
         QtWidgets.QApplication.clipboard().setText('\n'.join('\t'.join(row) for row in rows))
 
     def toggle_normalized(self):
@@ -443,7 +475,7 @@ class StudioTools(QtCore.QObject):
         if frame.empty:raise ValueError('Choose a bench recording in Engineering Controls first')
         dialog,layout=self.dialog('Simulation ↔ bench signal mapping');form=QtWidgets.QFormLayout();layout.addLayout(form);fields={}
         for spec in CSV_LEGEND_SPECS:
-            field=QtWidgets.QComboBox();field.addItems(['Auto','None',*[str(c) for c in frame.columns]])
+            field=ElidedComboBox();field.addItems(['Auto','None',*[str(c) for c in frame.columns]])
             value=self.bench_columns.get(spec['key'],'Auto');field.setCurrentText('None' if value is None else value);form.addRow(spec['label'],field);fields[spec['key']]=field
         apply=QtWidgets.QPushButton('Apply mapping');layout.addWidget(apply)
         def save():
@@ -453,8 +485,8 @@ class StudioTools(QtCore.QObject):
     def reference_units(self):
         dialog,layout=self.dialog('Reference units');form=QtWidgets.QFormLayout();layout.addLayout(form);fields={}
         for key,label,values in [('time_unit','Numeric time unit',['min','s','h']),('pressure_unit','Source pressure metadata',['unknown','Pa','mbar','bar','kPa']),('remaining_time_unit','Remaining time unit',['min','s'])]:
-            field=QtWidgets.QComboBox();field.addItems(values);field.setCurrentText(self.reference_settings.get(key,values[0]));form.addRow(label,field);fields[key]=field
-        layout.addWidget(QtWidgets.QLabel('Pressure comparison retains original numbers, labelled Pa. Metadata does not rescale measurements.'))
+            field=ElidedComboBox();field.addItems(values);field.setCurrentText(self.reference_settings.get(key,values[0]));form.addRow(label,field);fields[key]=field
+        add_help(layout,'Choose the units recorded in the source metadata. These settings describe the imported values; changing metadata does not rescale measurements. Physical conversion requires a verified source unit and calibration. Unknown units remain unknown.')
         apply=QtWidgets.QPushButton('Apply');layout.addWidget(apply);apply.clicked.connect(lambda:(self.reference_settings.update({k:f.currentText() for k,f in fields.items()}),dialog.accept()));dialog.show();return dialog
 
     def image_calibration(self):
@@ -469,7 +501,7 @@ class StudioTools(QtCore.QObject):
         height=QtWidgets.QDoubleSpinBox();height.setRange(1,100000);height.setValue(analyzer.reference_height);form.addRow('Reference height (pixels)',height)
         bounds=QtWidgets.QLineEdit(','.join(map(str,self.calibration.get('plot_bounds',[]))));form.addRow('Plot bounds left,right,top,bottom (blank = auto)',bounds)
         time_verified=QtWidgets.QCheckBox('Time ticks verified');time_verified.setChecked(self.calibration.get('time_verified',False));form.addRow(time_verified)
-        image=QtWidgets.QLabel();pixmap=QtGui.QPixmap(path);image.setPixmap(pixmap.scaled(760,180,QtCore.Qt.AspectRatioMode.KeepAspectRatio));layout.addWidget(image)
+        image=QtWidgets.QLabel();pixmap=QtGui.QPixmap(path);image.setPixmap(pixmap.scaled(600,160,QtCore.Qt.AspectRatioMode.KeepAspectRatio));image.setMinimumWidth(0);image.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Preferred);layout.addWidget(image)
         table=QtWidgets.QTableWidget(len(SIMULATION_LEGEND_SPECS),6);table.setHorizontalHeaderLabels(['Signal','Tick 1 px','Value 1','Tick 2 px','Value 2','Verified']);layout.addWidget(table);checks={}
         verified=self.calibration.get('axis_verified',False)
         for row,spec in enumerate(SIMULATION_LEGEND_SPECS):
@@ -503,9 +535,10 @@ class StudioTools(QtCore.QObject):
 
     def export_channels(self):
         from app_workspace_io import export_processed
-        ids=self.window.portal.selected() or self.pane.ids
+        selected=self.window.portal.selected();ids=selected or self.pane.ids
         if not ids:raise ValueError('Select channels first')
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export full processed channels',str(output_path('Processed channels.csv')),'CSV (*.csv);;Excel (*.xlsx)')
+        scope='selected in Data Portal' if selected else 'in active graph pane'
+        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,f'Export all samples — {len(ids)} channels {scope}',str(output_path('Processed channels.csv')),'CSV samples (*.csv);;Excel samples (*.xlsx)')
         if path:export_processed(path,[self.window.store.channels[id] for id in ids])
 
     def export_presentation(self):
@@ -514,7 +547,8 @@ class StudioTools(QtCore.QObject):
         if path:render_report(path,self.window.store,self.window.active_workspace.state(),title=self.options['title'])
 
     def extensions_dialog(self):
-        self.window.mutate();dialog,layout=self.dialog('Extensions');layout.addWidget(QtWidgets.QLabel('Python extensions run local code and use register_patch(manager). Install only extensions you trust.'))
+        self.window.mutate();dialog,layout=self.dialog('Extensions')
+        add_help(layout,'Python extensions run local code and use register_patch(manager). Install only extensions you trust. Extension files and any loading errors remain visible in the table.')
         table=QtWidgets.QTableWidget(0,3);table.setHorizontalHeaderLabels(['Enabled','File','Description / error']);layout.addWidget(table)
         def refresh():
             errors=self.plugins.reload();self.refresh_sync();table.blockSignals(True);table.setRowCount(0)
@@ -549,7 +583,7 @@ class StudioTools(QtCore.QObject):
         rows,cols=LAYOUTS[workspace.layout_name];axes=list(fig.subplots(rows,cols,squeeze=False).flat)
         for axis,pane in zip(axes,workspace.visible_panes()):
             for id in pane.ids:
-                c=self.window.store.channels[id];x,y=c.values();axis.plot(x,y,label=c.name)
+                c=self.window.store.channels[id];x,y=c.values();axis.plot(x,y,label=channel_label(self.window.store,c))
             if pane.ids:axis.legend(fontsize=7)
         for hook in self.plugins.custom_plot_hooks:hook(fig,axes,frame.copy(deep=True))
         dialog,layout=self.dialog('Extension plot');canvas=FigureCanvasQTAgg(fig);layout.addWidget(canvas);canvas.draw()
