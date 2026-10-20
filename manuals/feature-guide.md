@@ -627,7 +627,7 @@ Data Quality, Rule Evaluation and Appliance Events are separate. Sampling gaps d
 
 ## Concise PDF and complete report evidence | 2.4.0
 
-Choose **Generate Engineering Report**, review the explicit whole-recording/cursor/both scope and expected PDF length, then choose the output. The audited regression fixture produces a ten-page default summary across four main sections. Event count alone does not expand that summary; an explicitly checked complete event appendix can add many pages. Summary tables identify any displayed subset and direct you to complete evidence. Use readable pagination rather than shrinking text to force exactly four pages.
+Choose **Generate Engineering Report**, review the explicit whole-recording/cursor/both scope and expected PDF length, then choose the output. The audited regression fixture produces a ten-page default summary across four main sections. Mandatory/primary results and configured acceptance results add readable continuation pages when needed. Event count alone does not expand that summary; an explicitly checked complete event appendix can add many pages. Summary tables identify any displayed subset and direct you to complete evidence. Use readable pagination rather than shrinking text to force exactly four pages.
 
 The PDF explains readiness, usable results, blockers and next actions; reviewed source roles, timing coverage, plots, KPIs and grouped events follow. The grouped view reports counts, interval-union affected time, longest interval, first/last times and representative event IDs. Grouping never merges or deletes the original evidence.
 

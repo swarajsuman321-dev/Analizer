@@ -7,7 +7,7 @@ Python 3.12 is the supported development runtime.
 
 The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Downloads above remain the verified v2.3.2 release while v2.4.0 native builds run. The [v2.4.0 implementation record](docs/RELEASE_2.4.0.md) tracks the approved audit improvements and verification; source/offscreen checks do not establish native release acceptance.
 
-Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy and current update gaps](docs/DUAL_DISTRIBUTION_POLICY.md), and the [audit improvement approval checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md) before implementing the next changes.
+Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy](docs/DUAL_DISTRIBUTION_POLICY.md) and the [approved audit checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md).
 
 ![Current workbench with synthetic signals](docs/images/workbench.png)
 
@@ -85,11 +85,15 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.1.7**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.1.7**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.4.0**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.4.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
-## Navigation and locked cursors (2.1.1)
+## Feature history
+
+The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.4.0 manual](manuals/v2.4.0.md) and [release record](docs/RELEASE_2.4.0.md).
+
+### Navigation and locked cursors (2.1.1)
 
 The navigation toolbar exposes Zoom X/Y/XY, Pan, Reset zoom and Lock cursors.
 **F1** lists shortcuts: Ctrl+1/2/3 selects X/Y/XY rectangle zoom, Ctrl+4 pans,
@@ -200,7 +204,7 @@ The unused right side of the Analysis/Comparison tab row now offers Zoom In, Zoo
 
 The top **About** menu beside **Tools** contains **User Manual** and **Updates**. Same-unit channels, including valves, receive distinct stable colors with matching legends enabled for new workspaces; saved styles and visibility preferences are retained.
 
-Current acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_REVIEW_V2.2.3.md). Native Windows release verification: [record](docs/validation/release-v2.2.3.json).
+Historical v2.2.3 acceptance review and limits: [v2.2.3 requirements](docs/REQUIREMENTS_REVIEW_V2.2.3.md). Native Windows release verification: [record](docs/validation/release-v2.2.3.json).
 
 ## Engineering analytics and compact workbench (v2.3.0)
 

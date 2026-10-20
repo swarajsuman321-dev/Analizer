@@ -37,7 +37,8 @@ Source implementation and local verification are complete. Native Windows build,
 
 ## Local verification
 
-- Full local suite: **364 discovered, 362 passed, two native Windows tests skipped**, 146.971 seconds. Native CI reruns the complete final suite, including Windows-specific checks.
+- Full local suite: **366 discovered, 364 passed, two native Windows tests skipped**, 168.002 seconds. Native CI reruns the complete final suite, including Windows-specific checks.
+- Final header/hover interaction suite: **8/8 passed** at each of 100%, 150% and 200% simulated Qt scaling. It exercises real overflow-menu clicks and on-screen pointer movement; this is not physical Windows DPI certification.
 - Source entry smoke: passed, version **2.4.0**, `frozen=False`.
 - Real-file acceptance: **42/42 passed**, zero application callback or runner errors; seven expected safety rejections are recorded separately.
 - Original real-user workflow diagnostic: **20/20 passed**, zero execution/callback/runner errors; one expected irregular-clock rejection.
@@ -48,7 +49,7 @@ The real-file suite includes all 15 nonempty combinations of the four committed 
 
 ## Engineering report regression
 
-The supplied older report reviewed in [the PDF audit](audits/2026-10-18-engineering-pdf-usefulness-review.md) had 4,049 pages and 10,231 log records. The current hash-matched RD fixture produces a **ten-page summary** with **30,613 complete records, 30,613 unique event IDs and 31 groups**. Counts differ because acquisition quality can now be evaluated for additional mapped source traces without pretending their physical units/roles are verified. The original speed-gap observations remain; no event deletion is used to obtain the short PDF. A separate legacy-shape regression retains all 10,231 records.
+The supplied older report reviewed in [the PDF audit](audits/2026-10-18-engineering-pdf-usefulness-review.md) had 4,049 pages and 10,231 log records. The current hash-matched RD fixture produces a **ten-page summary** with **30,613 complete records, 30,613 unique event IDs and 31 groups**. Counts differ because acquisition quality can now be evaluated for additional mapped source traces without pretending their physical units/roles are verified. The original speed-gap observations remain; no event deletion is used to obtain the short PDF. A separate synthetic legacy-shaped regression preserves all 10,231 test records.
 
 The actual fixture still has approximately 43.84% supported elapsed time under its documented 0.447-second fallback gap rule. Neither number is a universal limit or evidence of appliance faults. The current report exposes this policy/coverage, blocks unreviewed actual-speed and unknown-unit conclusions, and keeps acceptance Not Evaluated until configured.
 

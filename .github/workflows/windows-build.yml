@@ -91,8 +91,11 @@ jobs:
         if: steps.runtime-cache.outputs.cache-hit == 'true'
         shell: pwsh
         run: |
-          .venv-exe\Scripts\python.exe -m unittest discover -s tests -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path build -Force | Out-Null
+          $tests = & .venv-exe\Scripts\python.exe -m unittest discover -s tests -v 2>&1
+          $testCode = $LASTEXITCODE
+          $tests | Tee-Object -FilePath build/native-unit-tests.log
+          if ($testCode -ne 0) { exit $testCode }
           .venv-exe\Scripts\python.exe -c "from build_exe import check_bundle,DIST; from app_updates import restart_environment; check_bundle(DIST/'onedir/ApplianceSignalStudio/ApplianceSignalStudio.exe','onedir'); check_bundle(DIST/'ApplianceSignalStudio.exe','onefile'); check_bundle(DIST/'ApplianceSignalStudio.exe','onefile_restart',env=restart_environment())"
           exit $LASTEXITCODE
       - name: Save verified runtimes before installer testing
@@ -147,6 +150,11 @@ jobs:
             Write-Output "::error title=Application update recovery failure::$tail"
           }
           exit $code
+      - name: Prepare permanent native release evidence
+        shell: pwsh
+        run: |
+          .venv-exe\Scripts\python.exe scripts/release_validation.py
+          exit $LASTEXITCODE
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
@@ -155,6 +163,7 @@ jobs:
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip
             dist/ApplianceSignalStudio-Setup-*.exe
+            dist/validation-v*.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload build diagnostics
@@ -164,6 +173,7 @@ jobs:
           name: Windows-build-diagnostics
           path: |
             build/build.log
+            build/native-unit-tests.log
             build/*_smoke_report.json
             build/packaged-acceptance/**/packaged-acceptance.json
             build/packaged-acceptance/**/process-stderr.txt
@@ -185,9 +195,9 @@ jobs:
           $draft = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft' 2>$null
           if ($LASTEXITCODE -eq 0) {
             if ($draft -eq 'false') { Write-Output "Version already published; keeping immutable release."; exit 0 }
-            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
+            $publication = & gh release upload "v$version" --repo $env:GITHUB_REPOSITORY --clobber dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" "dist/validation-v$version.json" 2>&1
           } else {
-            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" 2>&1
+            $publication = & gh release create "v$version" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Appliance Signal Studio $version" --notes-file dist/release-notes.md dist/ApplianceSignalStudio.exe dist/ApplianceSignalStudio_Portable.zip dist/update.json dist/zip-update.json dist/installer-update.json "dist/ApplianceSignalStudio-Setup-$version.exe" "manuals/v$version.md" "dist/validation-v$version.json" 2>&1
           }
           $publishCode = $LASTEXITCODE
           $publication | Write-Output

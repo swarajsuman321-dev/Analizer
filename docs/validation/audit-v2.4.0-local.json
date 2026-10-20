@@ -8,12 +8,12 @@
   "frozen": false,
   "approved_scope": "All A-H; optional I1-I3 excluded",
   "unit_tests": {
-    "discovered": 364,
-    "passed": 362,
+    "discovered": 366,
+    "passed": 364,
     "skipped": 2,
     "errors": 0,
     "failures": 0,
-    "seconds": 146.971,
+    "seconds": 168.002,
     "skip_reason": "Native Windows only"
   },
   "source_smoke": {
@@ -148,5 +148,33 @@
     "Source/offscreen verification does not certify native Windows packages or update transactions.",
     "Physical calibration, manufacturer phase mappings and acceptance thresholds remain configurable and are not invented.",
     "Complete generated measurement outputs are not committed."
-  ]
+  ],
+  "source_commit": "49cd79bc9f955a6a9a9edde2f38b8c9ad8a727bb",
+  "supplemental_interaction_verification": {
+    "source_commit": "e2cf34a99a88729db3fc29de0f29c5172a17693a",
+    "tests_per_run": 8,
+    "scale_factors": [
+      1,
+      1.5,
+      2
+    ],
+    "passed_all_runs": true,
+    "platform": "Linux Qt offscreen; simulated scaling, not physical Windows DPI acceptance",
+    "reason": "Native run exposed tests that assumed all toolbar actions were directly visible and requested offscreen pointer locations. Tests now exercise actual overflow menus and visible hover coordinates; assertions preserved."
+  },
+  "hover_owner_regression": {
+    "passed": true,
+    "covers": [
+      "current actual pointer rather than delayed scene coordinates",
+      "stale underMouse flag",
+      "pointer leaves viewport",
+      "occlusion by another widget"
+    ],
+    "native_status": "pending diagnostic Windows run"
+  },
+  "release_evidence_assembly_tests": {
+    "passed": 5,
+    "total": 5,
+    "scope": "Permanent native evidence assembly; missing/failed/stale gates, wrong source identity, edition coverage and unit-result parsing"
+  }
 }
