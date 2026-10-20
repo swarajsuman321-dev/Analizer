@@ -19,8 +19,47 @@ class HeaderNavigationTests(unittest.TestCase):
         self.w.dashboard.assign([self.c.id]);self.app.processEvents()
     def tearDown(self):self.w.close();self.app.processEvents();self.env.stop();self.temp.cleanup()
     def click(self,workspace,command):
-        action=workspace.navigation_actions[command];button=workspace.navigation_bar.widgetForAction(action)
-        self.assertTrue(button.isVisible());QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton);self.app.processEvents()
+        # Native fonts, DPI and visible dock widths determine how many actions
+        # fit beside the tabs. Exercise the same accessible QAction through the
+        # visible toolbar button or its real overflow menu, never a hidden click.
+        bar=workspace.navigation_bar;action=workspace.navigation_actions[command];button=bar.widgetForAction(action)
+        self.assertTrue(bar.isVisible());self.assertTrue(action.isEnabled())
+        if button.isVisible():
+            QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton)
+            route='button'
+        else:
+            overflow=bar.findChild(QtWidgets.QToolButton,'qt_toolbar_ext_button')
+            self.assertIsNotNone(overflow);self.assertTrue(overflow.isVisible(),command+' has no visible overflow access')
+            selected=[];errors=[];attempts=[0]
+            def choose():
+                menu=self.app.activePopupWidget()
+                if not isinstance(menu,QtWidgets.QMenu) or not menu.isVisible():
+                    attempts[0]+=1
+                    if attempts[0]<100:
+                        QtCore.QTimer.singleShot(5,choose);return
+                    errors.append(AssertionError('The visible toolbar overflow did not open its menu'))
+                    return
+                try:
+                    self.assertIn(action,menu.actions(),command+' is absent from the overflow menu')
+                    rectangle=menu.actionGeometry(action)
+                    self.assertTrue(rectangle.isValid());self.assertTrue(menu.rect().contains(rectangle.center()))
+                    self.assertTrue(action.isVisible());self.assertTrue(action.isEnabled())
+                    QtTest.QTest.mouseClick(menu,QtCore.Qt.MouseButton.LeftButton,pos=rectangle.center())
+                    selected.append(action)
+                except Exception as error:errors.append(error)
+                finally:menu.close()
+            # Some Qt styles enter a nested menu loop while mouseClick is still
+            # running. A queued menu interaction works with both native styles
+            # and the nonblocking offscreen popup implementation.
+            QtCore.QTimer.singleShot(0,choose)
+            QtTest.QTest.mouseClick(overflow,QtCore.Qt.MouseButton.LeftButton)
+            for _ in range(100):
+                if selected or errors:break
+                QtTest.QTest.qWait(5)
+            if errors:raise errors[0]
+            self.assertEqual(selected,[action],command+' was not selected from the visible menu')
+            route='overflow'
+        self.app.processEvents();return route
 
     def test_header_modes_remain_explicit_and_new_panes_inherit_constraints(self):
         ws=self.w.dashboard;ws.set_layout('Vertical split');ws.set_time_lock(False);self.app.processEvents()
@@ -54,12 +93,26 @@ class HeaderNavigationTests(unittest.TestCase):
 
     def test_hover_strip_never_overlaps_canvas_and_does_not_resize_during_motion(self):
         ws=self.w.dashboard;p=ws.active;readout=ws.hover_readout
+        # Native window exposure and axis sizing finish asynchronously. Exercise
+        # the real pointer/proxy path after that settles, rather than injecting
+        # hover while the physical pointer is outside and a Leave is queued.
+        QtTest.QTest.qWait(150)
         label_bottom=readout.mapToGlobal(readout.rect().bottomLeft()).y();plot_top=p.mapToGlobal(p.rect().topLeft()).y()
         self.assertLess(label_bottom,plot_top);self.assertFalse(hasattr(p,'hover_label'))
         initial=p.geometry();before=[line.value() for line in p.cursor_lines]
+        # The requested window can exceed a small/DPI-scaled CI desktop. Native
+        # pointer movement is clipped to that desktop, so sample visible data
+        # within its intersection instead of asking for an offscreen position.
+        view=p.getViewBox();drawable=p.mapFromScene(view.sceneBoundingRect()).boundingRect()
+        visible=QtCore.QRect(p.viewport().mapToGlobal(drawable.topLeft()),drawable.size()).intersected(self.w.screen().availableGeometry()).adjusted(2,2,-2,-2)
+        first=p.viewport().mapToGlobal(p.mapFromScene(view.mapViewToScene(QtCore.QPointF(0,20))))
+        last=p.viewport().mapToGlobal(p.mapFromScene(view.mapViewToScene(QtCore.QPointF(2,40))))
+        visible.setLeft(max(visible.left(),first.x()+2));visible.setRight(min(visible.right(),last.x()-2))
+        self.assertGreater(visible.width(),6);self.assertGreater(visible.height(),6)
         for fraction in (.1,.5,.9):
-            rect=p.getViewBox().sceneBoundingRect();position=QtCore.QPointF(rect.left()+rect.width()*fraction,rect.center().y())
-            p._mouse_hover((position,));self.app.processEvents()
+            position=QtCore.QPoint(round(visible.left()+visible.width()*fraction),visible.center().y())
+            QtTest.QTest.mouseMove(p.viewport(),p.viewport().mapFromGlobal(position))
+            QtTest.QTest.qWait(80)  # Passive hover is deliberately limited to 30 Hz.
             self.assertRegex(readout.text().splitlines()[0],r'(?:Mouse )?X .*\b(?:Mouse )?Y ');self.assertIn('°C',readout.text().splitlines()[0]);self.assertIn('Mouse X',readout.toolTip());self.assertIn('Mouse Y',readout.toolTip());self.assertIn('Temperature',readout.toolTip())
             self.assertEqual(p.geometry(),initial);self.assertEqual([line.value() for line in p.cursor_lines],before)
         self.w.resize(1024,768);self.app.processEvents()
@@ -83,16 +136,27 @@ class HeaderNavigationTests(unittest.TestCase):
         self.assertFalse(hasattr(ws,'quick_zoom_bar'))
         ws.navigate('x');self.assertTrue(ws.navigation_actions['x'].isChecked())
         beforex=np.diff(p.viewRange()[0])[0];beforey=[list(pane.viewRange()[1]) for pane in (p,q)]
-        button=ws.navigation_bar.widgetForAction(ws.navigation_actions['in'])
-        self.assertTrue(button.isVisible());QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton);self.app.processEvents()
+        self.click(ws,'in')
         self.assertAlmostEqual(np.diff(p.viewRange()[0])[0]/beforex,.8)
         np.testing.assert_allclose(p.viewRange()[0],q.viewRange()[0])
         for pane,expected in zip((p,q),beforey):np.testing.assert_allclose(pane.viewRange()[1],expected)
-        ws.navigation_bar.widgetForAction(ws.navigation_actions['out']).click();self.app.processEvents()
+        self.click(ws,'out')
         self.assertAlmostEqual(np.diff(p.viewRange()[0])[0],beforex)
-        ws.navigation_bar.widgetForAction(ws.navigation_actions['reset']).click();self.app.processEvents()
+        self.click(ws,'reset')
         self.assertLessEqual(p.viewRange()[0][0],0);self.assertGreaterEqual(p.viewRange()[0][1],2)
         ws.navigation_actions['y'].trigger();self.assertTrue(ws.navigation_actions['y'].isChecked())
+
+    def test_narrow_header_overflow_activates_the_shared_navigation_actions(self):
+        ws=self.w.dashboard;bar=ws.navigation_bar
+        self.w.tabs.cornerWidget(QtCore.Qt.Corner.TopRightCorner).setFixedWidth(80)
+        self.app.processEvents()
+        self.assertFalse(bar.widgetForAction(ws.navigation_actions['in']).isVisible())
+        before=np.diff(ws.active.viewRange()[0])[0]
+        ws.navigate('x')
+        self.assertEqual(self.click(ws,'in'),'overflow')
+        self.assertAlmostEqual(np.diff(ws.active.viewRange()[0])[0]/before,.8)
+        self.assertEqual(self.click(ws,'y'),'overflow')
+        self.assertEqual(ws.navigation_mode,'y');self.assertTrue(ws.navigation_actions['y'].isChecked())
 
     def test_only_primary_navigation_is_visible_and_icons_are_accessible(self):
         w=self.w
