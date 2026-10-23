@@ -107,7 +107,7 @@ class InfoTab(QtWidgets.QWidget):
         if sys.platform == 'win32' and getattr(sys, 'frozen', False):
             self.install_button.setText('Install update & restart')
             self.install_button.setEnabled(True)
-            self.status.setText(f"Offline update v{manifest['version']} verified. Ready to install.")
+            self.status.setText(f"Offline update v{manifest['version']} verified. Install update & restart saves your workspace, updates in the background and reopens the app.")
         else:
             self.status.setText(f'Offline package verified at {download}. Installation requires the Windows EXE.')
 
@@ -135,7 +135,7 @@ class InfoTab(QtWidgets.QWidget):
                         self.check_button.setEnabled(True);self.install_button.setEnabled(True);self.offline_button.setEnabled(True)
                         self.status.setText('Update preparation stopped; the current app is unchanged. '+str(error))
                 def restart(_):self.window.close()
-                self.status.setText('Saving a source-preserving recovery workspace before restarting…')
+                self.status.setText('Saving your workspace. The app will close to update in the background, then reopen your analysis…')
                 self.window.background(stage,restart,title='Saving and staging update recovery',on_finished=finished)
             except Exception as exc:
                 self.check_button.setEnabled(True);self.install_button.setEnabled(True);self.offline_button.setEnabled(True)
@@ -155,7 +155,7 @@ class InfoTab(QtWidgets.QWidget):
         self.download=result
         if sys.platform=='win32' and getattr(sys,'frozen',False):
             self.install_button.setText('Install update & restart');self.install_button.setEnabled(True)
-            self.status.setText('Update verified. Install saves recovery data and restarts the matching edition. The previous runtime is retained until startup and recovery are verified.')
+            self.status.setText('Update verified. Install update & restart saves your workspace, updates in the background and reopens the app. The previous runtime is kept for recovery.')
         else:self.status.setText(f'Update verified and saved to {result}. Automatic installation requires the Windows app.')
 
     def download_progress(self,value):

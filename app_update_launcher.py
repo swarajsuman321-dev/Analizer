@@ -203,7 +203,11 @@ try {{
     if ((Get-Sha256 $download) -ne {q(manifest['sha256'])}) {{ throw 'Update checksum changed' }}
 '''
     if kind == 'installer':
-        script += f'''    $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/SP-', '/NORESTART', {q('/DIR="'+str(install)+'"')}, {q('/LOG="'+str(directory/'setup-install.log')+'"')})
+        # Inno's /SILENT still shows a progress window. Only in-app updates
+        # suppress Setup completely; an explicitly opened installer retains its
+        # normal wizard. Keep the log/exit code and restored-startup handshake
+        # so a hidden Setup failure still recovers the previous workbench.
+        script += f'''    $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/SP-', '/NORESTART', {q('/DIR="'+str(install)+'"')}, {q('/LOG="'+str(directory/'setup-install.log')+'"')})
     $setup = Start-Process -FilePath $download -ArgumentList $arguments -Wait -PassThru
     if ($setup.ExitCode -ne 0) {{ throw ('Setup failed with exit code ' + $setup.ExitCode) }}
 '''

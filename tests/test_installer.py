@@ -76,12 +76,16 @@ class InstallerTests(unittest.TestCase):
             root=Path(directory);download=root/'setup.exe';download.write_bytes(b'setup')
             install=root/"User's App";old=install/'versions/2.3.2/ApplianceSignalStudio.exe'
             old.parent.mkdir(parents=True);old.write_bytes(b'previous-runtime');recovery=workspace(root/'snapshot')
-            with patch('sys.platform','win32'),patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('subprocess.CREATE_NO_WINDOW',0,create=True),patch('app_update_launcher.subprocess.Popen') as launch:
+            with patch('sys.platform','win32'),patch('sys.frozen',True,create=True),patch('sys.executable',str(old)),patch('app_installation.installed_root',return_value=install),patch('subprocess.CREATE_NO_WINDOW',0x08000000,create=True),patch('app_update_launcher.subprocess.Popen') as launch:
                 launch_installer(download,recovery,root,package()['sha256'],manifest=package())
                 script=next((root/'transactions').rglob('install-setup-update.ps1')).read_text(encoding='utf-8-sig')
                 self.assertIn("User''s App",script);self.assertIn('System.Security.Cryptography.SHA256',script);self.assertIn('$setup.ExitCode',script)
+                self.assertIn("@('/VERYSILENT', '/SUPPRESSMSGBOXES', '/SP-', '/NORESTART'",script)
+                self.assertNotIn("'/SILENT'",script)
+                self.assertIn('setup-install.log',script)
                 self.assertNotIn('Move-Item',script);self.assertIn('FilePath $previous',script);self.assertIn('Start-AndConfirm',script)
                 self.assertEqual(launch.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'],'1')
+                self.assertEqual(launch.call_args.kwargs['creationflags'],subprocess.CREATE_NO_WINDOW)
 
     @unittest.skipUnless(sys.platform=='win32','Native installed-update transaction is exercised on Windows CI')
     def test_native_setup_success_and_failure_restart_correct_runtime(self):

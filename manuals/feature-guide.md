@@ -652,3 +652,13 @@ Stacked panes align their actual graph drawing edges even when they have differe
 **Data Portal** shows **Channel** and **Unit**. File headers keep their own selection checkboxes. Right-click a file header to select/deselect that complete file, select/deselect its filtered channels or **Close Dataset**. These actions affect the chosen file only. Filtering counts, removal confirmation and Undo Dataset Removal remain available. **Kind** metadata remains in **Properties**; the former Kind and File Actions columns and Show channel kind View toggle are no longer used.
 
 Use the main **About** menu beside Tools for **User Manual** and **About / Updates**. The duplicate Tools → About version entry is removed; the searchable version manual, build/release/license details, installed/standalone updates and offline update import remain available through the main About menu.
+
+## Quiet installed-app updates | 2.4.2
+
+In an installed copy, open **About → About / Updates**, check/download the matching update and choose **Install Update & Restart**. The app saves an independent recovery workspace and closes. Its updater runs the complete verified Setup package without the normal Setup progress window, then opens the new workbench and restores that workspace. A successful new version/path and recovery acknowledgement are still required before success is recorded.
+
+Only the in-app installed-update path changes: it uses Inno Setup **/VERYSILENT** rather than **/SILENT**, which still displayed a progress window. Runtime staging and health verification, installation logs, process/exit-code checks, previous-runtime retention and recovery stay enabled. A failed Setup or startup/restore still follows the existing recovery route; inspect the transaction's **RECOVERY.txt** and Setup log when troubleshooting. Complete installer registration/shortcut recovery after a late failure can require rerunning the previous official Setup.
+
+**One-time transition:** the updater belongs to the version already running. An installed **v2.4.1 or earlier** copy still contains its older **/SILENT** launch logic, so installing v2.4.2 through that copy can show Setup progress once. After v2.4.2 is installed and launched, future installed-app updates use its quiet updater. Downloading the new payload cannot retroactively change the old application's updater before it runs.
+
+Opening a Setup EXE manually remains interactive for first installation, repair or manual upgrade. The change does not suppress Windows security/publisher prompts or bypass organizational policy. Standalone EXE and ZIP updates keep their existing matching mechanisms; they do not launch installed Setup or change edition.

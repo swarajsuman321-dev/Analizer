@@ -2,7 +2,8 @@
 from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
-NOTES={'2.4.1':'Stacked graph drawing edges align across different value-axis counts without changing numerical time ranges. Data Portal shows Channel and Unit only; per-file selection, filtered selection and Close Dataset remain in the file context menu. Kind metadata remains in Properties. The main About menu retains User Manual and About / Updates without a duplicate Tools entry. Installed, standalone EXE and standalone ZIP builds retain matching update support.',
+NOTES={'2.4.2':'Installed-app updates run Setup without its progress window while retaining staged health checks, logs, exit-code checks, restored startup and recovery. Manually opened Setup keeps its installation wizard. An existing v2.4.1-or-earlier updater may still show Setup once while installing this fix; quiet future installed updates use the updater embedded in v2.4.2. All three delivery forms retain the same version, manual and matching update feeds.',
+       '2.4.1':'Stacked graph drawing edges align across different value-axis counts without changing numerical time ranges. Data Portal shows Channel and Unit only; per-file selection, filtered selection and Close Dataset remain in the file context menu. Kind metadata remains in Properties. The main About menu retains User Manual and About / Updates without a duplicate Tools entry. Installed, standalone EXE and standalone ZIP builds retain matching update support.',
        '2.4.0':'Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.',
        '2.1.0':'Streamlined standalone analysis with retained engineering, processing and reporting tools.',
        '2.1.1':'Unit detection improvements, visible navigation shortcuts, cursor locks and duplicate-free realignment.',
@@ -101,6 +102,11 @@ def generate(versions=None):
                 body=body.replace('**Tools → About version**', '**About → About / Updates**')
                 if title=='Installed and standalone updates together':
                     body=body.replace('Download the full v2.4.0 ZIP once', f'Download the full v{version} ZIP once')
+            if number>=(2,4,2):
+                if title=='Updates and recovery':
+                    body+='Installed updates launched by this version run Setup without its progress window, then restore the workspace in the new app. Manual Setup remains interactive. When updating from v2.4.1 or earlier, that older embedded updater can still show Setup once; future updates launched from v2.4.2 use the quiet path. See Quiet installed-app updates below for the transition and recovery details.\n\n'
+                if title=='Install, upgrade and uninstall on Windows':
+                    body+='Running a downloaded Setup manually keeps the normal wizard, including first installation and deliberate manual repair/upgrade. Only Setup launched by the v2.4.2 installed-app updater uses the quiet mode. A previous embedded updater cannot gain this change before its own application is updated.\n\n'
             text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 
