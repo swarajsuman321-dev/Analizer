@@ -3,7 +3,7 @@
   "version": "2.4.1",
   "source_base_commit": "ba9c673",
   "platform": "Linux Qt offscreen",
-  "status": "local verified; native Windows/package/update/public checks pending",
+  "status": "local verified; native Windows and public release verified separately",
   "unit_tests": {
     "discovered": 381,
     "passed": 379,
@@ -188,5 +188,6 @@
     "ok": true,
     "version": "2.4.1",
     "frozen": false
-  }
+  },
+  "published_release_evidence": "release-v2.4.1.json"
 }

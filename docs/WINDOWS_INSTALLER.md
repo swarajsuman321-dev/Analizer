@@ -1,11 +1,11 @@
-# Windows installation and update guide — v2.4.0
+# Windows installation and update guide — v2.4.1
 
-The per-user installer packages the same PySide6 workbench and complete tested one-folder runtime. Python does not need to be installed. Portable EXE and ZIP downloads remain available. All delivery forms share the v2.4.0 analysis engine and approved graph, cursor, reporting and data-handling improvements. See the [release record](RELEASE_2.4.0.md) and [complete manual](../manuals/v2.4.0.md).
+The per-user installer packages the same PySide6 workbench and complete tested one-folder runtime. Python does not need to be installed. Portable EXE and ZIP downloads remain available. All delivery forms share the v2.4.1 analysis engine and approved graph, cursor, reporting and data-handling improvements. See the [release record](RELEASE_2.4.1.md) and [complete manual](../manuals/v2.4.1.md).
 
 ## Try it on your PC
 
 1. Save your workspace and close all Appliance Signal Studio windows.
-2. Download **ApplianceSignalStudio-Setup-2.4.0.exe** from the [v2.4.0 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.0).
+2. Download **ApplianceSignalStudio-Setup-2.4.1.exe** from the [v2.4.1 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.1).
 3. Run Setup as your normal Windows user. Keep the suggested directory unless you need another writable location. No administrator rights are requested.
 4. Optionally select **Create a desktop shortcut**, finish installation and launch the app. You can also search for **Appliance Signal Studio** in Start.
 5. Open a recording or restore a saved workspace and check your templates and reports. The portable download can remain available for comparison.
@@ -16,7 +16,7 @@ Windows 10/11 x64 is the target. This trial installer is **unsigned**: no publis
 
 | Content | Location / behavior |
 | --- | --- |
-| Complete runtime | `%LOCALAPPDATA%\Programs\ApplianceSignalStudio\versions\2.4.0\` by default; direct startup without onefile temporary extraction |
+| Complete runtime | `%LOCALAPPDATA%\Programs\ApplianceSignalStudio\versions\2.4.1\` by default; direct startup without onefile temporary extraction |
 | Settings and templates | Existing `%APPDATA%\ApplianceSignalStudio\`; confirmed TDMS keys and configurations retained |
 | Installed-app reports/workspaces | Windows Documents directory, `SignalStudio_Output`; explicit `ANALIZER_OUTPUT_DIR` remains supported |
 | Existing portable outputs | Remain in their original folder; source recordings and measurement outputs are not silently moved |
@@ -38,9 +38,9 @@ Use **Windows Settings → Apps → Installed apps → Appliance Signal Studio �
 
 Build the existing native runtime with `build_windows.bat` / `build_exe.py`, then run `python scripts/build_installer.py` in the build virtual environment. Inno Setup 6.3+ is required to compile Setup; it is not required by end users. The GitHub Windows runner provides it. `scripts/check_installer.py` is an explicit disposable-CI lifecycle test and refuses to modify an existing registered installation.
 
-The native gate exercises fresh installation, startup imports, Unicode/apostrophe paths, user-only registration, shortcut targets, running-app exclusion, repair, uninstall, upgrade using the digest-pinned actual v2.3.1 ZIP, and failed-health-check rollback. Tests preserve sentinel settings, measurements and an unowned file. CI-only old/broken installers are not published or bundled.
+The native gate exercises fresh installation, startup imports, Unicode/apostrophe paths, user-only registration, shortcut targets, running-app exclusion, repair, uninstall, upgrade using the digest-pinned actual v2.3.1 ZIP, and failed-health-check rollback. Tests preserve sentinel settings, measurements and an unowned file. CI-only old/broken installers are not published or bundled. Separately, actual user-facing update/recovery transactions start the digest-pinned official v2.4.0 EXE, complete ZIP and Setup, then validate the new visible v2.4.1 application and independent recovery workspace.
 
-**Published and verified:** [v2.4.0 downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.0) and [permanent native/public evidence](validation/release-v2.4.0.json). The final Windows workflow passed **371 regression tests with zero skips**, 42 real-recording checks in each delivery form, packaged startup/restart, seven installer lifecycle checks and twelve actual GUI update/recovery checks. The public Setup EXE was independently downloaded and verified: **134,769,948 bytes**, SHA-256 **`a71c5cc7de7ba5fa3efaf55ccc6148fe49f0f39972b4a52616c6aa15ab5894eb`**. Standalone EXE/ZIP downloads and all three feeds were verified in the same record. The [v2.3.2 record](validation/release-v2.3.2.json) remains the historical installation baseline.
+**Published and verified:** [v2.4.1 downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.1) and [permanent native/public evidence](validation/release-v2.4.1.json). The [final Windows workflow](https://github.com/swarajsuman321-dev/Analizer/actions/runs/39891732273) for source `cf70f1e011315d928bb1d1c78b89c2161da12026` passed **381 regression tests with zero skips**, 42 real-recording checks in each delivery form, packaged startup/restart, installer lifecycle checks and actual GUI update/recovery checks. The public Setup EXE was independently downloaded and verified: **134,843,409 bytes**, SHA-256 **`53c32165db4c1aa8b01dd4157c8ebfe67727157775e40ba7c1dce27cba285da6`**. Standalone EXE/ZIP downloads and all three feeds were verified in the same record. The [v2.3.2 record](validation/release-v2.3.2.json) remains the historical installation baseline.
 
 The native checks caught two important platform details: WScript shortcut inspection loses some Unicode characters (the replacement uses IShellLinkW), and Inno Setup intentionally ignores exceptions from file `AfterInstall` callbacks. Health verification now returns an explicit error from `PrepareToInstall`, which blocks before modifying the installed version. The installer-only diagnostic workflow exercises this hard gate with the real previous runtime; full release checks also run the actual newly installed application.
 

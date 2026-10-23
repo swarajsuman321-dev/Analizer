@@ -1,11 +1,13 @@
-# Appliance Signal Studio 2.4.0
+# Appliance Signal Studio 2.4.1
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
-**Windows installer: [Download Setup v2.4.0](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio-Setup-2.4.0.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.0/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.4.0.md).
+**Windows installer: [Download Setup v2.4.1](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.1/ApplianceSignalStudio-Setup-2.4.1.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.1/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.1/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.4.1.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Version **2.4.0 is published** from the same tested source for all three forms. Native Windows validation passed **371 regression tests with zero skips**, **42 real-recording checks in each form**, installer lifecycle and actual application update/recovery tests. See the [release record](docs/RELEASE_2.4.0.md) and [permanent verification evidence](docs/validation/release-v2.4.0.json), including remaining human/platform checks.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Version **2.4.1 is published** from the same tested source for all three forms. Native Windows validation passed **381 regression tests with zero skips**, **42 real-recording checks in each form**, installer lifecycle and actual application update/recovery tests. See the [release record](docs/RELEASE_2.4.1.md) and [permanent verification evidence](docs/validation/release-v2.4.1.json), including remaining human/platform checks.
+
+Stacked panes align their actual drawing edges without changing numerical time ranges. Data Portal shows **Channel** and **Unit**; right-click a file header for file-wide/filtered selection and **Close Dataset**. Kind metadata remains in Properties, and the main About menu retains User Manual and About / Updates.
 
 Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy](docs/DUAL_DISTRIBUTION_POLICY.md) and the [approved audit checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md).
 
@@ -55,9 +57,10 @@ See [FEATURE_PARITY.md](FEATURE_PARITY.md) for the earlier-feature audit and the
 of every restored capability.
 
 **View** controls Engineering Controls, Properties, Channel Math, original
-Channel Table and detailed interval statistics. All panels and channel-kind display
-are enabled by default; shared dock areas expose tabs. Use Show all panels to restore
-this visibility in one click. **Analyze** applies a formula or
+Channel Table and detailed interval statistics. All panels are enabled by default;
+Engineering Controls is the default tab in its shared dock group. Channel Kind
+metadata remains in Properties rather than a separate tree column or View toggle.
+Use Show all panels to restore panel visibility in one click. **Analyze** applies a formula or
 numerical operation directly as a derived channel. The advanced capabilities live under **Tools**, including channel styling, playback,
 engineering diagnostics, image-reference calibration, presets and extension management.
 There is no permanent sample-preview pane or separate legacy application. Save workspace writes a JSON manifest plus an
@@ -85,13 +88,13 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.4.0**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.4.0**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.4.1**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.4.1**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
 ## Feature history
 
-The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.4.0 manual](manuals/v2.4.0.md) and [release record](docs/RELEASE_2.4.0.md).
+The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.4.1 manual](manuals/v2.4.1.md) and [release record](docs/RELEASE_2.4.1.md).
 
 ### Navigation and locked cursors (2.1.1)
 
@@ -164,7 +167,7 @@ Windows taskbar identity, in addition to being embedded in the executable.
 
 Open **About → About / Updates** and choose **Check for updates → Download update → Install update & restart**. Installed Setup, standalone EXE and complete standalone ZIP use matching verified feeds. Preparation saves independent recovery JSON/NPZ, stages the correct package in a worker and verifies the actual restored new startup; recovery runtimes remain available. Cancellation/failed preparation preserves the current app. Update checks never upload recordings. Use **About → User Manual** or F1 for the separate searchable version manual. Source users update their checkout as usual.
 
-Older ZIP builds need one full v2.4.0 ZIP download/extraction to gain folder-preserving updates; retain the old folder and outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.4.0.md).
+ZIP builds older than v2.4.0 need one full v2.4.0-or-later ZIP download/extraction to gain folder-preserving updates; use the current v2.4.1 ZIP and retain the old folder/outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.4.1.md).
 
 ## TDMS recordings and mouse X/Y hover (2.1.6)
 
@@ -184,7 +187,7 @@ Maintain the manuals in `manuals/feature-guide.md` (each topic includes its firs
 
 ### Current status and future reference
 
-See the [current v2.4.0 implementation/verification record](docs/RELEASE_2.4.0.md), [full manual](manuals/v2.4.0.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
+See the [current v2.4.1 implementation/verification record](docs/RELEASE_2.4.1.md), [full manual](manuals/v2.4.1.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
 
 ### Desktop finalization (v2.2.0)
 
@@ -224,3 +227,5 @@ The [v2.3.1 UI retest](docs/audits/2026-10-18-v2.3.1-retest/README.md) includes 
 [Findings, screenshots and reproducible evidence](docs/audits/2026-10-18-real-user-workflows/README.md) document unresolved time-lock, cursor, context-menu and graph-header issues. [Reusable original test recordings](tests/samples/recordings/README.md) are committed with SHA-256 verification. [Latest user acceptance requirements](docs/USER_WORKFLOW_ACCEPTANCE.md) supersede older global-toolbar placement criteria.
 
 The [approved v2.4.0 implementation](docs/RELEASE_2.4.0.md) addresses those source-level findings and the [engineering PDF review](docs/audits/2026-10-18-engineering-pdf-usefulness-review.md). Dated audits remain historical evidence; follow the release record for final acceptance status and limitations.
+
+The [v2.4.1 follow-up](docs/RELEASE_2.4.1.md) aligns actual stacked drawing edges and simplifies the Data Portal/About routes while retaining the earlier engineering and update capabilities.

@@ -1,6 +1,6 @@
 # User workflow acceptance requirements — 18 October 2026
 
-These requirements record the user's latest explicit clarification and supplied chart-menu reference. They supersede earlier documentation/tests that accepted a global application navigation toolbar. Current implementation does not meet them; see the [measured audit](audits/2026-10-18-real-user-workflows/README.md).
+These requirements preserve the user’s 18 October 2026 navigation/dialog clarification and supplied chart-menu reference, with the approved stacked-graph drawing-alignment follow-up of 23 October 2026. They supersede earlier criteria that accepted a global application navigation toolbar. The [measured audit](audits/2026-10-18-real-user-workflows/README.md) describes the implementation at that historical baseline. Current delivery and measured verification are recorded in [v2.4.1 release notes](RELEASE_2.4.1.md) and [native/public evidence](validation/release-v2.4.1.json); remaining human/platform checks are listed there.
 
 ## Graph navigation placement
 
@@ -20,6 +20,8 @@ Route analysis through the application's own processing services; unsupported na
 
 Given compatible temporal panes, enabling Lock time axes adopts the active pane's numeric interval immediately. Panning, box/wheel/button zooming, fitting, resizing, visibility changes, layout changes, themes, tab switches and restoring a workspace preserve identical numeric X limits. Turning it off permits independent intervals. Frequency, histogram and sample coordinates remain separate. Empty support stays unknown; locking a view never shifts source recording timestamps. Aligning physical test events is a separate, explicitly configured operation.
 
+Numerical time locking and drawing geometry are separate requirements. Panes stacked in the same grid column must share the actual left and right graph drawing edges even with different numbers of Y-axes, units or tick-label widths. With identical numerical X limits, the same timestamp, Cursor A and Cursor B must map to the same horizontal screen position in every such pane (measured regression tolerance: 0.5 logical pixel). Recalculate axis space after font/theme/size changes, dynamic ticks, added/removed axes, visibility/layout changes and restore. Preserve independent axis values, automatic tick sizing and numerical bounds; do not change time ranges, source timestamps or cursor samples to compensate for unequal drawing widths. Independent side-by-side columns and unlocked numerical ranges retain their separate navigation semantics.
+
 A locked cursor identifies one actual source sample. Its marker, readout and interval endpoint must agree, including duplicate timestamps, discrete states, masks and gaps. Keep original duplicate rows. Define the chosen sample identity consistently rather than fixing a display discrepancy by deleting observations.
 
 ## Dialogs, density and recovery
@@ -37,3 +39,5 @@ Before Apply, explain valid filter ranges in the signal's units and sample rate.
 ## Acceptance scope
 
 Use the committed real fixtures and mixed layouts as well as synthetic edge cases. A green regression suite does not override these user requirements. Record observed results, expected safety rejections, source-inspected risks and untested platform behavior separately. Require a fresh native Windows build/runtime check before claiming executable acceptance.
+
+Include real mixed-unit/two-column portal flows, unequal Y-axis counts, long/dynamic tick labels, empty panes and saved restore. Measure actual scene drawing edges and mapped timestamp/cursor pixels rather than checking numeric ranges or outer widget widths alone. Native measured cases and offscreen tests remain separately scoped; physical DPI, multi-monitor and user-interaction checks remain unrun until individually recorded.
