@@ -291,7 +291,6 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for text,command in [('Rename Channel','rename'),('Duplicate Channel','duplicate'),('Delete Selected Channels','delete'),('Assign Value Axis','assign axis'),('Mask Interval','mask interval'),('Clear Masks','clear masks'),('Add Marker','marker'),('Mark Interval','roi')]:
             item=channel.addAction(text);item.triggered.connect(lambda checked=False,c=command:self.organize(c))
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
-        kind=view.addAction('Show channel kind');self.channel_kind_action=kind;kind.setCheckable(True);kind.toggled.connect(lambda show:self.portal.tree.setColumnHidden(2,not show));kind.setChecked(True)
         self.help_action=QtGui.QAction('User Manual',self);self.help_action.setShortcut('F1');self.help_action.triggered.connect(self.show_help)
         self.info_action=QtGui.QAction('About / Updates',self);self.info_action.triggered.connect(self.show_info)
         channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
@@ -341,7 +340,6 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
-        self.channel_kind_action.setChecked(True)
         self.docks['Data Portal'].raise_();self.docks['Properties'].raise_();self.docks['Engineering Controls'].show();self.docks['Engineering Controls'].raise_();self.docks['Readout'].raise_()
 
     def show_info(self):
@@ -885,7 +883,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.engineering_import((machine,),calculate,complete)
 
     def ui_state(self):
-        return {'app_version':VERSION,'show_channel_kind':not self.portal.tree.isColumnHidden(2),'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
+        return {'app_version':VERSION,'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
                 'stats_scope':self.stats_scope.currentText(),'tab':getattr(self,'_plot_tab_index',0),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'focus_graph':{'enabled':self.compact.focus_action.isChecked(),'normal':bytes(self.compact.focus_state.toBase64()).decode() if self.compact.focus_state is not None else ''},'engineering_session':self.engineering.state(),'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
@@ -940,7 +938,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.store.observe(self.store_changed);self.store_changed(set())
         for encoded,method in [(ui.get('geometry'),self.restoreGeometry),(ui.get('docks'),self.restoreState)]:
             if encoded:method(QtCore.QByteArray.fromBase64(encoded.encode()))
-        if 'show_channel_kind' in ui:self.channel_kind_action.setChecked(bool(ui['show_channel_kind']))
+        # Older workspaces may contain show_channel_kind. Its removed portal
+        # column has no display state to restore; channel metadata stays intact.
         if upgrade_defaults and 'app_version' not in ui:self.enable_all_panels()
         self.stats_scope.setCurrentText(ui.get('stats_scope','Cursor interval'))
         self.tabs.setCurrentIndex(min(ui.get('tab',0),len(self.workspaces)-1));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))

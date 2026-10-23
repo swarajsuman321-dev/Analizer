@@ -51,7 +51,16 @@ class DesktopFinalizationTests(unittest.TestCase):
         self.click_check(w.portal.dataset_roots[db.id]);self.assertEqual(set(w.dashboard.active.ids),set(a+b))
         w.portal.search.setText('Sensor');self.click_check(w.portal.dataset_roots[db.id]);self.assertEqual(set(w.dashboard.active.ids),set(a))
         w.portal.search.clear();root=w.portal.dataset_roots[db.id]
-        button=w.portal.tree.itemWidget(root,3);self.assertEqual(button.text(),'Close Dataset');button.click();self.app.processEvents()
+        self.assertEqual(w.portal.tree.columnCount(),2)
+        def close_dataset(menu,*_):
+            action=next(action for action in menu.actions() if action.text()=='Close Dataset')
+            action.trigger()
+        w.portal.tree.scrollToItem(root);self.app.processEvents()
+        class SourceMenu(QtWidgets.QMenu):
+            def exec(self,*args):return close_dataset(self,*args)
+        with patch.object(QtWidgets,'QMenu',SourceMenu):
+            w.portal.context_menu(w.portal.tree.visualItemRect(root).center())
+        self.app.processEvents()
         self.assertEqual(set(w.store.channels),set(a));self.assertEqual(set(w.dashboard.active.ids),set(a));self.assertNotIn(db.id,w.store.datasets)
     def test_header_bar_scales_synchronized_views_once_and_follows_focus(self):
         w=self.w;_,a=self.add_file('A');_,b=self.add_file('B','W');workspace=w.dashboard;workspace.set_layout('Vertical split')

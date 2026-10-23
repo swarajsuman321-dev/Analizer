@@ -2,7 +2,8 @@
 from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
-NOTES={'2.4.0':'Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.',
+NOTES={'2.4.1':'Stacked graph drawing edges align across different value-axis counts without changing numerical time ranges. Data Portal shows Channel and Unit only; per-file selection, filtered selection and Close Dataset remain in the file context menu. Kind metadata remains in Properties. The main About menu retains User Manual and About / Updates without a duplicate Tools entry. Installed, standalone EXE and standalone ZIP builds retain matching update support.',
+       '2.4.0':'Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.',
        '2.1.0':'Streamlined standalone analysis with retained engineering, processing and reporting tools.',
        '2.1.1':'Unit detection improvements, visible navigation shortcuts, cursor locks and duplicate-free realignment.',
        '2.1.2':'Pinned lock values, extended readouts/statistics scope and quick event notes.',
@@ -30,6 +31,8 @@ def generate(versions=None):
         if versions and version not in versions:continue
         number=tuple(map(int,version.split('.')))
         default=('All View panels and Show channel kind are enabled in a new workspace. Data Portal/Engineering Controls, Properties/Channel Math and the bottom measurement/table panels share dock tabs.' if number>=(2,1,7) else 'New workspaces start with Data Portal and Readout visible; advanced panels can be opened through View.')
+        if number>=(2,4,1):
+            default='All View panels are enabled in a new workspace. Data Portal/Engineering Controls, Properties/Channel Math and the bottom measurement/table panels share dock tabs. Engineering Controls remains the default tab in its existing dock group.'
         text=f'# Appliance Signal Studio — {version}\n\nComplete feature reference for this version. Use the matching version when following controls; later releases can change their placement.\n\n## Changes in this version\n\n{note}\n\n'
         for title,introduced,body in topics:
             if introduced>number:continue
@@ -83,6 +86,21 @@ def generate(versions=None):
                     body=body.replace('**About → Updates → Check for updates**', '**About → About / Updates → Check for updates**')
                 if title=='Removing recordings and clearing the workspace':
                     body='\nClose Dataset unloads only that recording plus its dependent derived channels, never the source disk file. When derived work is affected, review counts and expanded channel names before confirming. Channel → Undo Dataset Removal (Ctrl+Alt+Z) restores the last removal, stable IDs, dependencies, plot bindings and cursor locks. Newer channels and source metadata remain intact. Clear Workspace confirms the entire unload and can also be undone until the next removal or an explicit different-workspace restore. Save important work before closing the app.\n\n'
+            if number>=(2,4,1):
+                if title=='View menu and panel layout':
+                    body=re.sub(r'^\| Show channel kind \|[^\n]*\n','',body,flags=re.M)
+                if title=='Data Portal selection and visibility':
+                    body='\nData Portal has two columns: **Channel** and **Unit**. Each channel checkbox shows or hides its trace immediately. Each file header checkbox selects/deselects only that file, including channels hidden by a filter. There is no global cross-file Select All. Right-click a file header for file-wide selection, separately labelled filtered-channel selection and **Close Dataset**. Matching/total counts disclose the affected scope. Channel kind remains available in **Properties**; no Kind or File Actions column occupies the tree.\n\nA selected channel row identifies the channel for Properties, math and channel actions; selection and visibility serve different purposes. Deselecting all channels leaves a clean empty plot. Type a name, unit, source or metadata term to filter. Enable Regex for regular expressions; an invalid expression displays an explanation and no matching channel results until corrected. File roots and their context menus remain reachable. Clear the search to see all channels. Dataset/group nodes organize channels and are not extra traces.\n\n'
+                if title=='Properties and channel metadata':
+                    body+='**Kind** remains available here for Analog/Discrete metadata; removing its Data Portal column does not remove the channel metadata or its processing behavior. Value interpretation remains a separate choice for numeric values versus actuator ON/OFF states.\n\n'
+                if title=='Removing recordings and clearing the workspace':
+                    body='\nRight-click the relevant file header in **Data Portal** and choose **Close Dataset**. '+body.lstrip()
+                if title=='Reviewed recording identity and safe removal':
+                    body=body.replace('When filtering, use the separately labelled filtered-channel actions to affect matching channels only;', 'Right-click that file header for Close Dataset and separately labelled filtered-channel selection actions. When filtering, those actions affect matching channels only;')
+                body=body.replace('**Close Dataset** beside each file', '**Close Dataset** in each file header\'s context menu')
+                body=body.replace('**Tools → About version**', '**About → About / Updates**')
+                if title=='Installed and standalone updates together':
+                    body=body.replace('Download the full v2.4.0 ZIP once', f'Download the full v{version} ZIP once')
             text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 

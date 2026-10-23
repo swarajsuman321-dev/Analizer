@@ -50,6 +50,52 @@ def sha256_file(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def viewport_time_x(pane, value):
+    """Map a timestamp through the complete floating viewport transform.
+
+    Each plot owns its own scene.  Comparing scene coordinates, or rounding with
+    mapFromScene(), can miss different canvas gutters at the same numeric time.
+    Qt returns logical pixels here; this is not physical-DPI certification.
+    """
+    from PySide6 import QtCore
+    point = pane.getViewBox().mapViewToScene(QtCore.QPointF(float(value), 0))
+    viewport = pane.viewportTransform().map(point)
+    return float(pane.viewport().mapToGlobal(QtCore.QPoint(0, 0)).x()+viewport.x())
+
+
+def time_pixel_alignment(panes, columns, *, tolerance=.5):
+    """Assert equal numeric time bounds also draw at equal X pixels per column."""
+    import numpy as np
+    assert columns > 0
+    groups = {}
+    for index, pane in enumerate(panes):
+        if pane.ids and pane.coordinate and pane.coordinate[0] == 'time':
+            groups.setdefault((index % columns, tuple(pane.coordinate)), []).append((index, pane))
+    observed = []
+    for (column, coordinate), members in groups.items():
+        first = members[0][1]
+        bounds = np.asarray(first.getViewBox().viewRange()[0], dtype=float)
+        timestamps = [float(bounds[0]+(bounds[1]-bounds[0])*fraction) for fraction in (0, .1, .5, .9, 1)]
+        records = []
+        for index, pane in members:
+            np.testing.assert_allclose(pane.getViewBox().viewRange()[0], bounds, rtol=0, atol=1e-7,
+                err_msg='Pixel alignment must preserve identical numeric time limits')
+            positions = [viewport_time_x(pane, timestamp) for timestamp in timestamps]
+            assert np.isfinite(positions).all() and positions[-1] > positions[0], 'Invalid time-to-viewport transform'
+            records.append({'pane_index': index, 'time_pixel_x': positions,
+                            'axis_units': list(dict.fromkeys(pane.bindings.values()))})
+        pixels = np.asarray([record['time_pixel_x'] for record in records])
+        spreads = np.ptp(pixels, axis=0)
+        assert np.all(spreads <= tolerance+1e-7), (
+            f'Common timestamps differ by {spreads.tolist()} logical pixels in grid column {column}; '
+            f'numeric bounds agree but the drawing gutters do not (limit {tolerance})')
+        observed.append({'column': column, 'coordinate': list(coordinate), 'numeric_bounds': bounds.tolist(),
+                         'timestamps': timestamps, 'maximum_pixel_spread': float(spreads.max()),
+                         'tolerance_logical_pixels': tolerance, 'panes': records})
+    assert observed, 'No temporal pane was available for pixel-alignment acceptance'
+    return observed
+
+
 @contextmanager
 def isolated_environment(output):
     """Keep diagnostics away from a user's templates, outputs and settings."""
@@ -282,6 +328,15 @@ def _run_workbench(recorder, samples, output):
             window.sync_visibility()
             window.portal.search.clear()
             window.portal.rebuild()
+            tree = window.portal.tree
+            assert tree.columnCount() == 2, 'Data Portal must contain only Channel and Unit columns'
+            headers = [tree.headerItem().text(index) for index in range(tree.columnCount())]
+            assert headers == ['Channel', 'Unit'], 'Unexpected Data Portal column or header'
+            iterator = QtWidgets.QTreeWidgetItemIterator(tree)
+            while iterator.value():
+                item = iterator.value()
+                assert all(tree.itemWidget(item, column) is None for column in range(tree.columnCount())), 'Inline file-action widgets consume the channel columns'
+                iterator += 1
             observed = []
             for role, other in fixture_stores.items():
                 ids = set(other.channels)
@@ -310,7 +365,7 @@ def _run_workbench(recorder, samples, output):
             with store.batch():
                 for channel in second.channels.values():
                     store.add(channel)
-            return observed
+            return {'files': observed, 'portal_columns': headers, 'inline_item_widgets': 0}
         recorder.check('PER-FILE-CHECKBOX-AND-CLOSE-DATASET', file_selection_and_removal, 'dataset_isolation',
                        requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
 
@@ -469,17 +524,49 @@ def _run_workbench(recorder, samples, output):
             window.resize(*size)
             window.theme.apply(theme)
             workspace.set_layout(layout)
+            _, columns = LAYOUTS[layout]
+            real_temperature = next((channel for channel in fixture_stores.get('tdms', ChannelStore()).channels.values()
+                if channel.coordinate_kind == 'time' and channel.coordinate_unit == 'min' and channel.unit == '°C'), synthetic[0])
+            real_pressure = next((channel for channel in fixture_stores.get('machine', ChannelStore()).channels.values()
+                if channel.coordinate_kind == 'time' and channel.coordinate_unit == 'min' and channel.unit == 'Pa'), synthetic[2])
             for index, pane in enumerate(workspace.visible_panes()):
-                pane.bind([synthetic[index % len(synthetic)].id])
+                row, column = divmod(index, columns)
+                # In stacked/grid layouts every column contains both narrow
+                # single-unit and wide independent multi-unit axis gutters.
+                ids = [real_temperature.id] if (row+column) % 2 == 0 else [real_pressure.id, synthetic[3].id, synthetic[1].id]
+                pane.bind(ids)
+
+            def settle_painted_axes():
+                previous = None
+                stable = 0
+                for attempt in range(12):
+                    app.processEvents()
+                    # Offscreen scroll children may not paint with the window.
+                    # Grab each pane so tick labels discover their real widths.
+                    for pane in workspace.visible_panes():
+                        pane.grab()
+                    QtTest.QTest.qWait(15)
+                    app.processEvents()
+                    geometry = tuple(round(viewport_time_x(pane, value), 5)
+                        for pane in workspace.visible_panes()
+                        for value in pane.getViewBox().viewRange()[0])
+                    stable = stable+1 if geometry == previous else 0
+                    previous = geometry
+                    if stable >= 3:
+                        return attempt+1
+                raise AssertionError('Painted axis widths and queued canvas alignment did not settle')
+
             workspace.active = workspace.panes[0]
             workspace.set_time_lock(False)
             workspace.active.setXRange(.5, 1.5, padding=0)
             workspace.set_time_lock(True)
-            events()
+            paint_passes = {'time_lock': settle_painted_axes()}
             adopted = assert_ranges([.5, 1.5])
+            pixel_checks = {'time_lock': time_pixel_alignment(workspace.visible_panes(), columns)}
             workspace.visible_panes()[-1].setXRange(.25, 1.75, padding=0)
-            events()
+            paint_passes['pan'] = settle_painted_axes()
             assert_ranges([.25, 1.75])
+            pixel_checks['pan'] = time_pixel_alignment(workspace.visible_panes(), columns)
             for mode in ('x', 'y', 'xy', 'pan'):
                 workspace.navigation_actions[mode].trigger()
                 assert workspace.navigation_mode == mode
@@ -489,21 +576,25 @@ def _run_workbench(recorder, samples, output):
                     assert enabled == [mode != 'y', mode != 'x'], 'Menu/header mode and gesture mode differ'
             workspace.navigate('x')
             workspace.navigate('in')
-            events()
+            paint_passes['zoom_in'] = settle_painted_axes()
             assert_ranges()
+            pixel_checks['zoom_in'] = time_pixel_alignment(workspace.visible_panes(), columns)
             workspace.navigate('out')
             workspace.navigate('reset')
-            events()
+            paint_passes['reset'] = settle_painted_axes()
             assert_ranges()
+            pixel_checks['reset'] = time_pixel_alignment(workspace.visible_panes(), columns)
             saved = workspace.state()
             workspace.restore(saved)
-            events()
+            paint_passes['restore'] = settle_painted_axes()
             bounds = assert_ranges()
+            pixel_checks['restore'] = time_pixel_alignment(workspace.visible_panes(), columns)
             heights = [pane.getViewBox().sceneBoundingRect().height() for pane in workspace.visible_panes()]
             assert min(heights) >= 150, f'{layout} at {size} crushed drawing heights to {heights}'
             assert len(workspace.visible_panes()) == LAYOUTS[layout][0]*LAYOUTS[layout][1]
             return {'layout': layout, 'theme': theme, 'window_size': size,
                     'adopted_ranges': adopted, 'restored_ranges': bounds, 'drawing_heights': heights,
+                    'paint_settle_passes': paint_passes, 'time_pixel_alignment': pixel_checks,
                     'scroll_maximum': workspace.scroll.verticalScrollBar().maximum()}
         for layout in LAYOUTS:
             for theme in ('Dark', 'Light'):

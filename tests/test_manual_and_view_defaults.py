@@ -21,22 +21,23 @@ class ManualAndViewTests(unittest.TestCase):
         self.assertNotIn(w.help_action,toolbar.actions());self.assertEqual(w.about_menu.actions(),[w.help_action,w.info_action]);self.assertEqual([a.text() for a in w.menuBar().actions()][-2:],['Tools','About']);w.tabs.setCurrentIndex(1);w.help_action.trigger();self.app.processEvents()
         self.assertTrue(w.help_dialog.isVisible());self.assertIs(w.active_workspace,w.comparison)
         self.assertEqual(w.help.parentWidget(),w.help_dialog)
+        self.assertFalse(any(action.text().startswith('About version') for action in w.studio.menu.actions()))
         w.help_dialog.close();self.assertTrue(w.isVisible());self.assertEqual(w.tabs.currentIndex(),1)
         w.help_action.trigger();self.assertTrue(w.help_dialog.isVisible())
 
     def test_every_view_panel_enabled_by_default_and_saved_layout_wins(self):
         w=self.window
         self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()))
-        self.assertFalse(w.portal.tree.isColumnHidden(2))
-        w.docks['Properties'].toggleViewAction().trigger();w.channel_kind_action.setChecked(False);self.app.processEvents()
+        self.assertEqual(w.portal.tree.columnCount(),2)
+        w.docks['Properties'].toggleViewAction().trigger();self.app.processEvents()
         self.assertTrue(w.docks['Properties'].isHidden())
         with tempfile.TemporaryDirectory() as directory:
             saved=save_workspace(Path(directory)/'layout.json',w.store,[p.state() for p in w.workspaces],w.ui_state())
             w.docks['Properties'].show();w.restore_path(saved);self.app.processEvents()
-            self.assertTrue(w.docks['Properties'].isHidden());self.assertTrue(w.portal.tree.isColumnHidden(2))
-            record=json.loads(saved.read_text());record['ui'].pop('app_version');saved.write_text(json.dumps(record))
+            self.assertTrue(w.docks['Properties'].isHidden());self.assertEqual(w.portal.tree.columnCount(),2)
+            record=json.loads(saved.read_text());record['ui'].pop('app_version');record['ui']['show_channel_kind']=True;saved.write_text(json.dumps(record))
             w.restore_path(saved,upgrade_defaults=True);self.app.processEvents()
-            self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()));self.assertFalse(w.portal.tree.isColumnHidden(2))
+            self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()));self.assertEqual(w.portal.tree.columnCount(),2)
 
     def test_manual_topic_navigation_search_wrap_and_no_match(self):
         w=self.window;w.show_help();info=w.help;self.app.processEvents()

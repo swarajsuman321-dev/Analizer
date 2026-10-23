@@ -12,9 +12,68 @@ from unittest.mock import patch
 import numpy as np
 
 from app_channel_store import Channel
-from app_release_acceptance import AcceptanceRecorder, MANUAL_WINDOWS_CHECKS, REQUIRED_CHECK_IDS, isolated_environment
+from app_release_acceptance import AcceptanceRecorder, MANUAL_WINDOWS_CHECKS, REQUIRED_CHECK_IDS, isolated_environment, time_pixel_alignment, viewport_time_x
 from scripts.check_packaged_workflows import REQUIRED_CATEGORIES, capture_runtime, validate_packaged_report
 from tools.audit_user_workflows import observe_processing
+
+
+class PixelAlignmentDetectorTests(unittest.TestCase):
+    """Equal numeric ranges cannot hide a real drawing-gutter displacement."""
+    @classmethod
+    def setUpClass(cls):
+        from PySide6 import QtWidgets
+        cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    def setUp(self):
+        from PySide6 import QtWidgets
+        from app_channel_store import ChannelStore
+        from app_plot_workspace import PlotPane
+        self.store = ChannelStore()
+        channel = self.store.add(Channel('Physical signal', np.arange(101.), np.arange(101.),
+                                       unit='°C', coordinate_unit='min'))
+        self.window = QtWidgets.QWidget()
+        self.layout = QtWidgets.QGridLayout(self.window)
+        self.panes = []
+        for index in range(4):
+            pane = PlotPane(self.store)
+            pane.bind([channel.id])
+            pane.setMinimumSize(450, 220)
+            pane.getAxis('left').setWidth(50+index % 2*40)
+            pane.setXRange(20, 80, padding=0)
+            self.layout.addWidget(pane, index//2, index % 2)
+            self.panes.append(pane)
+        self.window.resize(1100, 600)
+        self.window.show()
+        self.settle()
+
+    def tearDown(self):
+        self.window.close()
+        self.window.deleteLater()
+        self.app.processEvents()
+
+    def settle(self):
+        from PySide6 import QtTest
+        for _ in range(4):
+            self.app.processEvents()
+            self.window.grab()
+            QtTest.QTest.qWait(10)
+        self.app.processEvents()
+
+    def test_uses_floating_global_viewport_mapping_and_independent_grid_columns(self):
+        groups = time_pixel_alignment(self.panes, 2)
+        self.assertEqual([group['column'] for group in groups], [0, 1])
+        self.assertTrue(all(group['maximum_pixel_spread'] <= .5 for group in groups))
+        self.assertGreater(viewport_time_x(self.panes[1], 50)-viewport_time_x(self.panes[0], 50), 100)
+        position = viewport_time_x(self.panes[0], 43.12345)
+        self.assertNotAlmostEqual(position, round(position), places=4)
+
+    def test_equal_time_limits_but_offset_canvas_pixels_fail_acceptance(self):
+        self.panes[2].getAxis('left').setWidth(130)
+        self.settle()
+        np.testing.assert_allclose(self.panes[0].getViewBox().viewRange()[0],
+                                   self.panes[2].getViewBox().viewRange()[0], rtol=0, atol=1e-7)
+        with self.assertRaisesRegex(AssertionError, 'numeric bounds agree but the drawing gutters do not'):
+            time_pixel_alignment(self.panes, 2)
 
 
 class ProcessingAuditTests(unittest.TestCase):

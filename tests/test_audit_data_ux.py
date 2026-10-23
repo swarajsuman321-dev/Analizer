@@ -99,16 +99,33 @@ class DataUXTests(unittest.TestCase):
 
     def tearDown(self):self.portal.close();self.app.processEvents()
 
+    def source_menu(self,dataset_id,command=None,item=None):
+        """Exercise the real source-menu route without blocking on a popup."""
+        self.portal.resize(500,500);self.portal.show();self.app.processEvents()
+        item=item or self.portal.dataset_roots[dataset_id]
+        self.portal.tree.scrollToItem(item);self.app.processEvents()
+        opened={}
+        def invoke(menu,*_):
+            opened.update({action.text():action for action in menu.actions() if not action.isSeparator()})
+            if command:
+                self.assertIn(command,opened);self.assertTrue(opened[command].isEnabled())
+                opened[command].trigger()
+        class SourceMenu(QtWidgets.QMenu):
+            def exec(self,*args):return invoke(self,*args)
+        with patch.object(QtWidgets,'QMenu',SourceMenu):
+            self.portal.context_menu(self.portal.tree.visualItemRect(item).center())
+        self.assertTrue(opened)
+        return opened
+
     def test_file_checkbox_and_filtered_results_have_explicit_different_scope(self):
         self.portal.search.setText('Pressure')
         self.assertIn('1/2 results',self.portal.dataset_roots[self.a.id].text(0))
-        self.portal.filter_buttons[self.a.id].click()
+        self.source_menu(self.a.id,'Select Filtered Results in This File')
         self.assertEqual(self.portal.visible_ids,{self.channels[0].id})
-        self.assertEqual(self.portal.filter_buttons[self.a.id].text(),'Deselect Results')
         root=self.portal.dataset_roots[self.a.id];root.setCheckState(0,QtCore.Qt.CheckState.Checked)
         self.assertEqual(self.portal.visible_ids,{c.id for c in self.channels[:2]})
         self.assertFalse(self.portal.visible_ids & {c.id for c in self.channels[2:]})
-        self.portal.filter_buttons[self.a.id].click()
+        self.source_menu(self.a.id,'Deselect Filtered Results in This File')
         self.assertEqual(self.portal.visible_ids,{self.channels[1].id})
         self.assertIn('1 plotted',root.text(0))
 
@@ -118,12 +135,51 @@ class DataUXTests(unittest.TestCase):
         self.assertFalse(self.portal.filter_valid);self.assertFalse(self.portal.search_error.isHidden())
         self.assertIn('turn off',self.portal.search_error.text())
         for id,root in self.portal.dataset_roots.items():
-            self.assertEqual(root.childCount(),0);self.assertFalse(self.portal.filter_buttons[id].isEnabled())
+            self.assertEqual(root.childCount(),0)
+            actions=self.source_menu(id)
+            self.assertFalse(actions['Select Filtered Results in This File'].isEnabled())
+            self.assertFalse(actions['Deselect Filtered Results in This File'].isEnabled())
         self.assertEqual(self.portal.visible_ids,{self.channels[0].id})
         self.portal.search.setText('Temperature')
         self.assertTrue(self.portal.filter_valid);self.assertTrue(self.portal.search_error.isHidden())
         self.assertEqual(self.portal.filtered_ids[self.a.id],[self.channels[1].id])
         self.portal.search.clear();self.assertEqual(len(self.portal.filtered_ids[self.a.id]),2)
+
+    def test_only_channel_and_unit_columns_use_available_width_and_keep_kind_metadata(self):
+        self.portal.resize(420,500);self.portal.show();self.app.processEvents()
+        tree=self.portal.tree
+        self.assertEqual(tree.columnCount(),2)
+        self.assertEqual([tree.headerItem().text(index) for index in range(tree.columnCount())],['Channel','Unit'])
+        self.assertGreater(tree.columnWidth(0),tree.viewport().width()*.7)
+        self.assertFalse(hasattr(self.portal,'select_all'))
+        root=self.portal.dataset_roots[self.a.id];item=root.child(0).child(0)
+        self.assertIn('Kind: analog',item.toolTip(0))
+        self.assertIn('Kind: analog',item.data(0,QtCore.Qt.ItemDataRole.AccessibleDescriptionRole))
+        self.assertEqual(self.store.channels[self.channels[0].id].kind,'analog')
+        self.assertTrue(all(tree.itemWidget(root,column) is None for column in range(2)))
+        self.portal.search.setText('Pressure');self.app.processEvents()
+        self.assertEqual(tree.columnCount(),2)
+        self.assertGreater(tree.columnWidth(0),tree.viewport().width()*.7)
+        self.assertIn('Right-click',self.portal.dataset_roots[self.a.id].toolTip(0))
+        self.assertIsNotNone(self.portal.remove_button);self.assertIsNotNone(self.portal.clear_button)
+
+    def test_close_dataset_context_action_stays_available_when_filter_has_no_results(self):
+        removed=[];self.portal.datasetRemovalRequested.connect(removed.append)
+        self.portal.search.setText('No matching channel')
+        menu=self.source_menu(self.b.id,'Close Dataset')
+        self.assertEqual(removed,[self.b.id]);self.assertEqual(self.requests,[])
+        self.assertIn('Select All in This File',menu)
+        self.assertFalse(menu['Select Filtered Results in This File'].isEnabled())
+        self.assertIn(self.a.id,self.store.datasets);self.assertIn(self.b.id,self.store.datasets)
+
+    def test_generated_group_filtered_menu_never_changes_file_channels(self):
+        generated=self.store.add(Channel('Generated pressure',[0,1],[3,4]))
+        self.portal.rebuild();self.portal.search.setText('pressure')
+        menu=self.source_menu('','Select Filtered Results in This Group')
+        self.assertEqual(self.portal.visible_ids,{generated.id})
+        self.assertNotIn('Close Dataset',menu);self.assertNotIn('Select All in This File',menu)
+        self.source_menu('','Deselect Filtered Results in This Group')
+        self.assertEqual(self.portal.visible_ids,set())
 
     def test_cursor_and_reference_forms_keep_help_optional_and_long_sources_accessible(self):
         from app_studio_tools import StudioTools

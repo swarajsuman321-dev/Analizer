@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "version": "2.4.1",
+  "source_base_commit": "ba9c673",
+  "platform": "Linux Qt offscreen",
+  "status": "local verified; native Windows/package/update/public checks pending",
+  "unit_tests": {
+    "discovered": 381,
+    "passed": 379,
+    "skipped": 2,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 213.146,
+    "skip_reason": "Native Windows only"
+  },
+  "real_data_acceptance": {
+    "checks": 42,
+    "passed": 42,
+    "unmet": 0,
+    "unrun": 0,
+    "runner_errors": 0,
+    "application_callback_errors": 0,
+    "expected_safety_rejections": 7,
+    "manual_unrun": 5
+  },
+  "source_fixture_manifest": [
+    {
+      "role": "tdms",
+      "filename": "Temp_F43 9KG 1200RPM cotton 60 T3-001_20260812_124336_001.tdms",
+      "bytes": 6771896,
+      "sha256": "328bea1d56b1942d6aa90ccfea01874d2d12cd23c62a4d0f92ce2ac762ecb99f",
+      "channels": 27,
+      "source_rows": [
+        11363
+      ]
+    },
+    {
+      "role": "power",
+      "filename": "Cotton 60 label with IEC 4kg load PD T-3.CSV",
+      "bytes": 2405437,
+      "sha256": "dd18f9d61878dcecf237cbc824452d7a1d8925bede965fe67d3bb74e993f9f20",
+      "channels": 11,
+      "source_rows": [
+        15898
+      ]
+    },
+    {
+      "role": "machine",
+      "filename": "Cotton 60 label with 4kg IEC load RD T-3 (1).csv",
+      "bytes": 5515475,
+      "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558",
+      "channels": 24,
+      "source_rows": [
+        57494
+      ]
+    },
+    {
+      "role": "simulation",
+      "filename": "SB30LF0_Cottons_VT0022_var4_7000g_20260731_1332_800RPM_40deg_Standard_R027_0000002_simulated_values.csv",
+      "bytes": 16759584,
+      "sha256": "0e857e07a7cb5dba6aab3b471801f7f62586c8d409fd6580a463beacbcab339d",
+      "channels": 29,
+      "source_rows": [
+        106148
+      ]
+    }
+  ],
+  "layout_pixel_alignment": {
+    "cases": 28,
+    "maximum_spread_logical_pixels": 4.547473508864641e-13,
+    "tolerance_logical_pixels": 0.5,
+    "preserved_numeric_ranges": true,
+    "axes_remain_automatic": true
+  },
+  "synthetic_visual_geometry": {
+    "version": "Appliance Signal Studio \u00b7 2.4.1",
+    "size": [
+      1600,
+      1000
+    ],
+    "device_pixel_ratio": 1.0,
+    "synthetic": true,
+    "platform": "offscreen",
+    "portal_columns": [
+      "Channel",
+      "Unit"
+    ],
+    "portal_column_widths": [
+      234,
+      64
+    ],
+    "menu_titles": [
+      "View",
+      "Channel",
+      "Tools",
+      "About"
+    ],
+    "tools_about_actions": [],
+    "panes": [
+      {
+        "time_bounds": [
+          0.0,
+          120.0
+        ],
+        "drawing_edges": [
+          380.4,
+          1234.2
+        ],
+        "sample_pixel_x": {
+          "20": 522.6999999999999,
+          "50": 736.15,
+          "80": 949.6
+        },
+        "cursor_positions": [
+          28,
+          64
+        ],
+        "cursor_pixel_x": [
+          579.6199999999999,
+          835.76
+        ],
+        "drawing_height": 215.6,
+        "pane_size": [
+          1014,
+          254
+        ],
+        "legend_bounds": [
+          12.0,
+          12.0,
+          123.90625,
+          73.0
+        ]
+      },
+      {
+        "time_bounds": [
+          0.0,
+          120.0
+        ],
+        "drawing_edges": [
+          380.4,
+          1234.1999999999998
+        ],
+        "sample_pixel_x": {
+          "20": 522.7,
+          "50": 736.15,
+          "80": 949.5999999999999
+        },
+        "cursor_positions": [
+          28,
+          64
+        ],
+        "cursor_pixel_x": [
+          579.62,
+          835.76
+        ],
+        "drawing_height": 214.6,
+        "pane_size": [
+          1014,
+          253
+        ],
+        "legend_bounds": [
+          12.0,
+          12.0,
+          97.15625,
+          50.0
+        ]
+      }
+    ],
+    "time_pixel_differences": {
+      "20": 1.1368683772161603e-13,
+      "50": 0.0,
+      "80": 1.1368683772161603e-13
+    },
+    "edge_differences": [
+      0.0,
+      2.2737367544323206e-13
+    ]
+  },
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "native_update_previous_version": "2.4.0",
+  "source_smoke": {
+    "ok": true,
+    "version": "2.4.1",
+    "frozen": false
+  }
+}

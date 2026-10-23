@@ -155,6 +155,7 @@ class PlotPane(pg.PlotWidget):
         self._normalizing=False;self._synchronizing=False;self.normalized=False;self.normalization_bindings={};self._normalization={}
         self.show_legends=True;self.show_grid=True;self.history=[];self.history_index=-1;self._history_restoring=False
         self.coordinate=None;self.snap=True;self.cursor_mode='dual';self.cursor_locks=[None,None]
+        self._canvas_padding=(0.,0.);self._axis_minimum_width=380
         self.annotations=[];self.annotation_items=[];self.cycle_boundaries=[];self.cycle_snap=False;self.comments_movable=False
         self.setMinimumSize(380,230)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
@@ -163,6 +164,8 @@ class PlotPane(pg.PlotWidget):
         self._supported_processing_only()
         self.getPlotItem().layout.setContentsMargins(0,0,0,0)
         self.getViewBox().sigResized.connect(self._resize)
+        for side in ('left','right'):
+            self.getAxis(side).geometryChanged.connect(self._queue_canvas_alignment)
         self.getViewBox().sigYRangeChanged.connect(self.clear_hover)
         self.getViewBox().sigXRangeChanged.connect(self._schedule)
         self.timer=QtCore.QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(self._render)
@@ -183,6 +186,9 @@ class PlotPane(pg.PlotWidget):
         self.scene().sigMouseClicked.connect(self._click)
         self._build_hover()
         self.legend=self.addLegend(offset=(12,12));self.legend.hide()
+        # Newly added empty panes also participate in canvas alignment before
+        # any channel has been bound to them.
+        self._layout_axes()
 
     def _supported_processing_only(self):
         """Keep graphics decorations outside native numerical transforms.
@@ -546,6 +552,7 @@ class PlotPane(pg.PlotWidget):
             else:
                 side=self.store.channels[next(id for id in self.ids if self.bindings[id]==unit)].attributes.get('plot_style',{}).get('side','right')
                 axis=pg.AxisItem('left' if side=='left' else 'right');axis.setLabel(unit or 'Value',color=color);axis.setPen(color);axis.setTextPen(color)
+                axis.geometryChanged.connect(self._queue_canvas_alignment)
                 vb=NavigationViewBox();vb.owner=self;vb.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.scene().addItem(vb);axis.linkToView(vb)
                 self.axes[unit]=(axis,vb);vb.sigYRangeChanged.connect(self.clear_hover)
             if unit=='Actuators':axis.setTicks([[(0,'OFF'),(1,'ON')]])
@@ -611,12 +618,20 @@ class PlotPane(pg.PlotWidget):
                 (self.axes[unit][1] if unit in self.axes else primary).setYRange(float(low),float(high),padding=0)
         for record in self.annotations:self._annotation(record)
         self.update_cursor_markers()
+        self._queue_canvas_alignment()
 
     def _layout_axes(self):
         plot=self.getPlotItem();layout=plot.layout
+        if not hasattr(self,'_canvas_spacers'):
+            self._canvas_spacers=[QtWidgets.QGraphicsWidget(plot),QtWidgets.QGraphicsWidget(plot)]
+            for spacer in self._canvas_spacers:
+                spacer.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,QtWidgets.QSizePolicy.Policy.Ignored))
+                spacer.setMinimumWidth(0);spacer.setPreferredWidth(0);spacer.setMaximumWidth(0)
+        else:
+            for spacer in self._canvas_spacers:layout.removeItem(spacer)
         left=[axis for axis,_ in self.axes.values() if axis.orientation=='left']
         right=[axis for axis,_ in self.axes.values() if axis.orientation!='left']
-        central=1+len(left)
+        central=2+len(left)
         for record in plot.axes.values():layout.removeItem(record['item'])
         layout.removeItem(plot.vb);layout.removeItem(plot.titleLabel)
         for column in range(layout.columnCount()):layout.setColumnStretchFactor(column,0)
@@ -624,12 +639,48 @@ class PlotPane(pg.PlotWidget):
         for name,position in positions.items():
             plot.axes[name]['pos']=position;layout.addItem(plot.axes[name]['item'],*position)
         layout.addItem(plot.vb,2,central);layout.addItem(plot.titleLabel,0,central)
-        for i,axis in enumerate(left):layout.addItem(axis,2,i)
+        for i,axis in enumerate(left):layout.addItem(axis,2,i+1)
         for i,axis in enumerate(right):layout.addItem(axis,2,central+2+i)
+        layout.addItem(self._canvas_spacers[0],2,0)
+        layout.addItem(self._canvas_spacers[1],2,central+2+len(right))
         layout.setColumnStretchFactor(central,100)
         # Keep a usable drawing area even when the user explicitly overlays many axes.
         visible_axes=[record['item'] for record in plot.axes.values() if record['item'].isVisible() and record['item'].orientation in ('left','right')]+left+right
-        self.setMinimumWidth(int(380+sum(max(62.,axis.width()) for axis in visible_axes)+30))
+        self._axis_minimum_width=int(380+sum(max(62.,axis.width()) for axis in visible_axes)+30)
+        self.setMinimumWidth(int(self._axis_minimum_width+sum(self._canvas_padding)))
+
+    def _queue_canvas_alignment(self,*_):
+        workspace=getattr(self,'workspace',None)
+        if workspace is not None and not getattr(self,'_closing',False):workspace.queue_canvas_alignment()
+
+    def canvas_gutters(self):
+        """Natural axis gutters, excluding the workspace's alignment padding.
+
+        AxisItems keep measuring their own tick labels. Measuring their rendered
+        geometry also includes hidden axes, custom sides and layout spacing.
+        """
+        plot=self.getPlotItem();plot.layout.activate()
+        view=self.getViewBox();low,high=view.viewRange()[0]
+        # Use the data transform rather than the ViewBox's bounding border,
+        # whose half-pixel pen allowance can differ from the drawn time edges.
+        transform=self.viewportTransform()
+        left=transform.map(view.mapViewToScene(QtCore.QPointF(low,0))).x()
+        right=transform.map(view.mapViewToScene(QtCore.QPointF(high,0))).x()
+        return (max(0.,left-self._canvas_padding[0]),
+                max(0.,self.viewport().width()-right-self._canvas_padding[1]))
+
+    def set_canvas_padding(self,left,right,minimum_width=0):
+        requested=(max(0.,float(left)),max(0.,float(right)))
+        # Opposite panes can provide the widest left and right axes. Reserve
+        # their combined gutters as well as useful canvas space; narrow windows
+        # can then scroll instead of clipping tick labels or crushing the plot.
+        required=int(np.ceil(max(self._axis_minimum_width+sum(requested),minimum_width)))
+        if self.minimumWidth()!=required:self.setMinimumWidth(required)
+        if all(abs(a-b)<.05 for a,b in zip(requested,self._canvas_padding)):return
+        self._canvas_padding=requested
+        for spacer,width in zip(self._canvas_spacers,requested):
+            spacer.setMinimumWidth(width);spacer.setPreferredWidth(width);spacer.setMaximumWidth(width)
+        self.getPlotItem().layout.invalidate()
 
     def y_views(self):
         return [self.getViewBox(),*[vb for axis,vb in self.axes.values()]]
@@ -650,6 +701,7 @@ class PlotPane(pg.PlotWidget):
         for axis,vb in self.axes.values():
             vb.setGeometry(self.getViewBox().sceneBoundingRect());vb.setXRange(*self.getViewBox().viewRange()[0],padding=0)
         self._compact_legend_labels()
+        self._queue_canvas_alignment()
 
     def _compact_legend_labels(self):
         """Keep the inline legend bounded without discarding channel identity."""
@@ -821,6 +873,8 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def __init__(self,store):
         super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self._range_syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None;self.layout_proportions={}
+        self._canvas_alignment_timer=QtCore.QTimer(self);self._canvas_alignment_timer.setSingleShot(True)
+        self._canvas_alignment_timer.timeout.connect(self._align_canvas_gutters)
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
@@ -885,6 +939,7 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
+        self.queue_canvas_alignment()
         # Leave room for coordinates even with both sidebars open. QToolBar
         # exposes its existing overflow menu when the center column is narrow.
         if self._hover_pane:self._hover_changed(self._hover_pane,self._hover_pane.hover_state)
@@ -950,6 +1005,28 @@ class PlotWorkspace(QtWidgets.QWidget):
                 saved[name]=list(map(float,values))
         self._apply_proportions()
 
+    def queue_canvas_alignment(self):
+        """Coalesce axis/font/layout changes into a single geometry pass."""
+        if not self._canvas_alignment_timer.isActive():self._canvas_alignment_timer.start(0)
+
+    def _align_canvas_gutters(self):
+        """Align drawing edges within each grid column without changing ranges.
+
+        A synchronized time interval must also occupy the same screen width.
+        Padding only the missing gutter keeps each real axis fully automatic;
+        this does not introduce geometry-dependent X linking or fixed tick widths.
+        """
+        _,columns=LAYOUTS[self.layout_name];groups={}
+        for index,pane in enumerate(self.visible_panes()):
+            if getattr(pane,'_closing',False) or pane.__dict__.get('plotItem') is None:continue
+            groups.setdefault(index%columns,[]).append(pane)
+        for panes in groups.values():
+            margins=[pane.canvas_gutters() for pane in panes]
+            if len(panes)==1:
+                panes[0].set_canvas_padding(0,0,380+sum(margins[0]));continue
+            left=max(pair[0] for pair in margins);right=max(pair[1] for pair in margins)
+            for pane,(own_left,own_right) in zip(panes,margins):pane.set_canvas_padding(left-own_left,right-own_right,380+left+right)
+
     def _apply_proportions(self):
         rows,cols=LAYOUTS[self.layout_name];saved=self.layout_proportions.get(self.layout_name,{})
         for row in range(max(self.grid.rowCount(),rows)):
@@ -984,6 +1061,7 @@ class PlotWorkspace(QtWidgets.QWidget):
             pane.setVisible(i<required)
         self.layout_name=name;self._apply_proportions();self.active=previous if previous in self.visible_panes() else self.panes[0];self.activeChanged.emit(self.active)
         self.navigate(self.navigation_mode);self.link()
+        self.queue_canvas_alignment()
 
     def eventFilter(self,obj,event):
         if event.type()==QtCore.QEvent.Type.FocusIn and obj in self.panes:

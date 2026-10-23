@@ -1,9 +1,9 @@
 """Native real-GUI old-to-new updater acceptance for all three Windows payloads.
 
 Use only a disposable CI runner. The harness drives the production transaction
-function against actual, pinned prior application processes; it does not claim
-that an immutable older release already contained the new updater UI. Only the
-new application's restored-workspace acknowledgement establishes success.
+function against actual, pinned prior application processes. It does not click
+the previous binary's update UI. Only the new application's restored-workspace
+acknowledgement establishes success.
 """
 import ctypes
 from ctypes import wintypes
@@ -11,13 +11,16 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.request
 from unittest.mock import patch
+import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
@@ -26,11 +29,18 @@ from app_update_launcher import launch_transaction
 from app_update_transaction import file_hash
 from app_updates import RELEASES, asset_name, require_matching_edition, restart_environment
 from app_version import VERSION
-from scripts.check_installer import registration, previous_runtime, invoke
+from scripts.check_installer import registration, invoke
 from scripts.build_installer import compile_installer
 
-OLD_EXE_SHA='aa44ecba22bbb3ca69f971a4a548bfcdcb0947fced49f296d5abc428a833eebe'
-OLD_EXE_SIZE=154533203
+PRIOR_VERSION='2.4.0'
+PRIOR_ARTIFACTS={
+    'portable':{'name':'ApplianceSignalStudio.exe','size':154719110,
+                'sha256':'02f5e3fd99a84c23c48d04b86d895060149e21392e9c67b9da5ea1d9af937683'},
+    'portable-zip':{'name':'ApplianceSignalStudio_Portable.zip','size':155478250,
+                    'sha256':'8b167df6001da26b1b3911ce5a046e6ce57d90a6c21bae98cd76252318070849'},
+    'installer':{'name':'ApplianceSignalStudio-Setup-2.4.0.exe','size':134769948,
+                 'sha256':'a71c5cc7de7ba5fa3efaf55ccc6148fe49f0f39972b4a52616c6aa15ab5894eb'},
+}
 
 
 def manifest(path,kind):
@@ -108,13 +118,62 @@ def make_workspace(path):
     return expected
 
 
-def checked_download_old_exe(destination):
+def checked_download_prior(kind,destination):
+    """Read a bounded, immutable official artifact and verify its pinned bytes."""
+    expected=PRIOR_ARTIFACTS[kind]
     destination=Path(destination)
-    with urllib.request.urlopen(RELEASES+'/download/v2.3.2/ApplianceSignalStudio.exe',timeout=90) as response,destination.open('wb') as output:
-        shutil.copyfileobj(response,output)
-    if destination.stat().st_size!=OLD_EXE_SIZE or file_hash(destination)!=OLD_EXE_SHA:
-        raise ValueError('Pinned prior EXE failed verification')
+    part=destination.with_name(destination.name+'.part')
+    count=0;digest=hashlib.sha256()
+    try:
+        url=f'{RELEASES}/download/v{PRIOR_VERSION}/{expected["name"]}'
+        with urllib.request.urlopen(url,timeout=90) as response,part.open('wb') as output:
+            if not response.geturl().startswith('https://'):
+                raise ValueError('Pinned prior artifact requires HTTPS')
+            while chunk:=response.read(1024*1024):
+                count+=len(chunk)
+                if count>expected['size']:
+                    raise ValueError('Pinned prior '+kind+' exceeds its verified release size')
+                output.write(chunk);digest.update(chunk)
+        if count!=expected['size'] or digest.hexdigest()!=expected['sha256']:
+            raise ValueError('Pinned prior '+kind+' failed verification')
+        os.replace(part,destination)
+    finally:
+        part.unlink(missing_ok=True)
     return destination
+
+
+def previous_bundle(destination):
+    """Extract the verified previous ZIP into a private, traversal-safe root."""
+    destination=Path(destination)
+    archive=checked_download_prior('portable-zip',destination/'previous-runtime.zip')
+    extracted=destination/'previous-runtime';extracted.mkdir()
+    with zipfile.ZipFile(archive) as bundle:
+        entries=bundle.infolist()
+        if len(entries)>30000 or sum(entry.file_size for entry in entries)>2*1024*1024*1024:
+            raise ValueError('Pinned prior ZIP exceeds runtime extraction limits')
+        seen=set()
+        for entry in entries:
+            path=Path(entry.filename)
+            target=(extracted/path).resolve()
+            identity=str(target).casefold()
+            if ('\\' in entry.filename or path.is_absolute() or '..' in path.parts
+                    or not path.parts or path.parts[0]!='ApplianceSignalStudio'
+                    or not target.is_relative_to(extracted.resolve())
+                    or stat.S_ISLNK(entry.external_attr>>16) or identity in seen):
+                raise ValueError('Unsafe pinned prior ZIP path: '+entry.filename)
+            seen.add(identity)
+        bundle.extractall(extracted)
+    payload=extracted/'ApplianceSignalStudio'
+    if not (payload/'ApplianceSignalStudio.exe').is_file() or not (payload/'_internal').is_dir():
+        raise ValueError('Pinned prior ZIP is missing its complete runtime')
+    return payload
+
+
+def assert_gui_version(exe,version):
+    windows=wait_gui(exe)
+    expected=re.compile(r'(?<![\d.])'+re.escape(version)+r'(?![\d.])')
+    assert any(expected.search(title) for _,_,title in windows),(version,windows)
+    return windows
 
 
 def check_frozen_wait_identity(base):
@@ -149,7 +208,9 @@ def check():
     with tempfile.TemporaryDirectory(prefix="Signal Update O'Brien Ω ",ignore_cleanup_errors=True) as folder:
         base=Path(folder)
         checks.extend(check_frozen_wait_identity(base))
-        old_bundle=previous_runtime(base);old_exe=checked_download_old_exe(base/'previous-onefile.exe')
+        old_bundle=previous_bundle(base)
+        old_exe=checked_download_prior('portable',base/'previous-onefile.exe')
+        old_setup=checked_download_prior('installer',base/PRIOR_ARTIFACTS['installer']['name'])
         settings=base/'settings';outputs=base/'outputs';settings.mkdir();outputs.mkdir()
         os.environ['ANALIZER_SETTINGS_DIR']=str(settings);os.environ['ANALIZER_OUTPUT_DIR']=str(outputs)
         template=settings/'tdms-template.json';template.write_text('{"reviewed":"keep"}')
@@ -160,7 +221,6 @@ def check():
         sibling=base/'Other standalone edition';shutil.copytree(old_bundle,sibling)
         sibling_hash=file_hash(sibling/'ApplianceSignalStudio.exe')
         install=base/'Installed App';install_log=base/'setup.log'
-        old_setup=compile_installer(old_bundle,'2.3.1','ci-update-old',legacy=True)
         setup=ROOT/'dist'/f'ApplianceSignalStudio-Setup-{VERSION}.exe'
         bad_setup=compile_installer(version=VERSION,output='ci-update-health-failure',fail_health=True)
         all_runtimes=[]
@@ -176,7 +236,7 @@ def check():
                     if registration():
                         invoke(install/'unins000.exe',['/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',f'/LOG={install_log}'],install_log)
                     invoke(old_setup,['/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART',f'/DIR={install}',f'/LOG={install_log}'],install_log)
-                    current=install/'versions/2.3.1/ApplianceSignalStudio.exe';download=bad_setup if case=='health-failure' else setup
+                    current=install/'versions'/PRIOR_VERSION/'ApplianceSignalStudio.exe';download=bad_setup if case=='health-failure' else setup
                 elif kind=='portable-zip':
                     current_root=case_root/'Application';shutil.copytree(old_bundle,current_root)
                     current=current_root/'ApplianceSignalStudio.exe';download=ROOT/'dist/ApplianceSignalStudio_Portable.zip'
@@ -185,7 +245,7 @@ def check():
                     download=ROOT/'dist/ApplianceSignalStudio.exe'
                 before=file_hash(current);all_runtimes.append(current)
                 old=subprocess.Popen([str(current),'--restore',str(recovery)],env=restart_environment())
-                wait_gui(current)
+                assert_gui_version(current,PRIOR_VERSION)
                 metadata=manifest(download,kind)
                 with patch('sys.executable',str(current)),patch('app_installation.installed_root',return_value=install if kind=='installer' else None):
                     transaction=launch_transaction(download,recovery,case_root/'updates',metadata,parent_pid=old.pid)
@@ -223,12 +283,12 @@ def check():
                         assert pane['ids']==expected['channels']
                         assert pane['cursor_locks'][0]['channel']==expected['channels'][0]
                         assert pane['cursors']==[1,2],pane
-                        assert VERSION in wait_gui(target)[0][2]
+                        assert_gui_version(target,VERSION)
                         close_gui(target)
                     else:
                         assert outcome['status']=='recovered-previous',outcome
                         if kind!='installer':assert file_hash(current)==before,outcome
-                        assert '2.3.' in wait_gui(current)[0][2]
+                        assert_gui_version(current,PRIOR_VERSION)
                         if case=='restore-failure':
                             ack=json.loads(Path(request['ack']).read_text())
                             assert ack['status']=='failed',ack
@@ -260,9 +320,9 @@ def check():
             for exe in all_runtimes:close_gui(exe)
             if registration() and (install/'unins000.exe').exists():
                 invoke(install/'unins000.exe',['/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',f'/LOG={install_log}'],install_log)
-    result={'ok':True,'version':VERSION,'platform':'native Windows actual GUI', 'checks':checks,
-            'limitations':['Harness invokes production updater with an actual prior GUI PID; immutable prior versions did not yet have the new updater UI.',
-                           'Previous immutable runtime has no restoration acknowledgement protocol; fallback GUI survival and recovery snapshot load are checked separately.',
+    result={'ok':True,'version':VERSION,'previous_version':PRIOR_VERSION,'platform':'native Windows actual GUI', 'checks':checks,
+            'limitations':['Harness invokes the current production updater against actual pinned v'+PRIOR_VERSION+' GUIs; it does not click the previous binary\'s update UI.',
+                           'The previous runtime supports acknowledgements, but fallback uses ordinary --restore; its exact-version GUI survival and independent recovery snapshot load are checked separately.',
                            'Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.',
                            'Manual wheel/keyboard/DPI/multi-monitor and external corporate networks remain separate checks.']}
     (ROOT/'build/application_updates_smoke_report.json').write_text(json.dumps(result,indent=2),encoding='utf-8')

@@ -644,3 +644,11 @@ Updates stage verified complete payloads, save separate recovery JSON/NPZ snapsh
 **One-time older ZIP migration:** v2.3.2 and earlier folder builds predate the ZIP update feed. Download the full v2.4.0 ZIP once, extract it into a separate writable folder and launch its EXE; retain the old folder and existing outputs until verified. Subsequent folder updates use the new complete-runtime mechanism. Older installed/onefile builds can use their matching existing update routes or a manual official download.
 
 User settings/templates and outputs stay outside runtime replacements. Standalone and installed copies may coexist; updating one does not delete another supported edition or its backup. Keep saved source data outside runtime-version folders and retain recovery copies until you choose to remove them. This unsigned release may still require your organization's normal publisher approval.
+
+## Aligned stacked graphs and a simpler Data Portal | 2.4.1
+
+Stacked panes align their actual graph drawing edges even when they have different numbers of independent Y-axes. Axis-label space is coordinated so the same time and cursor positions line up vertically. This corrects the drawing geometry without changing numerical time bounds, source timestamps, cursor samples or physical values. Use **Lock Time Axes** when panes should share a numerical time interval; equal drawing widths alone do not synchronize unlocked ranges. Independent value axes remain available.
+
+**Data Portal** shows **Channel** and **Unit**. File headers keep their own selection checkboxes. Right-click a file header to select/deselect that complete file, select/deselect its filtered channels or **Close Dataset**. These actions affect the chosen file only. Filtering counts, removal confirmation and Undo Dataset Removal remain available. **Kind** metadata remains in **Properties**; the former Kind and File Actions columns and Show channel kind View toggle are no longer used.
+
+Use the main **About** menu beside Tools for **User Manual** and **About / Updates**. The duplicate Tools → About version entry is removed; the searchable version manual, build/release/license details, installed/standalone updates and offline update import remain available through the main About menu.

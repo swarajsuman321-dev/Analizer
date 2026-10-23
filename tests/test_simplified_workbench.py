@@ -41,7 +41,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         tree=w.portal.tree;item=self.item(a.id);tree.scrollToItem(item);self.app.processEvents()
         # Use the actual column/delegate options, including text and check state.
         # A whole-row rect with only HasCheckIndicator differs on Windows styles
-        # when the Unit and Kind columns are visible.
+        # when the Unit column is visible beside Channel.
         index=tree.indexFromItem(item,0);option=QtWidgets.QStyleOptionViewItem();option.initFrom(tree)
         tree.itemDelegate().initStyleOption(option,index);option.rect=tree.visualRect(index)
         indicator=tree.style().subElementRect(QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,option,tree)

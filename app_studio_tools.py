@@ -78,10 +78,6 @@ class StudioTools(QtCore.QObject):
         self._navigation_menu_owner=w.active_workspace
         w.tabs.currentChanged.connect(self.sync_navigation_menu)
 
-        from app_version import VERSION
-        about=menu.addAction(f'About version {VERSION}')
-        about.triggered.connect(w.show_info)
-
     def sync_navigation_menu(self,*_):
         """Move menu references/shortcuts to the active graph, preserving order."""
         workspace=self.window.active_workspace
