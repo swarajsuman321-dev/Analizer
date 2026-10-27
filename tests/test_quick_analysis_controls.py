@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtTest, QtWidgets
 from shiboken6 import isValid
 
 from app_channel_store import Channel, ChannelStore, Dataset
@@ -65,8 +65,9 @@ class QuickAnalysisControlsTests(unittest.TestCase):
         self.assertTrue(any(w.main_toolbar.widgetForAction(a) is w.panel_folding.button
                             for a in w.main_toolbar.actions()))
         self.assertTrue(w.panel_folding.button.isVisible())
-        expand=w.dashboard.navigation_bar.widgetForAction(w.graph_fullscreen.action)
-        self.assertTrue(expand.isVisible())
+        bar=w.dashboard.navigation_bar
+        self.assertTrue(bar.isVisible())
+        self.assertTrue(w.graph_fullscreen.action.isEnabled())
         header_actions=w.dashboard.navigation_bar.actions()
         self.assertLess(header_actions.index(w.graph_fullscreen.action),
                         header_actions.index(w.dashboard.time_lock_action))
@@ -84,6 +85,49 @@ class QuickAnalysisControlsTests(unittest.TestCase):
         self.assertEqual({name for name, dock in w.docks.items() if dock.isHidden()}, expected)
         self.assertFalse(w.docks['Engineering Controls'].isHidden())
         self.assertFalse(w.docks['Readout'].isHidden())
+        # Native fonts, DPI and dock sizes determine the available header width.
+        # Exercise its real visible route instead of requiring every button to
+        # fit. Also force overflow so this path runs on large offscreen displays.
+        for narrow in (False, True):
+            with self.subTest(narrow_header=narrow):
+                if narrow:
+                    bar.setFixedWidth(180)
+                self.app.processEvents()
+                action=w.graph_fullscreen.action
+                button=bar.widgetForAction(action)
+                if button.isVisible():
+                    QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton)
+                else:
+                    overflow=bar.findChild(QtWidgets.QToolButton,'qt_toolbar_ext_button')
+                    self.assertIsNotNone(overflow)
+                    self.assertTrue(overflow.isVisible())
+                    selected=[];errors=[]
+                    def choose():
+                        menu=overflow.menu()
+                        try:
+                            self.assertIsNotNone(menu)
+                            self.assertTrue(menu.isVisible())
+                            rectangle=menu.actionGeometry(action)
+                            self.assertTrue(rectangle.isValid())
+                            self.assertTrue(menu.rect().contains(rectangle.center()))
+                            QtTest.QTest.mouseClick(menu,QtCore.Qt.MouseButton.LeftButton,pos=rectangle.center())
+                            selected.append(action)
+                        except Exception as error:
+                            errors.append(error)
+                        finally:
+                            if menu is not None:menu.close()
+                    QtCore.QTimer.singleShot(0,choose)
+                    QtTest.QTest.mouseClick(overflow,QtCore.Qt.MouseButton.LeftButton)
+                    for _ in range(100):
+                        if selected or errors:break
+                        QtTest.QTest.qWait(5)
+                    if errors:raise errors[0]
+                    self.assertEqual(selected,[action])
+                self.app.processEvents()
+                self.assertTrue(w.graph_fullscreen.is_active)
+                self.assertIs(w.graph_fullscreen.pane,w.dashboard.active)
+                w.graph_fullscreen.exit()
+                self.app.processEvents()
 
     def test_portal_color_and_comparison_use_the_clicked_source_identity(self):
         w = self.window
