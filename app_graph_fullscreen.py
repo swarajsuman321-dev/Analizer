@@ -307,19 +307,35 @@ class GraphFullscreenController(QtCore.QObject):
             return
         host.layout().activate()
         host.centralWidget().layout().activate()
+        self.readout_panel.layout().activate()
+        self.readout.doItemsLayout()
         rows = min(6, max(1, self.readout.rowCount()))
-        table_height = (self.readout.horizontalHeader().height() +
-            sum(self.readout.rowHeight(row) if row < self.readout.rowCount() else
-                self.readout.verticalHeader().defaultSectionSize() for row in range(rows)) +
-            2*self.readout.frameWidth())
-        table_minimum = max(self.readout.minimumHeight(), self.readout.minimumSizeHint().height())
+        rows_height = sum(self.readout.rowHeight(row) if row < self.readout.rowCount() else
+            self.readout.verticalHeader().defaultSectionSize() for row in range(rows))
+        # Header + frame estimates omit native/style viewport margins and the
+        # horizontal scrollbar needed by wide value columns. Measure the actual
+        # viewport instead, so a short list does not lose its last row on Windows.
+        table_height = rows_height + self.readout.height() - self.readout.viewport().height()
         panel_minimum = max(self.readout_panel.minimumHeight(), self.readout_panel.minimumSizeHint().height())
-        extra_height = self.readout_panel.layout().minimumSize().height() - table_minimum
+        extra_height = self.readout_panel.height() - self.readout.height()
         values_height = max(panel_minimum, min(280, table_height + extra_height))
         available = self.splitter.height() - self.splitter.handleWidth()
         graph_minimum = max(self.graph_scroll.minimumHeight(), self.graph_scroll.minimumSizeHint().height())
         session['initial_readout_pending'] = False
         self.splitter.setSizes([max(graph_minimum, available-values_height), values_height])
+        # A scrollbar/header can settle after the splitter applies its final
+        # width. Correct only this initial allocation, using measured missing
+        # pixels and the graph's real minimum; later user divider moves remain
+        # untouched by cursor/readout refreshes.
+        for _ in range(3):
+            self.readout_panel.layout().activate()
+            self.readout.doItemsLayout()
+            missing = max(0, rows_height-self.readout.viewport().height())
+            sizes = self.splitter.sizes()
+            adjustment = min(missing, max(0, sizes[0]-graph_minimum))
+            if not adjustment:
+                break
+            self.splitter.setSizes([sizes[0]-adjustment, sizes[1]+adjustment])
 
     def queue_readouts(self, *args):
         if self.is_active and not self.refresh_timer.isActive():

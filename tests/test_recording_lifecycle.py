@@ -35,7 +35,7 @@ class LifecycleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):cls.app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     def setUp(self):
-        self.folder=tempfile.TemporaryDirectory();self.env=patch.dict(os.environ,{'ANALIZER_OUTPUT_DIR':self.folder.name});self.env.start()
+        self.folder=tempfile.TemporaryDirectory();self.env=patch.dict(os.environ,{'ANALIZER_OUTPUT_DIR':self.folder.name,'ANALIZER_SETTINGS_DIR':str(Path(self.folder.name)/'settings')});self.env.start()
     def tearDown(self):self.env.stop();self.folder.cleanup()
     def tdms(self,name='PDH_AAS_B_V1_0_R',values=(0,128,-2)):
         store=ChannelStore();ds=Dataset('test',pd.DataFrame({'raw':values}));store.datasets[ds.id]=ds
@@ -95,7 +95,11 @@ class LifecycleTests(unittest.TestCase):
         from app_workbench import AdvancedStudioWindow
         w=AdvancedStudioWindow()
         with patch.object(QtWidgets.QFileDialog,'getSaveFileName',return_value=('','')) as dialog:
-            w.save();self.assertTrue(dialog.call_args.args[2].startswith(self.folder.name))
+            w.save();proposed=Path(dialog.call_args.args[2])
+            # Resolve Windows 8.3/long-name aliases while still requiring the
+            # exact configured workspace directory and suggested filename.
+            self.assertEqual(proposed.parent.resolve(),(Path(self.folder.name)/'workspaces').resolve())
+            self.assertEqual(proposed.name,'Workspace.json')
         w.close();self.app.processEvents()
 
     def test_workspace_save_and_restore_keep_event_loop_responsive(self):

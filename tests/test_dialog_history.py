@@ -18,7 +18,10 @@ import app_dialog_history as history
 class DialogHistoryTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        # Windows' temporary root can use an 8.3 user-name alias. Production
+        # intentionally canonicalizes selections, so expected folders must use
+        # the same filesystem identity rather than that spelling difference.
+        self.root = Path(self.temporary.name).resolve()
         self.settings = self.root / 'personal settings'
         self.environment = patch.dict(os.environ, {'ANALIZER_SETTINGS_DIR': str(self.settings)})
         self.environment.start()
@@ -146,6 +149,12 @@ class DialogHistoryTests(unittest.TestCase):
             path = history._path(value, absolute_only=True)
             self.assertIsNotNone(path)
             self.assertEqual(str(path), value)
+        # Exercise the runner's original temporary-path spelling too, including
+        # an 8.3 alias when Windows supplies one. It must retain this exact
+        # folder's identity, with the canonical name persisted for restart.
+        self.assertTrue(history.remember_path('OpenData', Path(self.temporary.name) / 'chosen.csv'))
+        self.assertEqual(Path(history.start_directory('OpenData')).resolve(), self.root)
+        self.assertEqual(json.loads(self.record_path.read_text())['folders']['OpenData'], str(self.root))
 
     def test_corrupt_settings_do_not_prevent_dialog_or_change_on_cancel(self):
         fallback = self.folder('fallback')
@@ -279,7 +288,7 @@ class DialogHistoryIntegrationTests(unittest.TestCase):
     def setUp(self):
         from app_workbench import AdvancedStudioWindow
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.environment = patch.dict(os.environ, {
             'ANALIZER_SETTINGS_DIR': str(self.root / 'settings'),
             'ANALIZER_OUTPUT_DIR': str(self.root / 'outputs')})

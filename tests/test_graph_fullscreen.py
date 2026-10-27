@@ -143,24 +143,37 @@ class GraphFullscreenTests(unittest.TestCase):
             attributes={'actuator_binary': True}))
         self.pane.bind([self.temperature.id, self.pressure.id, actuator.id])
         self.events()
-        host = self.controller.enter(self.pane)
-        self.events()
-        self.assertTrue(host.isFullScreen())
+        self.controller._build_window()
         table = self.controller.readout
-        rows_height = sum(table.rowHeight(row) for row in range(table.rowCount()))
-        self.assertEqual(table.verticalScrollBar().maximum(), 0)
-        # A short source list should leave at most one spare row, even when the
-        # native fullscreen resize arrives after the initial Qt show/layout.
-        self.assertLessEqual(table.viewport().height(), rows_height + table.verticalHeader().defaultSectionSize())
-        splitter = self.controller.splitter
-        initial = splitter.sizes()
-        splitter.moveSplitter(initial[0] - 60, 1)
-        self.events()
-        resized = splitter.sizes()
-        self.assertGreater(resized[1], initial[1] + 40)
-        self.pane.cursor_lines[1].setValue(2.5)
-        self.events()
-        self.assertEqual(splitter.sizes(), resized)
+        for native_chrome in (False, True):
+            with self.subTest(native_chrome=native_chrome):
+                if native_chrome:
+                    # Exercise real Qt viewport overhead beyond header/frame
+                    # estimates: styled padding and an overflowing value table.
+                    table.setStyleSheet('QTableWidget { border: 3px solid #536b84; padding: 4px; }')
+                    screen_width = self.controller.fullscreen_window.screen().geometry().width()
+                    table.horizontalHeader().setMinimumSectionSize(max(150, screen_width // 2))
+                host = self.controller.enter(self.pane)
+                self.events()
+                self.assertTrue(host.isFullScreen())
+                rows_height = sum(table.rowHeight(row) for row in range(table.rowCount()))
+                self.assertEqual(table.verticalScrollBar().maximum(), 0)
+                if native_chrome:
+                    self.assertTrue(table.horizontalScrollBar().isVisible())
+                # A short source list should leave at most one spare row, even
+                # when native fullscreen resize/header layout arrives late.
+                self.assertLessEqual(table.viewport().height(), rows_height + table.verticalHeader().defaultSectionSize())
+                splitter = self.controller.splitter
+                initial = splitter.sizes()
+                splitter.moveSplitter(initial[0] - 60, 1)
+                self.events()
+                resized = splitter.sizes()
+                self.assertGreater(resized[1], initial[1] + 40)
+                self.pane.cursor_lines[1].setValue(2.25 if native_chrome else 2.5)
+                self.events()
+                self.assertEqual(splitter.sizes(), resized)
+                self.controller.exit()
+                self.events()
 
     def test_non_temporal_interval_caption_reports_coordinate_distance(self):
         for coordinate_kind, coordinate_unit in [('frequency', 'Hz'), ('sample', 'sample')]:

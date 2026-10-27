@@ -67,6 +67,9 @@ class QuickAnalysisControlsTests(unittest.TestCase):
         self.assertTrue(w.panel_folding.button.isVisible())
         expand=w.dashboard.navigation_bar.widgetForAction(w.graph_fullscreen.action)
         self.assertTrue(expand.isVisible())
+        header_actions=w.dashboard.navigation_bar.actions()
+        self.assertLess(header_actions.index(w.graph_fullscreen.action),
+                        header_actions.index(w.dashboard.time_lock_action))
         self.assertFalse(w.graph_fullscreen.action.icon().isNull())
         previous_theme=w.theme.mode
         for theme,dark in [('Dark',True),('Light',False)]:

@@ -135,8 +135,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         fullscreen_icon();self.theme.themeChanged.connect(fullscreen_icon)
         for workspace in self.workspaces:
             bar=workspace.navigation_bar
-            before=next((action for action in bar.actions() if action.text()=='Engineering Setup'),None)
-            bar.insertAction(before,self.graph_fullscreen.action)
+            # Keep the compact expansion control with the zoom icons, before
+            # longer lock/setup labels. Native Windows fonts need more width
+            # than offscreen Linux, and common graph actions should stay in
+            # view while the existing toolbar handles narrow-window overflow.
+            bar.insertAction(workspace.time_lock_action,self.graph_fullscreen.action)
             button=bar.widgetForAction(self.graph_fullscreen.action)
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
             button.setAccessibleName('Fullscreen Selected Graph')
