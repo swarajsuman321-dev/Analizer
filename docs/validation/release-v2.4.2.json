@@ -1,0 +1,548 @@
+{
+  "schema": 1,
+  "version": "2.4.2",
+  "build_date": "2026-10-27",
+  "source_commit": "33ea570ff9d3eb3f050171a76e4bc48595970db7",
+  "assembled_at_utc": "2026-10-27T07:27:17.604206+00:00",
+  "assembly_platform": "win32",
+  "native_gate_reports_passed": true,
+  "workflow_completion": "success; observed independently in the public Actions job after publication",
+  "ci": {
+    "GITHUB_REPOSITORY": "swarajsuman321-dev/Analizer",
+    "GITHUB_REF": "refs/heads/main",
+    "GITHUB_RUN_ID": "40464046500",
+    "GITHUB_RUN_ATTEMPT": "1",
+    "GITHUB_WORKFLOW": "Build Windows application",
+    "GITHUB_JOB": "windows-exe",
+    "RUNNER_OS": "Windows",
+    "RUNNER_ARCH": "X64",
+    "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/40464046500"
+  },
+  "native_unit_tests": {
+    "status": "passed",
+    "tests_run": 478,
+    "skipped": 1,
+    "expected_failures": 0,
+    "duration_seconds": 275.267,
+    "terminal_summary": "Ran 478 tests in 275.267s\nOK (skipped=1)",
+    "source_log": "build.log",
+    "source_bytes": 113463,
+    "source_sha256": "a9b547aea69818894a3ea4862ec65b3bf72d1f6536b84f3ca40ba8059ecd0806"
+  },
+  "artifacts": {
+    "standalone-onefile": {
+      "filename": "ApplianceSignalStudio.exe",
+      "bytes": 155109658,
+      "sha256": "b227a1b4df6dd8ed250e748ef81f2b476fe734c9ab61c0b3e0f2eb9d7467a872"
+    },
+    "standalone-folder": {
+      "filename": "ApplianceSignalStudio_Portable.zip",
+      "bytes": 155948594,
+      "sha256": "bc030804f15666e358e5e11b75ca7386f8a2660b372b63421fb82d0a7f83f344"
+    },
+    "installed-setup": {
+      "filename": "ApplianceSignalStudio-Setup-2.4.2.exe",
+      "bytes": 135000968,
+      "sha256": "89de0b9aaa3fcf3940fc7afbde97bb96c381fd35b029bcb2664bf4b4d1e1cff7"
+    }
+  },
+  "native_gate_reports": {
+    "onedir_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "c4ed991db690f28a32d92007769f5871144a2549b1ff49548769958ec23d16f8",
+      "report": {
+        "ok": true,
+        "version": "2.4.2",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "onefile_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "c4ed991db690f28a32d92007769f5871144a2549b1ff49548769958ec23d16f8",
+      "report": {
+        "ok": true,
+        "version": "2.4.2",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "onefile_restart_smoke_report.json": {
+      "bytes": 1512,
+      "sha256": "c4ed991db690f28a32d92007769f5871144a2549b1ff49548769958ec23d16f8",
+      "report": {
+        "ok": true,
+        "version": "2.4.2",
+        "modern": {
+          "qt_gui_checked": true,
+          "channels": 2,
+          "checks": [
+            "Qt startup",
+            "application and window icons",
+            "bundled version manual",
+            "separate About and User Manual windows",
+            "single header navigation and fixed hover readout",
+            "per-file channel controls",
+            "Windows product/version identity",
+            "TDMS reader and units",
+            "TDMS parameter review and saved template",
+            "whole recording removal",
+            "mouse XY hover",
+            "synthetic channel data",
+            "FFT coordinate separation",
+            "portable workspace",
+            "SVG presentation",
+            "PDF/PNG reports",
+            "interval Excel/CSV",
+            "presets",
+            "normalized tracks",
+            "extension hooks and Qt plot",
+            "full workbook",
+            "image-reference calibration",
+            "bundled appliance profiles",
+            "engineering KPI energy",
+            "engineering PDF and nine-sheet workbook"
+          ]
+        },
+        "frozen": true,
+        "python": "3.12.10",
+        "pandas": "2.2.3",
+        "numpy": "2.3.5",
+        "matplotlib": "3.10.8",
+        "openpyxl": "3.1.5",
+        "xlrd": "2.0.1",
+        "checks": [
+          "icons",
+          "ZIP/CSV import",
+          "original pressure numbers with Pa labels",
+          "actual remaining time",
+          "RPM feedback",
+          "first drum / first power-rise synchronization",
+          "128 heater ON time",
+          "difference colours",
+          "heater watts/ON-OFF cursor",
+          "plot rendering",
+          "Excel export/readback"
+        ]
+      }
+    },
+    "installer_smoke_report.json": {
+      "bytes": 852,
+      "sha256": "72ad35ead51f0354ac4f64b216eca28a909bd9150dc8665f8948abd5145f74ec",
+      "report": {
+        "ok": true,
+        "version": "2.4.2",
+        "platform": "native Windows x64 CI",
+        "checks": [
+          "fresh per-user install, runtime imports, user-only registration and Unicode path",
+          "running-app mutex prevents concurrent installation",
+          "same-version repair",
+          "uninstall removes app files and retains user settings, reports and unowned file",
+          "upgrade from real v2.3.1 runtime preserves settings and previous runtime",
+          "failed-runtime upgrade blocked before changes; current version remains runnable",
+          "uninstall after upgrade"
+        ],
+        "limitations": [
+          "Runner account is privileged; per-user mode is verified via registry scope, not a separate standard-user login.",
+          "Not a clean VM without Python or antivirus certification.",
+          "Installer is unsigned; no publisher signing identity was supplied."
+        ]
+      }
+    },
+    "packaged_workflows_smoke_report.json": {
+      "bytes": 1203,
+      "sha256": "f641bf446b1cf479dc8c934bb9eafec45372bc91810545a238147296df0b6572",
+      "report": {
+        "version": "2.4.2",
+        "ok": true,
+        "editions": {
+          "standalone-onefile": {
+            "checks": 47,
+            "passed": 47,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          },
+          "standalone-folder": {
+            "checks": 47,
+            "passed": 47,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          },
+          "installed": {
+            "checks": 47,
+            "passed": 47,
+            "unmet": 0,
+            "unrun": 0,
+            "runner_errors": 0,
+            "application_callback_errors": 0,
+            "expected_safety_rejections": 7,
+            "manual_unrun": 5
+          }
+        },
+        "manual_checks_unrun": [
+          "Physical wheel, box selection and keyboard navigation in every zoom mode",
+          "Windows 100%, 125%, 150% and 200% display scaling",
+          "Moving between monitors with different scaling and graphics drivers",
+          "Keyboard-only task completion and screen-reader announcements",
+          "Long-running acquisition-sized workloads and antivirus policy interaction"
+        ]
+      }
+    },
+    "application_updates_smoke_report.json": {
+      "bytes": 6151,
+      "sha256": "505bf41a246dbfdce954ad1695fb6ca914d64f6a0b82aa5e2f2760375c627c89",
+      "report": {
+        "ok": true,
+        "version": "2.4.2",
+        "previous_version": "2.4.1",
+        "platform": "native Windows actual GUI",
+        "checks": [
+          "real first-install Setup positive control: the native process-family detector rejects its visible welcome wizard; no page advanced or runtime installed",
+          "portable: actual frozen updater waits for workbench child and owning onefile bootloader",
+          "portable-zip: actual frozen updater waits for workbench only, excluding unrelated Python launcher",
+          "portable success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "portable restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "portable-zip restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "installer success: actual previous GUI, production transaction, new GUI/version/workspace acknowledgement",
+          "installer restore-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip locked-runtime: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "portable-zip staging-tamper: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "installer health-failure: actual previous GUI, production transaction, failure detected; retained prior GUI and valid independent recovery",
+          "all cross-edition update conversions rejected; original sources/settings/templates/folder history/reports and sibling runtime unchanged"
+        ],
+        "update_window_observation": {
+          "method": "Toolhelp process ancestry, exact executable images, physical on-monitor frames and DWM-uncloaked top-level windows",
+          "poll_ms": 25,
+          "positive_control": {
+            "poll_ms": 25.0,
+            "samples": 12,
+            "family_image_names": [
+              "ApplianceSignalStudio-Setup-2.4.2.exe",
+              "ApplianceSignalStudio-Setup-2.4.2.tmp"
+            ],
+            "exact_image_identity_checked": true,
+            "physical_screen_intersection_and_uncloaked_checked": true,
+            "unexpected_visible_windows": [
+              {
+                "image_name": "ApplianceSignalStudio-Setup-2.4.2.tmp",
+                "class": "TWizardForm",
+                "geometry": {
+                  "bounds": [
+                    213,
+                    124,
+                    811,
+                    588
+                  ],
+                  "screen_intersections": [
+                    [
+                      213,
+                      124,
+                      811,
+                      588
+                    ]
+                  ],
+                  "cloaked": false
+                }
+              }
+            ],
+            "errors": [],
+            "setup_image_name": "ApplianceSignalStudio-Setup-2.4.2.exe",
+            "setup_process_observed": true,
+            "mode": "actual first-install Setup; no silent flags or page advances",
+            "manual_first_install_wizard_visible": true,
+            "hidden_policy_rejected_positive_control": true
+          },
+          "installed_cases": [
+            {
+              "poll_ms": 25.0,
+              "samples": 1372,
+              "family_image_names": [
+                "conhost.exe",
+                "powershell.exe",
+                "ApplianceSignalStudio-Setup-2.4.2.exe",
+                "ApplianceSignalStudio-Setup-2.4.2.tmp",
+                "ApplianceSignalStudio.exe"
+              ],
+              "exact_image_identity_checked": true,
+              "physical_screen_intersection_and_uncloaked_checked": true,
+              "unexpected_visible_windows": [],
+              "errors": [],
+              "case": "success",
+              "setup_image_name": "ApplianceSignalStudio-Setup-2.4.2.exe",
+              "setup_process_observed": true
+            },
+            {
+              "poll_ms": 25.0,
+              "samples": 1183,
+              "family_image_names": [
+                "powershell.exe",
+                "conhost.exe",
+                "ApplianceSignalStudio-Setup-2.4.2.exe",
+                "ApplianceSignalStudio-Setup-2.4.2.tmp",
+                "ApplianceSignalStudio.exe",
+                "taskkill.exe"
+              ],
+              "exact_image_identity_checked": true,
+              "physical_screen_intersection_and_uncloaked_checked": true,
+              "unexpected_visible_windows": [],
+              "errors": [],
+              "case": "restore-failure",
+              "setup_image_name": "ApplianceSignalStudio-Setup-2.4.2.exe",
+              "setup_process_observed": true
+            },
+            {
+              "poll_ms": 25.0,
+              "samples": 55,
+              "family_image_names": [
+                "powershell.exe",
+                "conhost.exe",
+                "ci-update-health-failure.exe",
+                "ci-update-health-failure.tmp",
+                "ApplianceSignalStudio.exe"
+              ],
+              "exact_image_identity_checked": true,
+              "physical_screen_intersection_and_uncloaked_checked": true,
+              "unexpected_visible_windows": [],
+              "errors": [],
+              "case": "health-failure",
+              "setup_image_name": "ci-update-health-failure.exe",
+              "setup_process_observed": true
+            }
+          ]
+        },
+        "limitations": [
+          "Harness invokes the current production updater against actual pinned v2.4.1 GUIs; it does not click the previous binary's update UI.",
+          "The immutable v2.4.1 update UI still invokes /SILENT; its one-time transition may show Setup progress. Quiet-window evidence covers the current launcher code, not a retroactive old-binary change.",
+          "Visible windows are sampled every 25 ms; this does not certify the absence of every shorter transient flash or OS security prompt.",
+          "The previous runtime supports acknowledgements, but fallback uses ordinary --restore; its exact-version GUI survival and independent recovery snapshot load are checked separately.",
+          "Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.",
+          "Manual wheel/keyboard/DPI/multi-monitor and external corporate networks remain separate checks."
+        ]
+      }
+    }
+  },
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "limitations": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction",
+    "Runner account is privileged; per-user mode is verified via registry scope, not a separate standard-user login.",
+    "Not a clean VM without Python or antivirus certification.",
+    "Installer is unsigned; no publisher signing identity was supplied.",
+    "Harness invokes the current production updater against actual pinned v2.4.1 GUIs; it does not click the previous binary's update UI.",
+    "The immutable v2.4.1 update UI still invokes /SILENT; its one-time transition may show Setup progress. Quiet-window evidence covers the current launcher code, not a retroactive old-binary change.",
+    "Visible windows are sampled every 25 ms; this does not certify the absence of every shorter transient flash or OS security prompt.",
+    "The previous runtime supports acknowledgements, but fallback uses ordinary --restore; its exact-version GUI survival and independent recovery snapshot load are checked separately.",
+    "Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.",
+    "Manual wheel/keyboard/DPI/multi-monitor and external corporate networks remain separate checks."
+  ],
+  "public_native_evidence": {
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/validation-v2.4.2.json",
+    "bytes": 19722,
+    "sha256": "2d506973ae638ffedf2e2e2ce2486652c8ee867cd660553fa52bf29b5469f029"
+  },
+  "public_release_verification": {
+    "version": "2.4.2",
+    "started_utc": "2026-10-27T07:28:23.560831+00:00",
+    "ok": true,
+    "items": [
+      {
+        "edition": "standalone-exe",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/update.json",
+        "asset": "ApplianceSignalStudio.exe",
+        "kind": "portable",
+        "manifest": {
+          "version": "2.4.2",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/ApplianceSignalStudio.exe",
+          "size": 155109658,
+          "sha256": "b227a1b4df6dd8ed250e748ef81f2b476fe734c9ab61c0b3e0f2eb9d7467a872",
+          "notes": "Change Trace Color directly, compare channels from any loaded recordings, and use F11 to fullscreen only the selected graph with navigation and live values. Panels expands or folds supporting panels; Properties, Channel Math, Channel Table and Interval Measurements start folded while Engineering Controls and Readout remain available. Explicit saved layouts are respected. Open/save dialogs remember their folders by purpose across restarts, while first saves use the configured output location. Installed updates use quiet Setup with verified recovery; older embedded updaters may show progress once while installing this version. All three delivery forms retain matching versions and updates."
+        },
+        "feeds_agree": true,
+        "download": {
+          "filename": "ApplianceSignalStudio.exe",
+          "bytes": 155109658,
+          "sha256": "b227a1b4df6dd8ed250e748ef81f2b476fe734c9ab61c0b3e0f2eb9d7467a872",
+          "matches_manifest": true
+        }
+      },
+      {
+        "edition": "standalone-zip",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/zip-update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/zip-update.json",
+        "asset": "ApplianceSignalStudio_Portable.zip",
+        "kind": "portable-zip",
+        "manifest": {
+          "version": "2.4.2",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/ApplianceSignalStudio_Portable.zip",
+          "size": 155948594,
+          "sha256": "bc030804f15666e358e5e11b75ca7386f8a2660b372b63421fb82d0a7f83f344",
+          "notes": "Change Trace Color directly, compare channels from any loaded recordings, and use F11 to fullscreen only the selected graph with navigation and live values. Panels expands or folds supporting panels; Properties, Channel Math, Channel Table and Interval Measurements start folded while Engineering Controls and Readout remain available. Explicit saved layouts are respected. Open/save dialogs remember their folders by purpose across restarts, while first saves use the configured output location. Installed updates use quiet Setup with verified recovery; older embedded updaters may show progress once while installing this version. All three delivery forms retain matching versions and updates.",
+          "kind": "portable-zip"
+        },
+        "feeds_agree": true,
+        "download": {
+          "filename": "ApplianceSignalStudio_Portable.zip",
+          "bytes": 155948594,
+          "sha256": "bc030804f15666e358e5e11b75ca7386f8a2660b372b63421fb82d0a7f83f344",
+          "matches_manifest": true
+        },
+        "zip_inventory": {
+          "files": 2592,
+          "uncompressed_bytes": 388583190,
+          "crc_valid": true,
+          "whole_runtime_and_current_assets_present": true,
+          "inventory_check_only": "Does not execute Windows code or inspect modules inside PYZ"
+        }
+      },
+      {
+        "edition": "installed",
+        "latest_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/installer-update.json",
+        "versioned_feed": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/installer-update.json",
+        "asset": "ApplianceSignalStudio-Setup-2.4.2.exe",
+        "kind": "installer",
+        "manifest": {
+          "version": "2.4.2",
+          "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/ApplianceSignalStudio-Setup-2.4.2.exe",
+          "size": 135000968,
+          "sha256": "89de0b9aaa3fcf3940fc7afbde97bb96c381fd35b029bcb2664bf4b4d1e1cff7",
+          "notes": "Change Trace Color directly, compare channels from any loaded recordings, and use F11 to fullscreen only the selected graph with navigation and live values. Panels expands or folds supporting panels; Properties, Channel Math, Channel Table and Interval Measurements start folded while Engineering Controls and Readout remain available. Explicit saved layouts are respected. Open/save dialogs remember their folders by purpose across restarts, while first saves use the configured output location. Installed updates use quiet Setup with verified recovery; older embedded updaters may show progress once while installing this version. All three delivery forms retain matching versions and updates.",
+          "kind": "installer"
+        },
+        "feeds_agree": true,
+        "download": {
+          "filename": "ApplianceSignalStudio-Setup-2.4.2.exe",
+          "bytes": 135000968,
+          "sha256": "89de0b9aaa3fcf3940fc7afbde97bb96c381fd35b029bcb2664bf4b4d1e1cff7",
+          "matches_manifest": true
+        }
+      }
+    ],
+    "finished_utc": "2026-10-27T07:28:46.405071+00:00"
+  },
+  "public_manual_verification": {
+    "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.2/v2.4.2.md",
+    "bytes": 93346,
+    "sha256": "4bfb166f7de25e6c040324939ae8192c581158ca499f282f6b14b3bd51bbcc3d",
+    "matches_bundled_zip_manual_bytes": true,
+    "matches_source_content_after_line_ending_normalization": true
+  },
+  "public_release_tag_source_verified": "33ea570ff9d3eb3f050171a76e4bc48595970db7",
+  "independently_finalized_at_utc": "2026-10-27T07:29:03.445292+00:00"
+}

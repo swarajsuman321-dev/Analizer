@@ -1,3 +1,9 @@
+# Studio 2.4.2 validation
+
+The [final Windows workflow](https://github.com/swarajsuman321-dev/Analizer/actions/runs/40464046500) for source `33ea570ff9d3eb3f050171a76e4bc48595970db7` passed **477 of 478 regression tests (one non-Windows-only test skipped; zero expected failures)**, **47 real-recording workflow checks in each of the installed, standalone EXE and standalone ZIP/folder forms**, 7 installer lifecycle checks and 13 actual application update/recovery/visibility checks. Independent public downloads, all three update feeds, exact release-tag source and published/bundled/source manual agreement are recorded in the [permanent evidence](docs/validation/release-v2.4.2.json). The [release record](docs/RELEASE_2.4.2.md) describes direct trace colors, general comparison, selected-graph fullscreen, approved folded-panel defaults, remembered folders and quiet future installed updates.
+
+Automated source/native checks do not certify physical Windows scaling, mixed-DPI monitors, every keyboard/mouse interaction, screen readers, long acquisition-sized workloads or antivirus/corporate policy. The per-user installer is unsigned and CI runs under a privileged account. Older installed updaters may show Setup progress once before this version’s quiet updater takes effect. Existing recovery/registration limits remain explicit. Historical records below retain their original version scope.
+
 # Studio 2.1.7 validation
 
 The full local headless Qt suite passed **176 tests** (one native Windows-only
