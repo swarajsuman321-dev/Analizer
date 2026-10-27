@@ -445,10 +445,25 @@ class PlotPane(pg.PlotWidget):
         previous=getattr(self,'_context_menu',None)
         if previous is not None:previous.deleteLater()
         menu=QtWidgets.QMenu(self);menu.setObjectName('paneChartMenu')
+        menu._submenus=[]  # Keep Python ownership of the pane's popup submenus.
+        menu._submenu_actions=[]
         self._context_menu=menu  # retain the nonblocking popup until closed
         if workspace:
             for command in ('pan','cursor','xy','x','y'):
                 menu.addAction(workspace.navigation_actions[command])
+        menu.addSeparator()
+        expand=menu.addAction('Full Screen Graph')
+        expand.setToolTip('Expand this graph with zoom controls and cursor values (F11)')
+        expand.triggered.connect(lambda:self.contextRequested.emit('fullscreen',self))
+        colors=menu.addMenu('Change Trace Color');colors.setEnabled(bool(self.ids))
+        menu._submenus.append(colors)
+        menu._submenu_actions.append(colors.menuAction())
+        for channel_id in self.ids:
+            if channel_id not in self.store.channels:continue
+            action=colors.addAction(channel_label(self.store,channel_id))
+            action.triggered.connect(lambda checked=False,id=channel_id:self.contextRequested.emit('trace-color:'+id,self))
+        compare=menu.addAction('Add Graph Channels to Comparison');compare.setEnabled(bool(self.ids))
+        compare.triggered.connect(lambda:self.contextRequested.emit('compare',self))
         menu.addSeparator()
         cycles=menu.addAction('Snap to Cycles');cycles.setCheckable(True);cycles.setChecked(self.cycle_snap)
         cycles.setEnabled(len(self.cycle_boundaries)>=2)
@@ -461,6 +476,8 @@ class PlotPane(pg.PlotWidget):
         definition.setToolTip('Enter reviewed positions in this pane’s time unit; no appliance cycles are inferred.');definition.triggered.connect(self.configure_cycle_boundaries)
         menu.addSeparator()
         comments=menu.addMenu('Comments')
+        menu._submenus.append(comments)
+        menu._submenu_actions.append(comments.menuAction())
         add=comments.addAction('Add Annotation…');add.setEnabled(bool(self.ids));add.triggered.connect(self.add_context_annotation)
         move=comments.addAction('Move Comments');move.setCheckable(True);move.setChecked(self.comments_movable);move.setEnabled(bool(self.annotations))
         move.setToolTip('Enable dragging existing annotation lines or interval edges.');move.toggled.connect(self.set_comments_movable)
@@ -468,6 +485,8 @@ class PlotPane(pg.PlotWidget):
         menu.addAction('Copy Chart',self.copy_chart)
         export=menu.addAction('Export Report…');export.setEnabled(bool(self.ids));export.triggered.connect(lambda:self.contextRequested.emit('export',self))
         processing=menu.addMenu('Calculate Channel')
+        menu._submenus.append(processing)
+        menu._submenu_actions.append(processing.menuAction())
         fft=processing.addAction('FFT — Frequency Spectrum…');fft.setEnabled(bool(self.ids) and self.coordinate is not None and self.coordinate[0]=='time')
         fft.setToolTip('Open the application FFT calculation. A supported regular time clock is required.');fft.triggered.connect(lambda:self.contextRequested.emit('fft',self))
         return menu

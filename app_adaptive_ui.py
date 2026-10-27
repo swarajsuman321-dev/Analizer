@@ -16,6 +16,10 @@ def navigation_icon(kind, dark=False):
             for x,y,sx,sy in ((3,3,1,1),(21,3,-1,1),(3,21,1,-1),(21,21,-1,-1)):
                 painter.drawLine(x,y,x+sx*6,y);painter.drawLine(x,y,x,y+sy*6)
             painter.drawRect(QtCore.QRectF(8,8,8,8))
+        elif kind=='fullscreen':
+            for x,y,sx,sy in ((3,3,1,1),(21,3,-1,1),(3,21,1,-1),(21,21,-1,-1)):
+                painter.drawLine(x,y,x+sx*6,y);painter.drawLine(x,y,x,y+sy*6)
+                painter.drawLine(x,y,x+sx*7,y+sy*7)
         else:
             path=QtGui.QPainterPath();path.moveTo(8,21);path.lineTo(3,13);path.cubicTo(2,11,4,10,6,12);path.lineTo(7,13);path.lineTo(7,5);path.cubicTo(7,2,10,2,10,5);path.lineTo(10,11);path.lineTo(10,3);path.cubicTo(10,1,13,1,13,3);path.lineTo(13,11);path.lineTo(13,4);path.cubicTo(13,2,16,2,16,4);path.lineTo(16,12);path.lineTo(16,7);path.cubicTo(16,5,19,5,19,7);path.lineTo(19,16);path.lineTo(16,21);path.closeSubpath();painter.drawPath(path)
         painter.end();icon.addPixmap(pix)

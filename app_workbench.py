@@ -104,6 +104,46 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.resizeDocks([self.docks['Readout']],[180],QtCore.Qt.Orientation.Vertical)
         self.enable_all_panels()
         self._readouts();self.theme.themeChanged.connect(self.plot_theme);self.theme.apply(self.theme.mode)
+        self._build_quick_analysis_controls()
+
+    def _build_quick_analysis_controls(self):
+        """Expose common graph tasks without changing the advanced tools."""
+        from app_trace_controls import TraceColorControls
+        from app_data_comparison import DataComparisonControls
+        from app_graph_fullscreen import GraphFullscreenController
+        from app_panel_folding import PanelFoldingControls
+        self.trace_colors=TraceColorControls(self)
+        self.data_comparison=DataComparisonControls(self)
+        self.graph_fullscreen=GraphFullscreenController(self)
+        self.panel_folding=PanelFoldingControls(self)
+        color=self.channel_menu.addAction('Change Trace Color…')
+        color.setToolTip('Choose a color for the selected channel without resetting the graph')
+        color.triggered.connect(lambda:self.guard(self.trace_colors.choose))
+        self.trace_color_action=color
+        button=QtWidgets.QPushButton('Change Trace Color…',self.properties)
+        button.clicked.connect(lambda:self.guard(self.trace_colors.choose))
+        self.properties.layout().insertRow(0,button)
+        self.portal.traceColorRequested.connect(lambda ids:self.guard(lambda:self.trace_colors.choose(ids)))
+        self.portal.comparisonRequested.connect(lambda ids:self.guard(lambda:self.data_comparison.add_channels(ids)))
+        self.view_menu.addSeparator();self.view_menu.addAction(self.graph_fullscreen.action)
+        before=next((action for action in self.main_toolbar.actions() if action.text()=='Calculate Channel'),None)
+        self.main_toolbar.insertWidget(before,self.panel_folding.button)
+        def fullscreen_icon(dark=None):
+            from app_adaptive_ui import navigation_icon
+            if dark is None:dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness()<128
+            self.graph_fullscreen.action.setIcon(navigation_icon('fullscreen',dark))
+        fullscreen_icon();self.theme.themeChanged.connect(fullscreen_icon)
+        for workspace in self.workspaces:
+            bar=workspace.navigation_bar
+            before=next((action for action in bar.actions() if action.text()=='Engineering Setup'),None)
+            bar.insertAction(before,self.graph_fullscreen.action)
+            button=bar.widgetForAction(self.graph_fullscreen.action)
+            button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setAccessibleName('Fullscreen Selected Graph')
+        self.panel_folding.apply_defaults(['Properties','Channel Math','Channel Table','Interval Measurements'])
+
+    def exit_graph_fullscreen(self):
+        if hasattr(self,'graph_fullscreen'):self.graph_fullscreen.exit()
 
     def plot_theme(self,dark):
         color='#e3eaf5' if dark else '#182033';background='#151b26' if dark else '#ffffff'
@@ -174,8 +214,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.readout.verticalHeader().hide();self.readout.verticalHeader().setDefaultSectionSize(26)
         self.readout.setMinimumHeight(110)
         body.addWidget(self.readout,1)
-        self.interval_card=QtWidgets.QLabel('Select a plotted channel to inspect its interval.');self.interval_card.setWordWrap(True)
-        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(110);self.interval_card.setMinimumWidth(210);self.interval_card.setMaximumWidth(340);body.addWidget(self.interval_card)
+        from app_readout_details import ReadoutDetailsLabel
+        self.interval_card=ReadoutDetailsLabel('Select a plotted channel to inspect its interval.')
+        self.interval_card.setStyleSheet('padding:10px; border:1px solid #8293a9; border-radius:6px;');self.interval_card.setMinimumHeight(110);self.interval_card.setMaximumWidth(340)
+        self.interval_scroll=QtWidgets.QScrollArea();self.interval_scroll.setWidgetResizable(True);self.interval_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.interval_scroll.setMinimumWidth(210);self.interval_scroll.setMaximumWidth(340);self.interval_scroll.setMinimumHeight(110)
+        self.interval_scroll.setAccessibleName('Complete interval details');self.interval_scroll.setToolTip('Scroll to read longer interval details')
+        self.interval_scroll.setWidget(self.interval_card);body.addWidget(self.interval_scroll)
         self.readout.itemSelectionChanged.connect(self.update_interval_card)
         self.intervals=QtWidgets.QTableWidget(0,11);self.intervals.setHorizontalHeaderLabels(['Channel','ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage'])
         self.intervals.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -267,11 +312,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def _build_toolbar(self):
         toolbar=self.addToolBar('Workbench');toolbar.setObjectName('Workbench');toolbar.setMovable(False)
+        self.main_toolbar=toolbar
         def action(text,fn,shortcut=None,tip=None):
             item=QtGui.QAction(text,self);item.triggered.connect(lambda:self.guard(fn));item.setToolTip(tip or text)
             if shortcut:item.setShortcut(shortcut)
             toolbar.addAction(item);return item
         action('Open Data Files',self.open_data,'Ctrl+O','Import TDMS, CSV, Excel, ZIP, Parquet or JSON recording')
+        self.compare_data_action=action('Compare Data…',lambda:self.data_comparison.show_dialog(),tip='Choose channels from any loaded recordings to overlay in Comparison')
         action('Save workspace',self.save,'Ctrl+S');action('Restore Workspace',self.restore)
         self.export_button=QtWidgets.QPushButton('Export Report');self.export_button.setObjectName('exportReport')
         self.export_button.setStyleSheet('QPushButton {background:#216eb5; color:white; font-weight:600; padding:7px 16px; border-radius:5px;}')
@@ -280,14 +327,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         report_action=QtGui.QAction(self);report_action.setShortcut('Ctrl+P');report_action.triggered.connect(lambda:self.guard(self.report));self.addAction(report_action)
         action('Calculate Channel',lambda:self.show_dock('Channel Math'),'Ctrl+M')
         self.layout_combo=QtWidgets.QComboBox();self.layout_combo.setToolTip('Choose the graph panel layout');self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
-        self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.active_workspace.set_layout(text)))
+        self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.set_graph_layout(text)))
         self.cursor_combo=QtWidgets.QComboBox();self.cursor_combo.setToolTip('Show two cursors, one cursor or hide cursors');[self.cursor_combo.addItem(label,mode) for label,mode in [('Two Cursors','dual'),('One Cursor','point'),('Hide Cursors','off')]];toolbar.addWidget(self.cursor_combo)
         self.cursor_combo.currentIndexChanged.connect(lambda index:[p.set_cursor_mode(self.cursor_combo.currentData()) for p in self.active_workspace.visible_panes()])
         self.snap_checkbox=QtWidgets.QCheckBox('Snap to Samples');self.snap_checkbox.setChecked(True);self.snap_checkbox.setToolTip('Snap cursors to recorded sample timestamps');toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
-        view=self.menuBar().addMenu('View')
+        view=self.menuBar().addMenu('View');self.view_menu=view
         view.addAction('Show all panels',self.enable_all_panels);view.addSeparator()
         for dock in self.docks.values():view.addAction(dock.toggleViewAction())
-        channel=self.menuBar().addMenu('Channel')
+        channel=self.menuBar().addMenu('Channel');self.channel_menu=channel
         for text,command in [('Rename Channel','rename'),('Duplicate Channel','duplicate'),('Delete Selected Channels','delete'),('Assign Value Axis','assign axis'),('Mask Interval','mask interval'),('Clear Masks','clear masks'),('Add Marker','marker'),('Mark Interval','roi')]:
             item=channel.addAction(text);item.triggered.connect(lambda checked=False,c=command:self.organize(c))
         theme=QtWidgets.QComboBox();theme.addItems(['System','Dark','Light']);toolbar.addWidget(theme);theme.currentTextChanged.connect(self.theme.apply)
@@ -334,13 +381,21 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.tabs.setCurrentIndex(self.workspaces.index(workspace));workspace.active=pane;workspace.activeChanged.emit(pane)
         if command=='cursor':self.studio.cursor_lock_dialog()
         elif command=='export':self.report()
+        elif command=='fullscreen':self.graph_fullscreen.enter(pane)
+        elif command.startswith('trace-color:'):self.trace_colors.choose([command.partition(':')[2]])
+        elif command=='compare':self.data_comparison.add_channels(pane.ids)
         elif command=='fft':
             self.show_dock('Channel Math');self.operation.setCurrentText('FFT')
             self.statusBar().showMessage('Select one source channel in the Data Portal, review its clock, then Apply to workspace.')
 
+    def set_graph_layout(self,name):
+        self.exit_graph_fullscreen()
+        self.active_workspace.set_layout(name)
+
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
         self.docks['Data Portal'].raise_();self.docks['Properties'].raise_();self.docks['Engineering Controls'].show();self.docks['Engineering Controls'].raise_();self.docks['Readout'].raise_()
+        if hasattr(self,'panel_folding'):self.panel_folding.sync()
 
     def show_info(self):
         self.info_dialog.open()
@@ -384,12 +439,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         worker.signals.finished.connect(complete);self.pool.start(worker)
 
     def pick_file(self,field):
-        path,_=QtWidgets.QFileDialog.getOpenFileName(self,'Choose recording')
+        from app_dialog_history import open_file
+        purpose=next((key for key,widget in [('EngineeringPower',self.power_path),('EngineeringMachine',self.machine_path),('EngineeringSimulation',self.simulation_path)] if field is widget),'EngineeringRecording')
+        path,_=open_file(self,'Choose recording',purpose=purpose)
         if path:field.setText(path)
 
-    def open_data(self):
-        self.mutate();paths,_=QtWidgets.QFileDialog.getOpenFileNames(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)')
-        if not paths:return
+    def open_data(self,*,plot_import=True):
+        from app_dialog_history import open_files
+        self.mutate();paths,_=open_files(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)',purpose='OpenData')
+        if not paths:return False
         def load():
             from app_operation_context import checkpoint
             store=ChannelStore()
@@ -397,11 +455,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 checkpoint(f'Loading {Path(path).name} ({index+1}/{len(paths)})',index,len(paths));ingest(store,path);checkpoint()
             return store
         workspace=self.active_workspace
-        self.background(load,lambda other:self.finish_import(other,workspace),title='Opening recordings')
+        self.background(load,lambda other:self.finish_import(other,workspace,plot_import=plot_import),title='Opening recordings')
+        return True
 
-    def finish_import(self,other,workspace=None):
+    def finish_import(self,other,workspace=None,*,plot_import=True):
         if not other.channels:raise ValueError('No numeric measurement channels were found. Check the file format, coordinate column and unit settings.')
-        if self.review_tdms_import(other):self.merge_store(other,workspace)
+        if self.review_tdms_import(other):self.merge_store(other,workspace,plot_import=plot_import)
 
     def review_tdms_import(self,other):
         """Use one template contract for Open and Engineering Controls."""
@@ -459,6 +518,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def drop_recordings(self,dataset_ids,clear_all=False):
         self.mutate()
+        self.exit_graph_fullscreen()
         snapshot=self.store.removal_snapshot(dataset_ids,clear_all=clear_all)
         self.removal_undo=(snapshot,deepcopy([workspace.state() for workspace in self.workspaces]),deepcopy(self.ui_state()))
         with self.store.batch():
@@ -525,7 +585,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.removal_undo=None;self.undo_removal_action.setEnabled(False)
         self.statusBar().showMessage('Dataset removal undone; channels, dependencies, plot bindings and cursor locks restored.')
 
-    def merge_store(self,other,workspace=None,deduplicate_alignment=False):
+    def merge_store(self,other,workspace=None,deduplicate_alignment=False,*,plot_import=True):
         from app_actuators import interpret_channel
         for id,channel in list(other.channels.items()):other.channels[id]=interpret_channel(channel)
         from app_time_units import normalize_minutes
@@ -547,14 +607,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 self.store.datasets.update(other.datasets)
                 for c in other.channels.values():self.store.add(c)
             ids=list(other.channels)
-        if ids:
+        if ids and plot_import:
             target=workspace or self.active_workspace;was_empty=not any(p.ids for p in target.panes)
             previous=[(p,p.state()) for p in target.visible_panes() if p.ids] if deduplicate_alignment else []
             target.assign(ids)
             for pane,state in previous:pane.restore_ranges(state)
             if was_empty and not self.studio.pending_preset:target.arrange_readable()
         self.sync_visibility()
-        if hasattr(self,'studio') and self.studio.pending_preset:self.studio.apply_preset(self.studio.pending_preset)
+        if plot_import and hasattr(self,'studio') and self.studio.pending_preset:self.studio.apply_preset(self.studio.pending_preset)
 
     def store_changed(self,ids):
         self.portal.rebuild()
@@ -566,7 +626,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def selection(self,ids):
         if ids:
-            c=self.store.channels[ids[0]];self.prop_name.setText(c.name);self.prop_unit.setText(c.unit);self.prop_group.setText(c.group);self.prop_kind.setCurrentText(c.kind)
+            c=self.store.channels[ids[0]];self._property_channel_id=c.id;self._property_metadata_base=deepcopy(c.attributes);self.prop_name.setText(c.name);self.prop_unit.setText(c.unit);self.prop_group.setText(c.group);self.prop_kind.setCurrentText(c.kind)
             self.prop_interpretation.setCurrentIndex(max(0,self.prop_interpretation.findData(c.attributes.get('value_interpretation','auto'))))
             self.prop_attrs.setPlainText(json.dumps(c.attributes,indent=2))
             self._metadata_snapshot=self.prop_attrs.toPlainText();self.populate_metadata(c.attributes)
@@ -612,12 +672,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         raw=self.prop_attrs.toPlainText()
         attrs=json.loads(raw or '{}') if self.metadata_advanced.isChecked() or raw!=getattr(self,'_metadata_snapshot',raw) else self.structured_metadata()
         if not isinstance(attrs,dict):raise ValueError('Properties must be a JSON object')
+        c=self.store.channels[ids[0]]
+        from app_metadata_merge import merge_metadata_edits
+        base=getattr(self,'_property_metadata_base',c.attributes) if getattr(self,'_property_channel_id',None)==c.id else c.attributes
+        attrs=merge_metadata_edits(base,attrs,c.attributes)
         for key,field in [('warning_min',self.warning_min),('warning_max',self.warning_max),('fault_min',self.fault_min),('fault_max',self.fault_max)]:
             if field.text():attrs[key]=float(field.text())
             else:attrs.pop(key,None)
         from app_actuators import interpret_channel
         from dataclasses import replace
-        c=self.store.channels[ids[0]]
         if self.prop_unit.text()!=c.unit:attrs['raw_unit']=self.prop_unit.text()
         if self.prop_kind.currentText()!=c.kind:attrs['raw_kind']=self.prop_kind.currentText()
         candidate=replace(c,name=self.prop_name.text(),unit=self.prop_unit.text(),group=self.prop_group.text(),kind=self.prop_kind.currentText(),attributes=attrs)
@@ -633,6 +696,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                             values=self.store.channels[id].values()[1];finite=values[np.isfinite(values)]
                             if len(finite):bounds.extend([float(finite.min()),float(finite.max())])
                     if bounds:view.setYRange(min(bounds),max(bounds) if max(bounds)>min(bounds) else min(bounds)+1,padding=.08)
+        # Refresh the baseline only after a successful Apply; opening an editor
+        # or switching its representation must not turn draft edits into saved
+        # metadata or discard a color changed by another control.
+        self.selection([c.id])
 
     def show_source(self,*args):
         ds=self.store.datasets.get(self.source_selector.currentData())
@@ -884,19 +951,22 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def ui_state(self):
         return {'app_version':VERSION,'geometry':bytes(self.saveGeometry().toBase64()).decode(),'docks':bytes(self.saveState().toBase64()).decode(),
+                'panel_folding':self.panel_folding.state() if hasattr(self,'panel_folding') else None,
                 'stats_scope':self.stats_scope.currentText(),'tab':getattr(self,'_plot_tab_index',0),'selection':self.portal.selected(),'source':self.source_selector.currentData(),
                 'scorecard':self.scorecard_data.to_json(orient='split') if getattr(self,'scorecard_data',None) is not None else None,
                 'focus_graph':{'enabled':self.compact.focus_action.isChecked(),'normal':bytes(self.compact.focus_state.toBase64()).decode() if self.compact.focus_state is not None else ''},'engineering_session':self.engineering.state(),'studio':self.studio.state(),'units':UNIT_DEFINITIONS,'engineering':{'power':self.power_path.text(),'machine':self.machine_path.text(),'simulation':self.simulation_path.text(),'strategy':self.sync.currentData() or self.sync.currentText(),'offset':self.offset.value()}}
 
     def save(self):
-        self.mutate();path,_=QtWidgets.QFileDialog.getSaveFileName(self,'Save portable workspace',str(output_path('Workspace.json','workspaces')),'Workspace (*.json)')
+        from app_dialog_history import save_file
+        self.mutate();path,_=save_file(self,'Save portable workspace',str(output_path('Workspace.json','workspaces')),'Workspace (*.json)',purpose='WorkspaceSave')
         if path:
             store=self.store;views=[w.state() for w in self.workspaces];ui=self.ui_state()
             self.background(lambda:save_workspace(path,store,views,ui),lambda saved:self.statusBar().showMessage(f'Saved {saved} and adjacent NPZ; keep both files together.'),title='Saving workspace')
 
     def restore(self):
+        from app_dialog_history import open_file
         self.mutate()
-        path,_=QtWidgets.QFileDialog.getOpenFileName(self,'Restore workspace','','Workspace (*.json *.xml *.ini *.cfg)')
+        path,_=open_file(self,'Restore workspace','','Workspace (*.json *.xml *.ini *.cfg)',purpose='WorkspaceOpen')
         if path:self.background(lambda:load_workspace(path),lambda result:self.restore_loaded(*result),title='Restoring workspace')
 
     def restore_path(self,path,upgrade_defaults=False):
@@ -904,6 +974,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.restore_loaded(store,views,ui,upgrade_defaults)
 
     def restore_loaded(self,store,views,ui,upgrade_defaults=False):
+        self.exit_graph_fullscreen()
         if ui.get('engineering_session'):
             from app_engineering_session import validate_session
             validate_session(ui['engineering_session'])
@@ -940,7 +1011,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             if encoded:method(QtCore.QByteArray.fromBase64(encoded.encode()))
         # Older workspaces may contain show_channel_kind. Its removed portal
         # column has no display state to restore; channel metadata stays intact.
-        if upgrade_defaults and 'app_version' not in ui:self.enable_all_panels()
+        # An explicit legacy dock layout wins over today's startup defaults.
+        # Missing folding metadata is reflected from Qt, never treated as a
+        # request to reopen all supporting panels.
+        if hasattr(self,'panel_folding'):self.panel_folding.restore(ui.get('panel_folding'))
         self.stats_scope.setCurrentText(ui.get('stats_scope','Cursor interval'))
         self.tabs.setCurrentIndex(min(ui.get('tab',0),len(self.workspaces)-1));self.source_selector.setCurrentIndex(max(0,self.source_selector.findData(ui.get('source'))))
         selected=set(ui.get('selection',[]))
@@ -959,10 +1033,11 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def report(self):
         from app_reporting import export_report
+        from app_dialog_history import save_file
         if not any(p.ids for p in self.active_workspace.visible_panes()):raise ValueError('Check at least one channel before exporting')
         self.mutate()
         filters='PDF plot and cursor summary (*.pdf);;Excel interval samples and cursor summary (*.xlsx);;CSV interval samples (*.csv);;High-resolution PNG snapshot (*.png)'
-        path,selected=QtWidgets.QFileDialog.getSaveFileName(self,'Export Report',str(output_path('Signal report.pdf')),filters)
+        path,selected=save_file(self,'Export Report',str(output_path('Signal report.pdf')),filters,purpose='ExportReport')
         if path:
             extensions={'PDF':'.pdf','Excel':'.xlsx','CSV':'.csv','High-resolution':'.png'}
             suffix=next((v for k,v in extensions.items() if selected.startswith(k)),'.pdf')
@@ -1008,6 +1083,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self,event):
         if hasattr(self,'info') and not self.info.prepare_close():event.ignore();return
+        self.exit_graph_fullscreen()
         self.generation+=1
         if hasattr(self,'engineering'):self.engineering.cancel_token.set();self.engineering.watch.stop()
         if hasattr(self,'studio'):self.studio.pause()

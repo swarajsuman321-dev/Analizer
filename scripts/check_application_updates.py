@@ -94,28 +94,110 @@ def process_image(pid):
     finally:kernel.CloseHandle(handle)
 
 
+def screen_intersections(bounds,monitors,*,minimized=False,cloaked=False):
+    """Positive physical pixels on actual monitors, including negative origins.
+
+    A WS_VISIBLE flag alone also describes zero-sized focus helpers and fully
+    off-screen windows. Monitor rectangles, rather than their bounding box,
+    avoid treating gaps between displays as rendered desktop area.
+    """
+    left,top,right,bottom=bounds
+    if minimized or cloaked or right<=left or bottom<=top:return []
+    intersections=[]
+    for ml,mt,mr,mb in monitors:
+        visible=(max(left,ml),max(top,mt),min(right,mr),min(bottom,mb))
+        if visible[2]>visible[0] and visible[3]>visible[1]:intersections.append(visible)
+    return intersections
+
+
+def monitor_rectangles():
+    user=ctypes.windll.user32
+    callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HANDLE,wintypes.HDC,
+                              ctypes.POINTER(wintypes.RECT),wintypes.LPARAM)
+    found=[]
+    def visit(_monitor,_hdc,rect,_data):
+        bounds=rect.contents;found.append((bounds.left,bounds.top,bounds.right,bounds.bottom));return True
+    user.EnumDisplayMonitors.argtypes=[wintypes.HDC,ctypes.POINTER(wintypes.RECT),callback,wintypes.LPARAM]
+    if not user.EnumDisplayMonitors(None,None,callback(visit),0):raise ctypes.WinError()
+    if not found:raise OSError('Native visibility observation found no display monitors')
+    return found
+
+
+def rendered_window_geometry(hwnd,monitors):
+    """Return physical, uncloaked on-screen bounds, or None for non-rendering UI.
+
+    Apply this to every class/title. Inno's 0×0 TWindowDisabler fallback is an
+    example of a non-rendering window, never a class-specific exemption.
+    """
+    user=ctypes.windll.user32;dwm=ctypes.windll.dwmapi
+    user.IsIconic.argtypes=[wintypes.HWND]
+    user.IsWindow.argtypes=[wintypes.HWND]
+    user.GetWindowRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
+    dwm.DwmGetWindowAttribute.argtypes=[wintypes.HWND,wintypes.DWORD,ctypes.c_void_p,wintypes.DWORD]
+    dwm.DwmGetWindowAttribute.restype=ctypes.c_long
+    if user.IsIconic(hwnd):return None
+    rect=wintypes.RECT()
+    if not user.GetWindowRect(hwnd,ctypes.byref(rect)):
+        if not user.IsWindow(hwnd):return None
+        raise ctypes.WinError()
+    bounds=(rect.left,rect.top,rect.right,rect.bottom)
+    if not screen_intersections(bounds,monitors):return None
+    cloaked=wintypes.DWORD()
+    result=dwm.DwmGetWindowAttribute(hwnd,14,ctypes.byref(cloaked),ctypes.sizeof(cloaked))
+    if result!=0:
+        if not user.IsWindow(hwnd):return None
+        raise OSError(f'Native window cloak query failed: HRESULT 0x{result & 0xffffffff:08x}')
+    if cloaked.value:return None
+    # Extended frame bounds omit the invisible resize border and use physical
+    # pixels. Borderless/native popup classes may lack this DWM attribute; the
+    # DPI-aware GetWindowRect above remains the appropriate physical fallback.
+    frame=wintypes.RECT()
+    if dwm.DwmGetWindowAttribute(hwnd,9,ctypes.byref(frame),ctypes.sizeof(frame))==0:
+        bounds=(frame.left,frame.top,frame.right,frame.bottom)
+    intersections=screen_intersections(bounds,monitors)
+    return {'bounds':list(bounds),'screen_intersections':[list(rect) for rect in intersections],
+            'cloaked':False} if intersections else None
+
+
 def visible_process_windows(pids):
-    """Enumerate visible native windows with their owning process image paths."""
+    """Enumerate physically rendered top-level windows and owning image paths."""
     user=ctypes.windll.user32
     user.IsWindowVisible.argtypes=[wintypes.HWND];user.IsWindow.argtypes=[wintypes.HWND]
     user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
     user.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
     user.GetClassNameW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
     callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
-    found=[]
+    found=[];errors=[]
     def visit(hwnd,_):
         if not user.IsWindowVisible(hwnd):return True
         pid=wintypes.DWORD();user.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
         if pid.value not in pids:return True
-        image=process_image(pid.value)
-        if not image and not user.IsWindow(hwnd):return True
-        title=ctypes.create_unicode_buffer(1024);window_class=ctypes.create_unicode_buffer(256)
-        user.GetWindowTextW(hwnd,title,len(title));user.GetClassNameW(hwnd,window_class,len(window_class))
-        found.append({'hwnd':int(hwnd),'pid':pid.value,'image':image,
-                      'title':title.value,'class':window_class.value})
+        try:
+            geometry=rendered_window_geometry(hwnd,monitors)
+            if not geometry:return True
+            image=process_image(pid.value)
+            if not image and not user.IsWindow(hwnd):return True
+            title=ctypes.create_unicode_buffer(1024);window_class=ctypes.create_unicode_buffer(256)
+            user.GetWindowTextW(hwnd,title,len(title));user.GetClassNameW(hwnd,window_class,len(window_class))
+            found.append({'hwnd':int(hwnd),'pid':pid.value,'image':image,
+                          'title':title.value,'class':window_class.value,'geometry':geometry})
+        except Exception as exc:
+            # ctypes callbacks otherwise print and swallow Python exceptions,
+            # which could incorrectly certify a failed query as hidden UI.
+            errors.append(str(exc))
         return True
     user.EnumWindows.argtypes=[callback,wintypes.LPARAM]
-    if not user.EnumWindows(callback(visit),0):raise ctypes.WinError()
+    # Keep monitor/GetWindowRect coordinates physical across mixed-DPI screens.
+    set_dpi=user.SetThreadDpiAwarenessContext
+    set_dpi.argtypes=[wintypes.HANDLE];set_dpi.restype=wintypes.HANDLE
+    previous_dpi=set_dpi(ctypes.c_void_p(-4)) or set_dpi(ctypes.c_void_p(-3))
+    if not previous_dpi:raise ctypes.WinError()
+    try:
+        monitors=monitor_rectangles()
+        if not user.EnumWindows(callback(visit),0):raise ctypes.WinError()
+        if errors:raise OSError('Native rendered-window observation failed: '+'; '.join(errors))
+    finally:
+        if not set_dpi(previous_dpi):raise ctypes.WinError()
     return found
 
 
@@ -133,7 +215,9 @@ def public_visibility_summary(report,setup=None,manual_positive_control=False):
     result={'poll_ms':report['poll_ms'],'samples':report['samples'],
             'family_image_names':list(dict.fromkeys(name(image) for image in report['family_images'])),
             'exact_image_identity_checked':True,
-            'unexpected_visible_windows':[{'image_name':name(window['image']),'class':window['class']}
+            'physical_screen_intersection_and_uncloaked_checked':True,
+            'unexpected_visible_windows':[{'image_name':name(window['image']),'class':window['class'],
+                                           **({'geometry':window['geometry']} if 'geometry' in window else {})}
                                            for window in report['unexpected_visible_windows']],
             'errors':['Native observation failed; details remain in the internal diagnostic' for _ in report['errors']]}
     if 'case' in report:result['case']=report['case']
@@ -151,6 +235,7 @@ def public_visibility_summary(report,setup=None,manual_positive_control=False):
 class UpdateWindowObserver:
     """Observe a real updater family, allowing only the exact workbench images.
 
+    Only positive-area, on-screen, non-minimized and uncloaked windows count.
     Polling every 25 ms is bounded and intentionally reported as sampling; it
     does not certify that a shorter transient window can never occur.
     """
@@ -446,8 +531,11 @@ def check():
         template=settings/'tdms-template.json';template.write_text('{"reviewed":"keep"}')
         source=base/'original-recording.csv';source.write_text('time,value\n0,42\n')
         report=outputs/'user-report.csv';report.write_text('preserve-report')
+        from app_dialog_history import remember_path, start_directory, HISTORY_FILENAME
+        assert remember_path('OpenData',source),'Could not prepare the retained folder history'
+        folder_history=settings/HISTORY_FILENAME
         recovery=base/'workspace.json';expected=make_workspace(recovery)
-        original_hashes={str(p):file_hash(p) for p in (template,source,report,recovery)}
+        original_hashes={str(p):file_hash(p) for p in (template,source,report,recovery,folder_history)}
         sibling=base/'Other standalone edition';shutil.copytree(old_bundle,sibling)
         sibling_hash=file_hash(sibling/'ApplianceSignalStudio.exe')
         install=base/'Installed App';install_log=base/'setup.log'
@@ -457,6 +545,7 @@ def check():
             def preserved():
                 for path,digest in original_hashes.items():assert file_hash(path)==digest,path
                 assert file_hash(sibling/'ApplianceSignalStudio.exe')==sibling_hash
+                assert Path(start_directory('OpenData')).resolve()==source.parent.resolve(),'An update lost the remembered recording folder'
 
             def exercise(kind,case):
                 print(f'UPDATE PHASE: {kind} / {case}',flush=True)
@@ -553,13 +642,13 @@ def check():
                             try:require_matching_edition(manifest(setup,incoming))
                             except ValueError:pass
                             else:raise AssertionError('Edition conversion was not rejected')
-            checks.append('all cross-edition update conversions rejected; original sources/settings/templates/reports and sibling runtime unchanged')
+            checks.append('all cross-edition update conversions rejected; original sources/settings/templates/folder history/reports and sibling runtime unchanged')
         finally:
             for exe in all_runtimes:close_gui(exe)
             if registration() and (install/'unins000.exe').exists():
                 invoke(install/'unins000.exe',['/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',f'/LOG={install_log}'],install_log)
     result={'ok':True,'version':VERSION,'previous_version':PRIOR_VERSION,'platform':'native Windows actual GUI', 'checks':checks,
-            'update_window_observation':{'method':'Toolhelp process ancestry, exact executable images and native visible top-level window enumeration',
+            'update_window_observation':{'method':'Toolhelp process ancestry, exact executable images, physical on-monitor frames and DWM-uncloaked top-level windows',
                                          'poll_ms':25,'positive_control':public_visibility_summary(visibility_positive_control,setup=setup,manual_positive_control=True),
                                          'installed_cases':visibility_checks},
             'limitations':['Harness invokes the current production updater against actual pinned v'+PRIOR_VERSION+' GUIs; it does not click the previous binary\'s update UI.',

@@ -129,6 +129,9 @@ class QtParityTests(unittest.TestCase):
     def add(self,name='Probe',unit='V',**kwargs):return self.window.store.add(Channel(name,np.arange(11.),np.arange(11.)*2,unit=unit,coordinate_unit='min',**kwargs))
     def test_tools_keep_two_workspaces_with_all_view_panels_enabled(self):
         w=self.window;self.assertEqual(w.tabs.count(),2);self.assertTrue(any(a.text()=='Tools' for a in w.menuBar().actions()))
+        self.assertEqual({name for name,dock in w.docks.items() if dock.isHidden()},
+                         {'Properties','Channel Math','Channel Table','Interval Measurements'})
+        w.enable_all_panels()
         self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()))
     def test_channel_mapping_style_manual_bounds_and_ten_panels(self):
         w=self.window;a=self.add();b=self.add('Power','W');w.dashboard.assign([a.id,b.id])

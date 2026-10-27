@@ -2,7 +2,7 @@
 from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
-NOTES={'2.4.2':'Installed-app updates run Setup without its progress window while retaining staged health checks, logs, exit-code checks, restored startup and recovery. Manually opened Setup keeps its installation wizard. An existing v2.4.1-or-earlier updater may still show Setup once while installing this fix; quiet future installed updates use the updater embedded in v2.4.2. All three delivery forms retain the same version, manual and matching update feeds.',
+NOTES={'2.4.2':'Change Trace Color directly, compare channels from any loaded recordings, and use F11 to fullscreen only the selected graph with navigation and live values. Panels expands or folds supporting panels; Properties, Channel Math, Channel Table and Interval Measurements start folded while Engineering Controls and Readout remain available. Explicit saved layouts are respected. Open/save dialogs remember their folders by purpose across restarts, while first saves use the configured output location. Installed updates use quiet Setup with verified recovery; older embedded updaters may show progress once while installing this version. All three delivery forms retain matching versions and updates.',
        '2.4.1':'Stacked graph drawing edges align across different value-axis counts without changing numerical time ranges. Data Portal shows Channel and Unit only; per-file selection, filtered selection and Close Dataset remain in the file context menu. Kind metadata remains in Properties. The main About menu retains User Manual and About / Updates without a duplicate Tools entry. Installed, standalone EXE and standalone ZIP builds retain matching update support.',
        '2.4.0':'Approved audit improvements: exact time locking and cursor identity, graph-header navigation, readable splits, safer dataset handling, reviewed engineering readiness and concise four-section report summaries with complete evidence. The audited fixture produces ten pages; required results can add readable continuation pages. Installed, standalone EXE and standalone ZIP updates retain matching packaging and verify restored startup.',
        '2.1.0':'Streamlined standalone analysis with retained engineering, processing and reporting tools.',
@@ -34,6 +34,8 @@ def generate(versions=None):
         default=('All View panels and Show channel kind are enabled in a new workspace. Data Portal/Engineering Controls, Properties/Channel Math and the bottom measurement/table panels share dock tabs.' if number>=(2,1,7) else 'New workspaces start with Data Portal and Readout visible; advanced panels can be opened through View.')
         if number>=(2,4,1):
             default='All View panels are enabled in a new workspace. Data Portal/Engineering Controls, Properties/Channel Math and the bottom measurement/table panels share dock tabs. Engineering Controls remains the default tab in its existing dock group.'
+        if number>=(2,4,2):
+            default='New workspaces start with Properties, Channel Math, Channel Table and Interval Measurements folded. Use the compact **Panels** button to expand or fold them. Data Portal, Engineering Controls and Readout remain available; Engineering Controls is the default tab in its dock group. Explicit saved workspace layouts, including legacy layouts, take precedence over these new-workspace defaults.'
         text=f'# Appliance Signal Studio — {version}\n\nComplete feature reference for this version. Use the matching version when following controls; later releases can change their placement.\n\n## Changes in this version\n\n{note}\n\n'
         for title,introduced,body in topics:
             if introduced>number:continue
@@ -103,6 +105,33 @@ def generate(versions=None):
                 if title=='Installed and standalone updates together':
                     body=body.replace('Download the full v2.4.0 ZIP once', f'Download the full v{version} ZIP once')
             if number>=(2,4,2):
+                # Only the current version adopts the October 27 defaults and
+                # the actual compact-menu labels. Historical manuals stay intact.
+                for old,new in [('Tools → Data →','Tools → Import / Export Utilities →'),
+                                ('Tools → Plot →','Tools → Plot Appearance / Layout →'),
+                                ('Tools → Processing →','Tools → Signal Processing / Derived Channels →'),
+                                ('Tools → Engineering →','Tools → Engineering Diagnostics →'),
+                                ('Tools → Export →','Tools → Export Utilities →'),
+                                ('Tools → Extensions →','Tools → Presets / Extensions →')]:
+                    body=body.replace(old,new)
+                body=body.replace('All View panels are enabled initially; Engineering Controls is the selected tab in its existing dock group. Explicit workspace restores retain their layout.',default)
+                body=body.replace('More/Tools → Engineering Diagnostics','Tools → Engineering Diagnostics')
+                body=body.replace('**Analyze / View → Channel Math**','**Calculate Channel** or **Panels → Expand Channel Math**')
+                body=body.replace('**Esc** returns to Hand/Pan.', '**Esc** exits selected-graph fullscreen; outside fullscreen it returns to Hand/Pan.')
+                if title=='Navigation shortcuts':
+                    body=body.replace('| Pan | Ctrl+4; Escape while the plot has focus |','| Pan | Ctrl+4; Escape with plot focus outside selected-graph fullscreen |')
+                    body=body.replace('| User Manual and shortcut guide | F1 |','| Fullscreen selected graph / return | F11; Escape exits fullscreen |\n| User Manual and shortcut guide | F1 |')
+                if title=='Properties and channel metadata':
+                    body='\nUse **Panels → Expand Properties** if the panel is folded. '+body.lstrip()
+                if title=='Output folder and stored files':
+                    body=body.replace('Report/export and workspace/preset save dialogs start in these folders. You can deliberately choose a different destination.', 'The first save for each report/export or workspace/preset purpose starts in its configured output folder. After you choose a different destination, later dialogs for that purpose remember it across restarts, while retaining the suggested filename. See Remembered open and save folders below.')
+                if title=='Full and alternative exports':
+                    body='\n**Tools → Export Utilities → Export All Diagnostic Tables as Excel…** includes the retained source, aligned, curve, scorecard, quality and calibration/package tables available in the session. **Export All Aligned Samples as CSV…** exports the aligned series and requires an aligned recording. **Export Selected or Active-Pane Channels…** exports the selected channels, or active-pane channels when none are selected, as complete processed/source channel data rather than only the cursor interval. Labels and prompts disclose the scope.\n\n**Export Active Workspace as SVG / HTML / Markdown…** retains the alternative presentation routes. The ordinary Export Report button still supplies PDF, PNG, Excel and CSV for the active workspace.\n\n'
+                if title=='Engineering KPIs and data quality':
+                    body=body.replace('KPIs & data quality…','Measurements and Data Quality…')
+                if title=='Compact controls and workspace focus':
+                    body=body.replace('More shares the existing Tools menu actions: Import/Export, Appearance/Layout, Processing/Derived Channels, Engineering, Channel Management, Presets/Extensions and Preferences.', 'More opens the same Tools menu: Import / Export Utilities, Plot Appearance / Layout, Signal Processing / Derived Channels, Engineering Diagnostics, Export Utilities, Channel Management, Presets / Extensions and Application Preferences.')
+                    body+='**F11 / View → Fullscreen Selected Graph** expands only the selected graph with navigation and values. The older **Focus Graph** preference remains a separate explicit dock-hiding option; it does not replace selected-graph fullscreen. Use **Panels** for normal per-panel expand/fold controls.\n\n'
                 if title=='Updates and recovery':
                     body+='Installed updates launched by this version run Setup without its progress window, then restore the workspace in the new app. Manual Setup remains interactive. When updating from v2.4.1 or earlier, that older embedded updater can still show Setup once; future updates launched from v2.4.2 use the quiet path. See Quiet installed-app updates below for the transition and recovery details.\n\n'
                 if title=='Install, upgrade and uninstall on Windows':

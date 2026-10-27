@@ -1,6 +1,7 @@
 """Progressively disclosed tools for the single Qt frontend."""
 import json
 from app_output import output_path
+from app_dialog_history import open_file,save_file
 import time
 from pathlib import Path
 import numpy as np
@@ -140,7 +141,7 @@ class StudioTools(QtCore.QObject):
         return False
 
     def import_settings(self):
-        w=self.window;w.mutate();path,_=QtWidgets.QFileDialog.getOpenFileName(w,'Import recording')
+        w=self.window;w.mutate();path,_=open_file(w,'Import recording',purpose='CoordinateImport')
         if not path:return
         from app_ingestion import read_tables,ingest
         frames=read_tables(path)
@@ -155,7 +156,7 @@ class StudioTools(QtCore.QObject):
         w.background(load,lambda store:w.finish_import(store,workspace))
 
     def open_reference(self):
-        w=self.window;w.mutate();path,_=QtWidgets.QFileDialog.getOpenFileName(w,'Open simulation reference','','Reference (*.csv *.zip *.png *.jpg *.jpeg *.bmp *.tif *.tiff)')
+        w=self.window;w.mutate();path,_=open_file(w,'Open simulation reference','','Reference (*.csv *.zip *.png *.jpg *.jpeg *.bmp *.tif *.tiff)',purpose='EngineeringSimulation')
         if not path:return
         from app_analysis_service import load_reference
         workspace=w.active_workspace;settings=dict(self.reference_settings);calibration=dict(self.calibration)
@@ -181,7 +182,7 @@ class StudioTools(QtCore.QObject):
         return ' &nbsp; · &nbsp; '.join(parts)
 
     def save_preset(self):
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Save reusable channel preset',str(output_path('Channel preset.json','presets')),'JSON (*.json)')
+        path,_=save_file(self.window,'Save reusable channel preset',str(output_path('Channel preset.json','presets')),'JSON (*.json)',purpose='PresetSave')
         if not path:return
         from app_support import atomic_output
         options={**self.options,'sync_strategy':self.window.sync.currentData() or self.window.sync.currentText(),'offset_minutes':self.window.offset.value()/60.,'reference_settings':self.reference_settings,'calibration':self.calibration,'bench_columns':self.bench_columns}
@@ -189,7 +190,7 @@ class StudioTools(QtCore.QObject):
         with atomic_output(path) as temporary:Path(temporary).write_text(json.dumps(record,indent=2,allow_nan=False),encoding='utf-8')
 
     def load_preset(self):
-        path,_=QtWidgets.QFileDialog.getOpenFileName(self.window,'Load channel preset','','Configurations (*.json *.xml *.ini *.cfg)')
+        path,_=open_file(self.window,'Load channel preset','','Configurations (*.json *.xml *.ini *.cfg)',purpose='PresetOpen')
         if path:
             from app_config_migration import read_configuration
             self.apply_preset(read_configuration(path))
@@ -489,7 +490,7 @@ class StudioTools(QtCore.QObject):
         from app_reference_image import SimulationImageAnalyzer,SIMULATION_LEGEND_SPECS
         path=self.window.simulation_path.text()
         if Path(path).suffix.lower() not in ('.png','.jpg','.jpeg','.bmp','.tif','.tiff'):
-            path,_=QtWidgets.QFileDialog.getOpenFileName(self.window,'Choose simulation image','','Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)')
+            path,_=open_file(self.window,'Choose simulation image','','Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)',purpose='SimulationImage')
             if not path:return
         analyzer=SimulationImageAnalyzer(path,calibration=self.calibration)
         dialog,layout=self.dialog('Image reference calibration');form=QtWidgets.QFormLayout();layout.addLayout(form)
@@ -518,13 +519,13 @@ class StudioTools(QtCore.QObject):
         return self.table_dialog('Reference quality & package metadata',tables)
 
     def export_workbook(self):
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete diagnostic workbook',str(output_path('Diagnostics.xlsx','diagnostics')),'Excel (*.xlsx)')
+        path,_=save_file(self.window,'Export complete diagnostic workbook',str(output_path('Diagnostics.xlsx','diagnostics')),'Excel (*.xlsx)',purpose='ExportDiagnostics')
         if path:export_full_workbook(path,self.window.store,self.window.active_workspace.state(),getattr(self.window,'scorecard_data',None))
 
     def export_aligned_csv(self):
         dataset=next((d for d in reversed(list(self.window.store.datasets.values())) if d.frame.attrs.get('studio_sheet')=='Synchronized_Series'),None)
         if dataset is None:raise ValueError('Align recordings first')
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export complete synchronized series',str(output_path('Synchronized.csv')),'CSV (*.csv)')
+        path,_=save_file(self.window,'Export complete synchronized series',str(output_path('Synchronized.csv')),'CSV (*.csv)',purpose='ExportAlignedSamples')
         if path:
             from app_support import atomic_output
             with atomic_output(path) as temporary:dataset.frame.to_csv(temporary,index=False)
@@ -534,12 +535,12 @@ class StudioTools(QtCore.QObject):
         selected=self.window.portal.selected();ids=selected or self.pane.ids
         if not ids:raise ValueError('Select channels first')
         scope='selected in Data Portal' if selected else 'in active graph pane'
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,f'Export all samples — {len(ids)} channels {scope}',str(output_path('Processed channels.csv')),'CSV samples (*.csv);;Excel samples (*.xlsx)')
+        path,_=save_file(self.window,f'Export all samples — {len(ids)} channels {scope}',str(output_path('Processed channels.csv')),'CSV samples (*.csv);;Excel samples (*.xlsx)',purpose='ExportChannelSamples')
         if path:export_processed(path,[self.window.store.channels[id] for id in ids])
 
     def export_presentation(self):
         from app_workspace_io import render_report
-        path,_=QtWidgets.QFileDialog.getSaveFileName(self.window,'Export presentation',str(output_path('Presentation.svg')),'SVG (*.svg);;HTML (*.html);;Markdown (*.md)')
+        path,_=save_file(self.window,'Export presentation',str(output_path('Presentation.svg')),'SVG (*.svg);;HTML (*.html);;Markdown (*.md)',purpose='ExportPresentation')
         if path:render_report(path,self.window.store,self.window.active_workspace.state(),title=self.options['title'])
 
     def extensions_dialog(self):
@@ -557,7 +558,7 @@ class StudioTools(QtCore.QObject):
         table.itemChanged.connect(lambda item:self.window.guard(lambda:toggle(item)))
         row=QtWidgets.QHBoxLayout();layout.addLayout(row)
         def install():
-            path,_=QtWidgets.QFileDialog.getOpenFileName(dialog,'Install Python extension','','Python (*.py)')
+            path,_=open_file(dialog,'Install Python extension','','Python (*.py)',purpose='ExtensionImport')
             if path:self.plugins.install(path);refresh()
         def remove():
             selected=table.currentRow()
@@ -585,7 +586,7 @@ class StudioTools(QtCore.QObject):
         dialog,layout=self.dialog('Extension plot');canvas=FigureCanvasQTAgg(fig);layout.addWidget(canvas);canvas.draw()
         save=QtWidgets.QPushButton('Export plot');layout.addWidget(save)
         def export():
-            path,_=QtWidgets.QFileDialog.getSaveFileName(dialog,'Save extension plot',str(output_path('Extension plot.png')),'PNG (*.png);;PDF (*.pdf);;SVG (*.svg)')
+            path,_=save_file(dialog,'Save extension plot',str(output_path('Extension plot.png')),'PNG (*.png);;PDF (*.pdf);;SVG (*.svg)',purpose='ExtensionPlotExport')
             if path:fig.savefig(path,dpi=300)
         save.clicked.connect(lambda:self.window.guard(export));dialog.show();return dialog
 

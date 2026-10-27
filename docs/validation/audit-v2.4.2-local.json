@@ -1,0 +1,340 @@
+{
+  "schema": 1,
+  "version": "2.4.2",
+  "date": "2026-10-27",
+  "platform": "Linux Qt offscreen",
+  "status": "local verified; native Windows and public release verification pending",
+  "unit_tests": {
+    "discovered": 478,
+    "passed": 473,
+    "skipped": 5,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 240.157,
+    "log_sha256": "e1cfe2da0f879d5165af45cfcc4878aed472035b7d388e66c1658479e54ad639",
+    "skipped_tests": [
+      {
+        "test": "test_native_windows_drive_and_unc_paths_remain_native (test_dialog_history.DialogHistoryTests.test_native_windows_drive_and_unc_paths_remain_native)",
+        "reason": "Native Windows path rules are covered on Windows CI"
+      },
+      {
+        "test": "test_native_setup_success_and_failure_restart_correct_runtime (test_installer.InstallerTests.test_native_setup_success_and_failure_restart_correct_runtime)",
+        "reason": "Native installed-update transaction is exercised on Windows CI"
+      },
+      {
+        "test": "test_actual_visible_native_probe_fails_the_hidden_window_policy (test_update_window_observer.UpdateWindowObserverTests.test_actual_visible_native_probe_fails_the_hidden_window_policy)",
+        "reason": "Actual Win32 positive control runs on the native Windows gate"
+      },
+      {
+        "test": "test_native_window_same_class_changes_from_nonrendering_to_rendered (test_update_window_observer.UpdateWindowObserverTests.test_native_window_same_class_changes_from_nonrendering_to_rendered)",
+        "reason": "Actual zero-area/offscreen/cloaked windows run on the native Windows gate"
+      },
+      {
+        "test": "test_native_windows_replacement_and_rollback (test_updates.UpdateTests.test_native_windows_replacement_and_rollback)",
+        "reason": "Native PowerShell transaction is tested on Windows CI"
+      }
+    ]
+  },
+  "final_toolbar_icon_integration": {
+    "tests": 6,
+    "passed": 6,
+    "seconds": 3.416,
+    "scope": "Final toolbar reachability and light/dark fullscreen icon integration; observed by release coordinator after full suite"
+  },
+  "real_data_acceptance": {
+    "checks": 47,
+    "passed": 47,
+    "unmet": 0,
+    "unrun": 0,
+    "runner_errors": 0,
+    "application_callback_errors": 0,
+    "expected_safety_rejections": 7,
+    "manual_unrun": 5,
+    "run_id": "d5b38feb-ddd4-46ad-88d2-52ff51811a21",
+    "started_at_utc": "2026-10-27T01:52:38.559358+00:00",
+    "finished_at_utc": "2026-10-27T01:55:07.582593+00:00",
+    "seconds": 149.023,
+    "raw_report_sha256": "e84929dccdb32c8c511167bc8087ff67e191637acbd7c36691d5226e64717e63",
+    "check_results": [
+      {
+        "id": "REAL-FIXTURE-INTEGRITY-IMPORT",
+        "category": "real_recordings",
+        "status": "passed"
+      },
+      {
+        "id": "DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT",
+        "category": "panel_folding",
+        "status": "passed"
+      },
+      {
+        "id": "PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES",
+        "category": "dialog_history",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-TRACE-COLOR-SCOPE-PRESET-EXPORT",
+        "category": "trace_appearance",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-LOADED-DATA-COMPARISON-ISOLATION",
+        "category": "loaded_comparison",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE",
+        "category": "graph_fullscreen",
+        "status": "passed"
+      },
+      {
+        "id": "ALL-15-FILE-COMBINATIONS",
+        "category": "real_recordings",
+        "status": "passed"
+      },
+      {
+        "id": "PER-FILE-CHECKBOX-AND-CLOSE-DATASET",
+        "category": "dataset_isolation",
+        "status": "passed"
+      },
+      {
+        "id": "TDMS-FIRST-REVIEW-REUSE-UNKNOWN-ONLY",
+        "category": "templates",
+        "status": "passed"
+      },
+      {
+        "id": "SYNTHETIC-SOURCE-EDGE-CASES",
+        "category": "synthetic",
+        "status": "passed"
+      },
+      {
+        "id": "LOCKED-SAMPLE-MARKER-HUD-EXPORT-RESTORE",
+        "category": "cursor_identity",
+        "status": "passed"
+      },
+      {
+        "id": "GRAPH-HEADER-CONTEXT-SAFE-NATIVE-FFT",
+        "category": "navigation",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Dark-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Dark-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Light-1024",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Light-1536",
+        "category": "layout_time_modes",
+        "status": "passed"
+      },
+      {
+        "id": "NON-TEMPORAL-AND-UNLOCKED-INDEPENDENCE",
+        "category": "time_lock",
+        "status": "passed"
+      },
+      {
+        "id": "NUMERICAL-UNITS-AND-SAFETY-REJECTIONS",
+        "category": "processing",
+        "status": "passed"
+      },
+      {
+        "id": "PROCESSING-PREFLIGHT-VALID-DEFAULT-AND-EXPLANATIONS",
+        "category": "processing",
+        "status": "passed"
+      },
+      {
+        "id": "QT-WHEEL-BOX-KEYBOARD-SHARED-MODES",
+        "category": "navigation",
+        "status": "passed"
+      },
+      {
+        "id": "EXACT-REAL-SOURCE-WORKSPACE-ROUNDTRIP",
+        "category": "persistence",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-INTERVAL-EXPORT-FORMATS-AND-AGREEMENT",
+        "category": "exports",
+        "status": "passed"
+      },
+      {
+        "id": "SOURCE-FILES-UNCHANGED",
+        "category": "real_recordings",
+        "status": "passed"
+      }
+    ]
+  },
+  "source_fixture_manifest": [
+    {
+      "role": "tdms",
+      "bytes": 6771896,
+      "sha256": "328bea1d56b1942d6aa90ccfea01874d2d12cd23c62a4d0f92ce2ac762ecb99f",
+      "channels": 27
+    },
+    {
+      "role": "power",
+      "bytes": 2405437,
+      "sha256": "dd18f9d61878dcecf237cbc824452d7a1d8925bede965fe67d3bb74e993f9f20",
+      "channels": 11
+    },
+    {
+      "role": "machine",
+      "bytes": 5515475,
+      "sha256": "a235a5917c7f01484fb328fd1986cb7298140e7068cd24151518e5f96ee75558",
+      "channels": 24
+    },
+    {
+      "role": "simulation",
+      "bytes": 16759584,
+      "sha256": "0e857e07a7cb5dba6aab3b471801f7f62586c8d409fd6580a463beacbcab339d",
+      "channels": 29
+    }
+  ],
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "pending_gates": [
+    "Native Windows unit suite",
+    "Packaged acceptance for standalone EXE, standalone ZIP and installed app",
+    "Installer lifecycle and production update/recovery transactions",
+    "Independent public asset/feed/manual verification"
+  ],
+  "scope_limits": [
+    "Source checks do not certify native Setup window visibility or published Windows artifacts.",
+    "Physical DPI, multi-monitor, accessibility and enterprise/antivirus checks remain manual.",
+    "Folder history persists directories only; recent-file menus and an activity log are not implemented."
+  ]
+}

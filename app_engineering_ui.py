@@ -11,6 +11,7 @@ from app_appliance_profiles import load_profile,recognize,validate_profile,chann
 from app_engineering_session import default_session,validate_session,analyze_session
 from app_engineering_analytics import reviewed_mapping_rows
 from app_output import output_path
+from app_dialog_history import open_file,save_file
 from app_studio_tools import PhaseStrip
 
 
@@ -108,12 +109,12 @@ class EngineeringTools(QtCore.QObject):
         refresh=QtWidgets.QPushButton('Refresh Mapping Review');refresh.clicked.connect(lambda:w.guard(populate));buttons.addWidget(refresh)
         load=QtWidgets.QPushButton('Import Profile');buttons.addWidget(load)
         def import_profile():
-            path,_=QtWidgets.QFileDialog.getOpenFileName(w,'Import appliance profile','','JSON (*.json)')
+            path,_=open_file(w,'Import appliance profile','','JSON (*.json)',purpose='ProfileOpen')
             if path:editor.setPlainText(json.dumps(load_profile(path),indent=2,ensure_ascii=False));populate()
         load.clicked.connect(lambda:w.guard(import_profile))
         export=QtWidgets.QPushButton('Save Profile');buttons.addWidget(export)
         def save_profile():
-            proposed=validate_profile(json.loads(editor.toPlainText()));path,_=QtWidgets.QFileDialog.getSaveFileName(w,'Save appliance profile',str(output_path(proposed['id']+'.json','templates')),'JSON (*.json)')
+            proposed=validate_profile(json.loads(editor.toPlainText()));path,_=save_file(w,'Save appliance profile',str(output_path(proposed['id']+'.json','templates')),'JSON (*.json)',purpose='ProfileSave')
             if path:
                 from app_support import atomic_output
                 with atomic_output(path) as temp:Path(temp).write_text(json.dumps(proposed,indent=2,ensure_ascii=False),encoding='utf-8')
@@ -256,7 +257,7 @@ class EngineeringTools(QtCore.QObject):
         def generate():
             chosen_scope=scope.currentData();detailed=appendix.isChecked()
             if chosen_scope!='whole_recording' and (not cursor_interval or cursor_interval[0]==cursor_interval[1]):raise ValueError('Use two distinct cursors on an active time plot for interval reporting')
-            path,_=QtWidgets.QFileDialog.getSaveFileName(self.w,'Generate Engineering Report',str(output_path('Engineering report.pdf')),'PDF (*.pdf);;Excel (*.xlsx)')
+            path,_=save_file(self.w,'Generate Engineering Report',str(output_path('Engineering report.pdf')),'PDF (*.pdf);;Excel (*.xlsx)',purpose='EngineeringReport')
             if not path:return
             session=self.state();workspace=self.w.active_workspace;comparison=workspace is self.w.comparison;store=self.w.store
             selected=list(dict.fromkeys(id for pane in workspace.visible_panes() for id in pane.ids))

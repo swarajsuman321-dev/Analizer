@@ -19,6 +19,8 @@ class ChannelPortal(QtWidgets.QWidget):
     removeRequested=QtCore.Signal()
     clearRequested=QtCore.Signal()
     datasetRemovalRequested=QtCore.Signal(str)
+    traceColorRequested=QtCore.Signal(list)
+    comparisonRequested=QtCore.Signal(list)
 
     def __init__(self,store):
         super().__init__();self.store=store;self.visible_ids=set()
@@ -116,10 +118,20 @@ class ChannelPortal(QtWidgets.QWidget):
     def context_menu(self,position):
         item=self.tree.itemAt(position)
         if item is None:return
+        clicked_id=item.data(0,QtCore.Qt.ItemDataRole.UserRole)
+        selected=self.selected()
+        channel_ids=(selected if clicked_id in selected else [clicked_id]) if clicked_id else []
         while item.parent():item=item.parent()
         dataset_id=item.data(0,QtCore.Qt.ItemDataRole.UserRole+1)
         if dataset_id not in self.dataset_roots:return
         menu=QtWidgets.QMenu(self);ids=self.dataset_channels(dataset_id)
+        if channel_ids:
+            menu.addAction('Change Trace Color…',lambda:self.traceColorRequested.emit(channel_ids))
+            menu.addAction('Add Selected Channels to Comparison',lambda:self.comparisonRequested.emit(channel_ids))
+        else:
+            compare=menu.addAction('Add This File to Comparison',lambda:self.comparisonRequested.emit(ids))
+            compare.setEnabled(bool(ids))
+        menu.addSeparator()
         source='File' if dataset_id in self.store.datasets else 'Group'
         menu.addAction('Select All in This '+source,lambda:self.visibilityRequested.emit(ids,True))
         menu.addAction('Deselect All in This '+source,lambda:self.visibilityRequested.emit(ids,False))

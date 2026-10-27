@@ -25,19 +25,24 @@ class ManualAndViewTests(unittest.TestCase):
         w.help_dialog.close();self.assertTrue(w.isVisible());self.assertEqual(w.tabs.currentIndex(),1)
         w.help_action.trigger();self.assertTrue(w.help_dialog.isVisible())
 
-    def test_every_view_panel_enabled_by_default_and_saved_layout_wins(self):
+    def test_supporting_panels_fold_by_default_and_saved_layout_wins(self):
         w=self.window
-        self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()))
+        folded={'Properties','Channel Math','Channel Table','Interval Measurements'}
+        self.assertEqual({name for name,dock in w.docks.items() if dock.isHidden()},folded)
+        self.assertTrue(w.docks['Engineering Controls'].toggleViewAction().isChecked())
+        self.assertTrue(w.docks['Readout'].toggleViewAction().isChecked())
         self.assertEqual(w.portal.tree.columnCount(),2)
-        w.docks['Properties'].toggleViewAction().trigger();self.app.processEvents()
-        self.assertTrue(w.docks['Properties'].isHidden())
+        w.panel_folding.set_folded('Properties',False);self.app.processEvents()
+        self.assertFalse(w.docks['Properties'].isHidden())
         with tempfile.TemporaryDirectory() as directory:
             saved=save_workspace(Path(directory)/'layout.json',w.store,[p.state() for p in w.workspaces],w.ui_state())
-            w.docks['Properties'].show();w.restore_path(saved);self.app.processEvents()
-            self.assertTrue(w.docks['Properties'].isHidden());self.assertEqual(w.portal.tree.columnCount(),2)
-            record=json.loads(saved.read_text());record['ui'].pop('app_version');record['ui']['show_channel_kind']=True;saved.write_text(json.dumps(record))
+            w.panel_folding.set_folded('Properties',True);w.restore_path(saved);self.app.processEvents()
+            self.assertFalse(w.docks['Properties'].isHidden());self.assertEqual(w.portal.tree.columnCount(),2)
+            record=json.loads(saved.read_text());record['ui'].pop('app_version');record['ui'].pop('panel_folding');record['ui']['show_channel_kind']=True;saved.write_text(json.dumps(record))
             w.restore_path(saved,upgrade_defaults=True);self.app.processEvents()
-            self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()));self.assertEqual(w.portal.tree.columnCount(),2)
+            self.assertFalse(w.docks['Properties'].isHidden())
+            self.assertTrue(w.docks['Channel Math'].isHidden())
+            self.assertEqual(w.portal.tree.columnCount(),2)
 
     def test_manual_topic_navigation_search_wrap_and_no_match(self):
         w=self.window;w.show_help();info=w.help;self.app.processEvents()

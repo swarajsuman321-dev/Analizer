@@ -237,6 +237,54 @@ class PackagedEvidenceTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'missing or duplicated'):
                 self.validate(altered)
 
+    def test_each_new_quick_analysis_contract_is_mandatory_for_every_packaged_edition(self):
+        new_checks = {
+            'DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT',
+            'REAL-TRACE-COLOR-SCOPE-PRESET-EXPORT',
+            'REAL-LOADED-DATA-COMPARISON-ISOLATION',
+            'REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE',
+        }
+        self.assertTrue(new_checks <= REQUIRED_CHECK_IDS)
+        # Preserve the entire pre-existing 42-contract release gate.
+        original_checks = {
+            'REAL-FIXTURE-INTEGRITY-IMPORT', 'ALL-15-FILE-COMBINATIONS',
+            'PER-FILE-CHECKBOX-AND-CLOSE-DATASET', 'TDMS-FIRST-REVIEW-REUSE-UNKNOWN-ONLY',
+            'SYNTHETIC-SOURCE-EDGE-CASES', 'LOCKED-SAMPLE-MARKER-HUD-EXPORT-RESTORE',
+            'GRAPH-HEADER-CONTEXT-SAFE-NATIVE-FFT', 'NON-TEMPORAL-AND-UNLOCKED-INDEPENDENCE',
+            'NUMERICAL-UNITS-AND-SAFETY-REJECTIONS',
+            'PROCESSING-PREFLIGHT-VALID-DEFAULT-AND-EXPLANATIONS',
+            'QT-WHEEL-BOX-KEYBOARD-SHARED-MODES',
+            'EXACT-REAL-SOURCE-WORKSPACE-ROUNDTRIP',
+            'REAL-INTERVAL-EXPORT-FORMATS-AND-AGREEMENT', 'SOURCE-FILES-UNCHANGED',
+        } | {f'LAYOUT-{layout}-{theme}-{width}'
+             for layout in ('Single', 'Horizontal split', 'Vertical split', '2×2', 'Stacked', '3 stacked', '10 panels')
+             for theme in ('Dark', 'Light') for width in (1024, 1536)}
+        self.assertEqual(len(original_checks), 42)
+        self.assertEqual(REQUIRED_CHECK_IDS, original_checks | new_checks |
+                         {'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'})
+        for edition in ('standalone', 'installed'):
+            for missing in new_checks:
+                with self.subTest(edition=edition, missing=missing):
+                    altered = copy.deepcopy(self.report)
+                    altered['edition'] = edition
+                    altered['checks'] = [row for row in altered['checks'] if row['id'] != missing]
+                    altered['summary'] = {'checks': len(altered['checks']), 'passed': len(altered['checks'])}
+                    with self.assertRaisesRegex(ValueError, 'missing or duplicated'):
+                        validate_packaged_report(altered, executable=self.exe, version='2.3.3', edition=edition)
+
+    def test_persistent_dialog_folders_contract_is_mandatory_for_every_packaged_edition(self):
+        identity = 'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'
+        self.assertIn(identity, REQUIRED_CHECK_IDS)
+        self.assertEqual(len(REQUIRED_CHECK_IDS), 47)
+        for edition in ('standalone', 'installed'):
+            with self.subTest(edition=edition):
+                altered = copy.deepcopy(self.report)
+                altered['edition'] = edition
+                altered['checks'] = [row for row in altered['checks'] if row['id'] != identity]
+                altered['summary'] = {'checks': len(altered['checks']), 'passed': len(altered['checks'])}
+                with self.assertRaisesRegex(ValueError, 'missing or duplicated'):
+                    validate_packaged_report(altered, executable=self.exe, version='2.3.3', edition=edition)
+
     def test_old_invocation_wrong_packaging_and_hidden_manual_limits_rejected(self):
         for field, value in [('run_id', 'stale-run'), ('distribution_form', 'standalone-onefile'),
                              ('manual_checks_unrun', [])]:

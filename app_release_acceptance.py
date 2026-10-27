@@ -40,6 +40,11 @@ REQUIRED_CHECK_IDS = frozenset({
     'QT-WHEEL-BOX-KEYBOARD-SHARED-MODES',
     'EXACT-REAL-SOURCE-WORKSPACE-ROUNDTRIP',
     'REAL-INTERVAL-EXPORT-FORMATS-AND-AGREEMENT', 'SOURCE-FILES-UNCHANGED',
+    'DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT',
+    'REAL-TRACE-COLOR-SCOPE-PRESET-EXPORT',
+    'REAL-LOADED-DATA-COMPARISON-ISOLATION',
+    'REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE',
+    'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES',
 } | {f'LAYOUT-{layout}-{theme}-{width}'
      for layout in ('Single', 'Horizontal split', 'Vertical split', '2×2', 'Stacked', '3 stacked', '10 panels')
      for theme in ('Dark', 'Light') for width in (1024, 1536)})
@@ -213,6 +218,7 @@ def run_acceptance(samples, output):
 
 
 def _run_workbench(recorder, samples, output):
+    from copy import deepcopy
     import numpy as np
     import pandas as pd
     from PySide6 import QtCore, QtGui, QtWidgets, QtTest
@@ -271,6 +277,350 @@ def _run_workbench(recorder, samples, output):
             events()
             return {'files': len(fixture_stores), 'channels': len(store.channels)}
         recorder.check('REAL-FIXTURE-INTEGRITY-IMPORT', load_fixtures, 'real_recordings')
+
+        def real_channel(role, unit=None):
+            candidates = [store.channels[channel_id] for channel_id in fixture_stores[role].channels
+                          if store.channels[channel_id].coordinate_kind == 'time'
+                          and store.channels[channel_id].coordinate_unit == 'min'
+                          and np.isfinite(store.channels[channel_id].values()[1]).any()]
+            if unit is not None:
+                candidates = [channel for channel in candidates if channel.unit == unit]
+            assert candidates, f'No usable {role} source channel with declared unit {unit!r}'
+            return candidates[0]
+
+        def folded_panels_preserve_readout():
+            controls = window.panel_folding
+            folded = ('Properties', 'Channel Math', 'Channel Table', 'Interval Measurements')
+            assert all(controls.is_folded(name) for name in folded), 'The four approved default folds were not applied'
+            assert all(not controls.is_folded(name) for name in ('Engineering Controls', 'Readout', 'Data Portal'))
+            assert window.docks['Engineering Controls'].widget().isVisible(), 'Engineering Controls is not the default available tab'
+            source = real_channel('tdms', '°C')
+            workspace.active.bind([source.id])
+            window._readouts()
+            events()
+            original_widgets = {name: dock.widget() for name, dock in window.docks.items()}
+            before = deepcopy(workspace.state())
+            before_readout = [[window.readout.item(row, column).text()
+                               for column in range(window.readout.columnCount())]
+                              for row in range(window.readout.rowCount())]
+            assert before_readout, 'The retained Readout has no actual source values'
+            assert controls.button.accessibleName() and controls.button.menu() is controls.menu
+            toolbar = window.main_toolbar
+            extension = toolbar.findChild(QtWidgets.QToolButton, 'qt_toolbar_ext_button')
+            assert controls.button.isVisible() or (extension is not None and extension.isVisible()), 'Panels has no visible button or overflow access'
+            for name in folded:
+                action = controls.actions[name]
+                assert action in controls.menu.actions() and action.isEnabled() and not action.icon().isNull()
+                assert action.text() == 'Expand '+name and not action.isChecked()
+                # Exercise the same QAction available from the visible Panels menu.
+                action.trigger()
+                events()
+                assert not controls.is_folded(name) and action.isChecked()
+                assert action.text() == 'Fold '+name
+                assert window.docks[name].widget() is original_widgets[name], 'Expanding replaced panel contents'
+                controls.set_folded(name, True)
+                events()
+            controls.apply_defaults(folded)
+            events()
+            assert workspace.state() == before, 'Folding changed the plotted channels, cursors or view'
+            after_readout = [[window.readout.item(row, column).text()
+                              for column in range(window.readout.columnCount())]
+                             for row in range(window.readout.rowCount())]
+            assert after_readout == before_readout, 'Panel folding discarded the source readout'
+            assert all(window.docks[name].widget() is widget for name, widget in original_widgets.items())
+            assert not controls.is_folded('Engineering Controls') and not controls.is_folded('Readout')
+            assert window.docks['Readout'].widget().isVisible(), 'Default folds hid the retained Readout'
+            return {'default_folded': list(folded), 'source_role': 'tdms',
+                    'expanded_and_refolded': len(folded), 'preserved_readout_rows': len(before_readout),
+                    'engineering_and_readout_available': True}
+        recorder.check('DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT', folded_panels_preserve_readout,
+                       'panel_folding', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def persistent_dialog_folders():
+            import importlib
+            from unittest.mock import patch
+            import app_dialog_history as history
+            from app_lifecycle import settings_directory
+            from app_output import output_path
+
+            # This is the actual source/frozen workbench route. Mock only the
+            # native dialog boundary so no operator interaction or data import
+            # can occur while testing its persisted initial folder.
+            window.tabs.setCurrentWidget(workspace)
+            workspace.active.bind([real_channel('tdms', '°C').id])
+            events()
+            views = [deepcopy(view.state()) for view in window.workspaces]
+            channels, datasets = dict(store.channels), dict(store.datasets)
+            workers = list(window.workers)
+            history_path = settings_directory()/history.HISTORY_FILENAME
+            previous = history_path.read_bytes() if history_path.exists() else None
+            folders = {purpose: output/'dialog-folder-check'/name for purpose, name in (
+                ('OpenData', "José's 測定 données"), ('ExportReport', 'Report exports'),
+                ('WorkspaceSave', 'Workspace saves'), ('WorkspaceOpen', 'Workspace imports'))}
+            for folder in folders.values():
+                folder.mkdir(parents=True, exist_ok=True)
+            cancelled_routes = []
+
+            def cancel_route(method, operation, expected, response):
+                before = history_path.read_bytes()
+                with patch.object(QtWidgets.QFileDialog, method, return_value=response) as dialog:
+                    result = operation()
+                dialog.assert_called_once()
+                assert dialog.call_args.args[0] is window
+                assert dialog.call_args.args[2] == str(expected), 'The dialog ignored its persisted purpose folder or configured first-save default'
+                assert history_path.read_bytes() == before, 'Cancelling a dialog rewrote personal history'
+                assert list(window.workers) == workers and not window.busy, 'Cancelling a dialog started a data worker'
+                cancelled_routes.append(method)
+                return result
+
+            try:
+                history_path.unlink(missing_ok=True)
+                assert history.remember_path('OpenData', folders['OpenData']/'previous recording.csv')
+                history = importlib.reload(history)
+                assert history.start_directory('OpenData') == str(folders['OpenData'])
+                assert 'previous recording.csv' not in history_path.read_text(encoding='utf-8'), 'History retained a selected measurement filename'
+                assert cancel_route('getOpenFileNames', window.open_data, folders['OpenData'], ([], '')) is False
+                # A first export/save uses the configured output area even
+                # after a different input recording folder was remembered.
+                cancel_route('getSaveFileName', window.report, output_path('Signal report.pdf'), ('', ''))
+                cancel_route('getSaveFileName', window.save, output_path('Workspace.json', 'workspaces'), ('', ''))
+                for purpose in ('ExportReport', 'WorkspaceSave', 'WorkspaceOpen'):
+                    assert history.remember_path(purpose, folders[purpose]/'previous selection.json')
+                history = importlib.reload(history)
+                cancel_route('getOpenFileNames', window.open_data, folders['OpenData'], ([], ''))
+                cancel_route('getSaveFileName', window.report, folders['ExportReport']/'Signal report.pdf', ('', ''))
+                cancel_route('getSaveFileName', window.save, folders['WorkspaceSave']/'Workspace.json', ('', ''))
+                cancel_route('getOpenFileName', window.restore, folders['WorkspaceOpen'], ('', ''))
+                assert [view.state() for view in window.workspaces] == views, 'Cancelled dialogs changed a plotted workspace'
+                assert set(store.channels) == set(channels) and set(store.datasets) == set(datasets)
+                assert all(store.channels[key] is value for key, value in channels.items()), 'Cancelled dialogs changed source channels'
+                assert all(store.datasets[key] is value for key, value in datasets.items()), 'Cancelled dialogs changed source datasets'
+                return {'persisted_across_module_reload': True, 'unicode_folder': True,
+                        'purposes': list(folders), 'cancelled_routes': len(cancelled_routes),
+                        'configured_first_save_fallbacks': 2, 'history_and_sources_unchanged_on_cancel': True}
+            finally:
+                if previous is None:
+                    history_path.unlink(missing_ok=True)
+                else:
+                    history_path.write_bytes(previous)
+        recorder.check('PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES', persistent_dialog_folders,
+                       'dialog_history', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def direct_real_trace_colors():
+            from app_studio_state import channel_preset
+            from app_workspace_io import render_report
+            first, other = real_channel('tdms', '°C'), real_channel('machine', 'Pa')
+            window.tabs.setCurrentWidget(workspace)
+            workspace.set_layout('Vertical split')
+            workspace.set_time_lock(False)
+            workspace.panes[0].bind([first.id])
+            workspace.panes[1].bind([other.id])
+            workspace.set_active(workspace.panes[0])
+            window.comparison.active.bind([first.id, other.id])
+            workspace.panes[0].lock_cursor(0, first.id)
+            workspace.panes[0].remember_view()
+            events()
+            panes = [pane for view in window.workspaces for pane in view.panes]
+            before = [(pane, deepcopy(pane.state()), deepcopy(pane.history), pane.history_index)
+                      for pane in panes]
+            views = [(view, view.layout_name, view.active) for view in window.workspaces]
+            # ChannelStore's normal metadata update replaces its immutable
+            # Channel value object. Require source identity and exact readings,
+            # rather than incidental NumPy object identity across revisions.
+            source_fields = ('id', 'name', 'unit', 'kind', 'coordinate_kind',
+                             'coordinate_unit', 'dataset_id', 'source', 'shift',
+                             'masks', 'parents', 'recipe')
+            originals = {channel.id: {
+                'identity': {name: deepcopy(getattr(channel, name)) for name in source_fields},
+                'x': channel.x.copy(), 'y': channel.y.copy(),
+                'raw_y': None if channel.raw_y is None else channel.raw_y.copy(),
+            } for channel in (first, other)}
+            source_frames = {channel.dataset_id: store.datasets[channel.dataset_id].frame.copy(deep=True)
+                             for channel in (first, other)}
+            backgrounds = [pane.backgroundBrush().color().rgba() for pane in panes]
+            unchanged_color = workspace.panes[1].curves[other.id][1].pen.color().name()
+            color = '#c94b8f'
+            assert window.trace_colors.set_color([first.id], color) == [first.id]
+            events()
+            assert [(view.layout_name, view.active) for view, _, _ in views] == [(layout, active) for _, layout, active in views]
+            for pane, state, history, index in before:
+                assert pane.state() == state and pane.history == history and pane.history_index == index, 'A trace-color edit reset navigation or cursor identity'
+            assert [pane.backgroundBrush().color().rgba() for pane in panes] == backgrounds, 'Trace color changed graph backgrounds'
+            for pane in (workspace.panes[0], window.comparison.active):
+                assert pane.curves[first.id][1].pen.color().name() == color
+                sample, _label = pane.legend.items[pane.ids.index(first.id)]
+                assert sample.item.opts['pen'].color().name() == color, 'The legend swatch disagrees with its trace'
+            assert workspace.panes[1].curves[other.id][1].pen.color().name() == unchanged_color
+            for channel_id, original in originals.items():
+                channel = store.channels[channel_id]
+                assert {name: getattr(channel, name) for name in source_fields} == original['identity']
+                np.testing.assert_array_equal(channel.x, original['x'])
+                np.testing.assert_array_equal(channel.y, original['y'])
+                if original['raw_y'] is None:
+                    assert channel.raw_y is None
+                else:
+                    np.testing.assert_array_equal(channel.raw_y, original['raw_y'])
+            for dataset_id, original in source_frames.items():
+                pd.testing.assert_frame_equal(store.datasets[dataset_id].frame, original)
+            assert store.channels[first.id].attributes['plot_style']['color'] == color
+            preset = channel_preset(store, workspace, window.studio.options)
+            original_column = first.attributes.get('source_column', first.name)
+            assert any(entry['source_col'] == original_column and entry['source_path'] == first.source
+                       and entry['color'] == color for entry in preset['signals'].values()), 'A saved preset dropped the direct trace color'
+            path = output/'direct-real-trace-color.svg'
+            render_report(path, store, workspace.state())
+            assert color in path.read_text(encoding='utf-8').lower(), 'The exported plot omitted the chosen trace color'
+            return {'source_roles': ['tdms', 'machine'], 'changed_channel': first.name,
+                    'color': color, 'background_unchanged': True, 'scopes_checked': ['Analysis', 'Comparison', 'legend', 'preset', 'SVG']}
+        recorder.check('REAL-TRACE-COLOR-SCOPE-PRESET-EXPORT', direct_real_trace_colors, 'trace_appearance',
+                       requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def arbitrary_loaded_comparison():
+            comparison = window.comparison
+            comparison.set_layout('Single')
+            for pane in comparison.panes:
+                pane.bind([])
+            representatives = [real_channel(role) for role in fixture_stores]
+            ids = [channel.id for channel in representatives]
+            originals = {channel.id: (channel, channel.x, channel.y, channel.x.copy(), channel.y.copy())
+                         for channel in representatives}
+            before_analysis = deepcopy(workspace.state())
+            source_ids, dataset_ids = set(store.channels), set(store.datasets)
+            first = window.data_comparison.add_channels(ids[:2])
+            events()
+            pane = comparison.active
+            anchor = representatives[0]
+            pane.lock_cursor(0, anchor.id)
+            pane.annotate('Marker', pane.cursor_lines[0].value(), text='Acceptance comparison annotation')
+            events()
+            retained = deepcopy(pane.state())
+            second = window.data_comparison.add_channels(ids[2:])
+            events()
+            assert first['added'] == 2 and second['added'] == 2
+            plotted = [channel_id for graph in comparison.visible_panes() for channel_id in graph.ids]
+            assert len(plotted) == len(ids) and set(plotted) == set(ids), 'Compare Data copied or omitted source identities'
+            assert len({store.channels[channel_id].dataset_id for channel_id in plotted}) == 4
+            assert window.tabs.currentWidget() is comparison
+            assert pane.cursor_locks == retained['cursor_locks'] and pane.annotations == retained['annotations']
+            np.testing.assert_allclose(pane.getViewBox().viewRange(), retained['range'], rtol=0, atol=1e-7)
+            assert workspace.state() == before_analysis, 'Adding loaded Comparison channels changed Analysis'
+            repeated = window.data_comparison.add_channels(ids+ids)
+            events()
+            assert repeated == {'added': 0, 'already_present': 4, 'total': 4, 'datasets': 4}
+            assert [channel_id for graph in comparison.visible_panes() for channel_id in graph.ids] == plotted
+            assert set(store.channels) == source_ids and set(store.datasets) == dataset_ids
+            for channel_id, (channel, x, y, expected_x, expected_y) in originals.items():
+                assert store.channels[channel_id] is channel and channel.x is x and channel.y is y
+                np.testing.assert_array_equal(channel.x, expected_x)
+                np.testing.assert_array_equal(channel.y, expected_y)
+            return {'roles': list(fixture_stores), 'original_channels': len(ids), 'datasets': 4,
+                    'repeat_added': repeated['added'], 'analysis_unchanged': True,
+                    'existing_comparison_lock_and_annotation_retained': True}
+        recorder.check('REAL-LOADED-DATA-COMPARISON-ISOLATION', arbitrary_loaded_comparison, 'loaded_comparison',
+                       requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def selected_graph_fullscreen():
+            from app_plot_workspace import PlotPane
+            from app_presentation import CURSOR_COLORS
+            from shiboken6 import isValid
+            window.tabs.setCurrentWidget(workspace)
+            workspace.set_layout('Vertical split')
+            workspace.set_time_lock(True)
+            temperature, pressure = real_channel('tdms', '°C'), real_channel('machine', 'Pa')
+            first, selected = workspace.visible_panes()
+            first.bind([temperature.id])
+            selected.bind([pressure.id, temperature.id])
+            workspace.set_active(selected)
+            x, y = pressure.values()
+            finite = np.isfinite(y)
+            low, high = float(x[0]), float(x[-1])
+            changes = np.flatnonzero(finite[:-1] & finite[1:] & (y[:-1] != y[1:])
+                & (x[:-1] > low+.2*(high-low)) & (x[1:] < low+.6*(high-low)))
+            assert len(changes), 'The real pressure fixture needs an interior changing source sample'
+            index = int(changes[len(changes)//2])
+            later = np.flatnonzero(finite & (x > x[index]+.05*(high-low)))
+            assert len(later), 'The fixture needs a later finite Cursor B sample'
+            last = int(later[len(later)//2])
+            for cursor, sample in enumerate((index, last)):
+                selected.lock_cursor(cursor, pressure.id)
+                selected.cursor_locks[cursor]['index'] = sample
+            selected.restore_ranges(selected.state())
+            selected.setXRange(low, high, padding=0)
+            events()
+            parent = selected.parentWidget()
+            slot = workspace.grid.getItemPosition(workspace.grid.indexOf(selected))
+            panes = list(workspace.panes)
+            curves = {channel_id: curve for channel_id, (_view, curve) in selected.curves.items()}
+            dock_state = QtCore.QByteArray(window.saveState())
+            geometry = QtCore.QRect(window.geometry())
+            bindings = dict(selected.bindings)
+            controller = window.graph_fullscreen
+            try:
+                host = controller.enter(selected)
+                events()
+                QtTest.QTest.qWait(50)
+                app.processEvents()
+                assert controller.is_active and host.isFullScreen() and host.isVisible()
+                assert controller.pane is selected and controller.workspace is workspace
+                assert host.findChildren(PlotPane) == [selected], 'Fullscreen expanded more than the selected graph'
+                assert controller.readout.isVisible() and all(card.isVisible() for card in controller.cursor_cards)
+                def verify_live_values():
+                    # Inspect the UI after its ordinary queued updates. Calling
+                    # refresh_readouts here would conceal a broken live signal.
+                    rows = {controller.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole): row
+                            for row in range(controller.readout.rowCount())}
+                    assert set(rows) == set(selected.ids)
+                    row = rows[pressure.id]
+                    for cursor, column in ((0, 2), (1, 3)):
+                        source_index = selected.cursor_locks[cursor]['index']
+                        expected = y[source_index]
+                        assert selected.cursor_value(pressure.id, cursor) == expected
+                        assert controller.readout.item(row, column).text() == f'{expected:.6g}', 'Fullscreen A/B values differ from the locked source samples'
+                        assert f'{expected:.6g} Pa' in controller.cursor_cards[cursor].toolTip()
+                        assert controller.readout.item(row, column).foreground().color().name() == CURSOR_COLORS[cursor].lower()
+                        assert CURSOR_COLORS[cursor].lower() in controller.cursor_cards[cursor].styleSheet().lower()
+                    assert controller.readout.item(row, 1).text() == 'Pa'
+                    return row
+                verify_live_values()
+                for command in ('x', 'y', 'xy', 'pan', 'in', 'out', 'reset'):
+                    action = workspace.navigation_actions[command]
+                    assert action in controller.navigation_bar.actions() and action.isEnabled()
+                    button = controller.navigation_bar.widgetForAction(action)
+                    extension = controller.navigation_bar.findChild(QtWidgets.QToolButton, 'qt_toolbar_ext_button')
+                    assert button.isVisible() or (extension is not None and extension.isVisible()), 'Fullscreen navigation has no visible button or overflow route'
+                workspace.navigation_actions['x'].trigger()
+                before_x = np.asarray(selected.getViewBox().viewRange()[0])
+                before_y = [list(view.viewRange()[1]) for view in selected.y_views()]
+                workspace.navigation_actions['in'].trigger()
+                events()
+                zoomed = list(selected.getViewBox().viewRange()[0])
+                assert np.isclose(np.ptp(zoomed)/np.ptp(before_x), .8), 'Fullscreen zoom did not operate on the selected graph'
+                for view, bounds in zip(selected.y_views(), before_y):
+                    np.testing.assert_allclose(view.viewRange()[1], bounds, rtol=0, atol=1e-7)
+                selected.step_cursor(0, 1)
+                events()
+                assert selected.cursor_locks[0]['index'] == index+1
+                verify_live_values()
+                source_positions = [line.value() for line in selected.cursor_lines]
+            finally:
+                controller.exit()
+                events()
+            assert not controller.is_active and not controller.fullscreen_window.isVisible()
+            assert workspace.panes == panes and selected.parentWidget() is parent
+            assert workspace.grid.getItemPosition(workspace.grid.indexOf(selected)) == slot
+            assert selected.bindings == bindings and all(selected.curves[channel_id][1] is curve for channel_id, curve in curves.items())
+            assert window.saveState() == dock_state and window.geometry() == geometry, 'Returning fullscreen changed the dock layout or main window geometry'
+            assert [line.value() for line in selected.cursor_lines] == source_positions
+            np.testing.assert_allclose(selected.getViewBox().viewRange()[0], zoomed, rtol=0, atol=1e-7)
+            assert all(isValid(action) for action in workspace.navigation_actions.values()), 'Fullscreen exit deleted borrowed toolbar actions'
+            assert not workspace._canvas_alignment_timer.signalsBlocked()
+            return {'source_roles': ['machine', 'tdms'], 'selected_pane_only': True,
+                    'pressure_A': float(selected.cursor_value(pressure.id, 0)),
+                    'pressure_B': float(selected.cursor_value(pressure.id, 1)),
+                    'cursor_A_source_index': index+1, 'zoom_ratio': .8,
+                    'same_pane_curves_grid_and_docks_restored': True}
+        recorder.check('REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE', selected_graph_fullscreen,
+                       'graph_fullscreen', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
 
         def combinations_and_model_removal():
             assert len(fixture_stores) == 4, 'Import must complete before file combinations'

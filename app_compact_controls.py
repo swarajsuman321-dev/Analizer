@@ -27,9 +27,11 @@ class CompactControls(QtCore.QObject):
         categories={'Data':'Import / Export Utilities','Plot':'Plot Appearance / Layout','Processing':'Signal Processing / Derived Channels','Engineering':'Engineering Diagnostics','Export':'Export Utilities','Extensions':'Presets / Extensions'}
         for old,new in categories.items():window.studio.submenus[old].setTitle(new)
         manage=window.studio.menu.addMenu('Channel Management')
-        for action in window.menuBar().actions():
-            if action.text()=='Channel':
-                for item in action.menu().actions():manage.addAction(item)
+        # Retain the source menu explicitly. Reusing its actions must not leave
+        # a temporary QMenu wrapper to dispose the Channel menu underneath the
+        # workbench's direct channel controls.
+        self.channel_source_menu=window.channel_menu
+        for item in self.channel_source_menu.actions():manage.addAction(item)
         prefs=window.studio.menu.addMenu('Application Preferences')
         self.focus_action=prefs.addAction('Focus Graph');self.focus_action.setCheckable(True);self.focus_action.setShortcut('Ctrl+Shift+F');self.focus_action.toggled.connect(self.focus)
         prefs.addAction('Restore Normal Workspace',lambda:self.focus_action.setChecked(False))

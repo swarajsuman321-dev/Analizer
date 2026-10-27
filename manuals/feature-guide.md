@@ -1,7 +1,8 @@
 # Versioned manual source
 
-Each topic records the first version that supports it. Regenerate the bundled
-manuals with `python scripts/build_manuals.py` after changing this source.
+Each topic records the first version that supports it. For the current unpublished
+draft, run `python scripts/build_manuals.py 2.4.2` after changing this source.
+Keep published version manuals unchanged.
 
 ## Quick start | 2.1.0
 
@@ -662,3 +663,54 @@ Only the in-app installed-update path changes: it uses Inno Setup **/VERYSILENT*
 **One-time transition:** the updater belongs to the version already running. An installed **v2.4.1 or earlier** copy still contains its older **/SILENT** launch logic, so installing v2.4.2 through that copy can show Setup progress once. After v2.4.2 is installed and launched, future installed-app updates use its quiet updater. Downloading the new payload cannot retroactively change the old application's updater before it runs.
 
 Opening a Setup EXE manually remains interactive for first installation, repair or manual upgrade. The change does not suppress Windows security/publisher prompts or bypass organizational policy. Standalone EXE and ZIP updates keep their existing matching mechanisms; they do not launch installed Setup or change edition.
+
+## Change Trace Color directly | 2.4.2
+
+Select a channel and choose **Channel → Change Trace Color…**, or use **Change Trace Color…** in Properties. Properties starts folded; expand it through **Panels → Expand Properties** if needed. Right-click a Data Portal channel for the same action, or right-click a graph and choose the channel under **Change Trace Color**. If no portal channel is selected, the direct action can ask which active trace to change. Selecting multiple channels applies the chosen color to that explicit selection.
+
+Choose a trace color and confirm. The trace, its legend swatch and relevant axis/readout colors update while preserving the current zoom, cursor positions/locks, view history and channel identities. Cancel leaves colors and the view unchanged. The choice is channel appearance metadata and survives the existing workspace/preset/export routes. This control edits trace colors; it does not change the plot background. Normal theme controls remain available.
+
+## Compare any loaded data | 2.4.2
+
+1. Choose **Compare Data…** in the main toolbar. The chooser lists channels grouped by their recording, with units and a search field.
+2. If another recording is needed, choose **Open More Files…**. The normal importer and TDMS parameter review load it, then return to the chooser. This route imports data only; it does not automatically plot the new recording in Analysis or Comparison. Confirm the desired channels before adding them.
+3. Check individual channels or that file's checkbox. Each file checkbox affects only that file, including its channels hidden by the chooser search. There is no global cross-file Select All. Selection counts disclose the scope.
+4. Choose **Add to Comparison**. Existing Comparison traces remain, newly chosen channel IDs are added, and already-present IDs are not duplicated. Unchecking a channel in this chooser does not remove a trace already in Comparison; use its ordinary Data Portal visibility checkbox to hide it.
+
+You can also right-click selected Data Portal channels and choose **Add Selected Channels to Comparison**, or right-click a file header and choose **Add This File to Comparison**. These shortcuts use the same additive plotting route. Existing Analysis plots and original samples stay intact. Compatible channels overlay with independent value axes; incompatible coordinate domains use separate panes. At most ten coordinate families can occupy the available panes; a selection needing more is rejected without changing existing plots. Native clocks, units and colors remain; the action does not resample, infer alignment, generate similarity percentages or invent engineering results.
+
+For a configured reference/candidate/golden evaluation, keep using **Tools → Engineering Diagnostics → Engineering Setup**, **Analyze Engineering Data**, **Engineering Results** and **Plot Engineering Comparison**. The general Compare Data chooser is available for ordinary loaded data without requiring an appliance profile.
+
+## Fullscreen only the selected graph | 2.4.2
+
+Click the graph you want to inspect, then press **F11**, choose **View → Fullscreen Selected Graph**, or use the graph-header action. The chart context-menu action is **Full Screen Graph** and targets the graph you right-click. Only that pane expands into the fullscreen graph window; the complete multi-pane dashboard is not expanded.
+
+The fullscreen window keeps zoom X/Y/XY, pan, reset, cursor locking and the other shared navigation actions, with overflow when needed. Mouse X/Y stays in its fixed strip outside the canvas. Cyan A/orange B cards show cursor positions and locked parameter values; a channel readout table shows live A/B values and statistics for this pane. Min, Max and Average follow the current Readout scope (**Cursor interval** or **Whole recording**); A/B values and Coverage retain the cursor interval. The same original samples, independent units, missing-data behavior and cursor locks remain active. Existing Lock Time Axes synchronization still applies when enabled.
+
+Drag the divider between the graph and its readout area to give either more space. The initial readout size follows its visible contents so an empty table does not reserve a large blank area.
+
+Choose **Exit Fullscreen**, press **F11** again or press **Esc** to return. The original graph returns to its place in the workspace and its deliberate zoom/cursor changes remain. The previous pane arrangement and main-window geometry are restored rather than replacing the workspace with a copy. Layout/data changes or workspace restore can leave fullscreen safely before replacing the affected pane. Outside fullscreen, Escape retains its normal Hand/Pan behavior.
+
+## Expand and fold supporting panels | 2.4.2
+
+New workspaces start with **Properties**, **Channel Math**, **Channel Table** and **Interval Measurements** folded. **Engineering Controls** and **Readout** remain available, with Engineering Controls the default tab in its existing dock group. Data Portal remains available. These defaults supersede the older all-panels-open default; they do not remove a feature or discard panel contents.
+
+Use the compact **Panels** button in the main toolbar. A folded panel has an **Expand [panel name]** action; an open panel has **Fold [panel name]**. Checked actions indicate open panels. The existing View menu can also reopen panels. Expanding one panel does not silently fold another or clear values; positions/sizes and dock tabs are retained where possible.
+
+Save a workspace to keep your chosen layout. Explicit restores respect the saved open/folded/docked state, including legacy workspaces without the new folding metadata. New-workspace defaults are not forced onto a saved session. **View → Show all panels** remains an explicit way to reopen panels when that is what you want. Folding is separate from selected-graph fullscreen and the older Focus Graph preference.
+
+In **Readout**, select a channel row for its interval detail card. Scroll within the card to read longer statistics; the dock can keep its compact height while the complete details remain available.
+
+## Find advanced graph and engineering tools | 2.4.2
+
+The **More** button opens the same menu as **Tools**. For channel mapping, legend/display options, playback or layout tools, choose **Tools → Plot Appearance / Layout**. For recording controls, measurements/data quality, reference settings and appliance analysis/reporting, choose **Tools → Engineering Diagnostics**. General Compare Data remains directly available in the main toolbar.
+
+Coordinate imports and presets are under **Import / Export Utilities**; filters and previews under **Signal Processing / Derived Channels**; complete data/presentation exports under **Export Utilities**; plugins under **Presets / Extensions**. The main **About** menu retains User Manual and About / Updates. These names describe the visible compact menus; old manuals retain the labels used by their own versions.
+
+## Remembered open and save folders | 2.4.2
+
+Open and save dialogs remember the folder you last chose for that purpose, including recordings, workspace restore/save, profiles, presets, reports/exports, engineering source/reference files, extensions and offline update manifests. These choices survive closing the app and replacing its runtime during an update. Different purposes keep their own folders; for example, choosing a recording folder does not replace a previously chosen report destination.
+
+On the first save for a purpose, the configured output folder remains the starting location. After you choose another destination, that purpose starts there next time and keeps its suggested filename. An open dialog without its own remembered folder uses its supplied starting location, then the latest selected folder if no starting location is supplied. If a remembered folder has been removed, the dialog uses its nearest existing parent. Cancelling a dialog leaves the remembered choices unchanged.
+
+Only folder paths are stored in **dialog-history.json** under the per-user settings folder shown in **About → About / Updates**; selected filenames and measurement contents are not stored there. The normal Windows location is **%APPDATA%/ApplianceSignalStudio**. A configured settings-directory override applies as usual. Nothing is opened, saved or exported solely because a folder is remembered.

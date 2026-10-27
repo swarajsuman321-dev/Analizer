@@ -1,4 +1,4 @@
 """Visible application and artifact version."""
 VERSION = '2.4.2'
 
-BUILD_DATE = '2026-10-23'
+BUILD_DATE = '2026-10-27'

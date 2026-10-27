@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from PySide6 import QtCore,QtGui,QtWidgets
 from app_version import VERSION
+from app_dialog_history import open_file
 from app_updates import check_latest,download_update,launch_installer,version_tuple,RELEASES,import_offline_update,network_hint
 
 
@@ -77,9 +78,10 @@ class InfoTab(QtWidgets.QWidget):
         if self.task and self.task.isRunning():
             self.status.setText('Finish the current update operation first.')
             return
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+        filename, _ = open_file(
             self, 'Select approved update manifest', '',
-            'Update manifests (update.json installer-update.json zip-update.json);;JSON files (*.json)')
+            'Update manifests (update.json installer-update.json zip-update.json);;JSON files (*.json)',
+            purpose='OfflineUpdate')
         if not filename:
             return
         self.progress.setValue(0)
