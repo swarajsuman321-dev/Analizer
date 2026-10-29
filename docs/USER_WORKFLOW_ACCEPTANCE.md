@@ -1,6 +1,6 @@
 # User workflow acceptance requirements — 18 October 2026
 
-These requirements preserve the user’s 18 October 2026 navigation/dialog clarification and supplied chart-menu reference, with the approved stacked-graph drawing-alignment follow-up of 23 October 2026. They supersede earlier criteria that accepted a global application navigation toolbar. The [measured audit](audits/2026-10-18-real-user-workflows/README.md) describes the implementation at that historical baseline. Current delivery and measured verification are recorded in [v2.4.2 release notes](RELEASE_2.4.2.md) and [native/public evidence](validation/release-v2.4.2.json); remaining human/platform checks are listed there.
+These requirements preserve the user’s 18 October 2026 navigation/dialog clarification and supplied chart-menu reference, with the approved stacked-graph drawing-alignment follow-up of 23 October 2026. They supersede earlier criteria that accepted a global application navigation toolbar. The [measured audit](audits/2026-10-18-real-user-workflows/README.md) describes the implementation at that historical baseline. Current delivery and measured verification are recorded in [v2.4.3 release notes](RELEASE_2.4.3.md) and [native/public evidence](validation/release-v2.4.3.json); remaining human/platform checks are listed there.
 
 ## Graph navigation placement
 

@@ -3,15 +3,15 @@
   "version": "2.4.3",
   "date": "2026-10-29",
   "platform": "Linux Qt offscreen",
-  "status": "source verified; native Windows/public publication pending",
+  "status": "local source verification; final native/public release evidence recorded separately",
   "unit_tests": {
-    "tests_run": 553,
-    "passed": 548,
+    "tests_run": 574,
+    "passed": 569,
     "skipped": 5,
     "failures": 0,
     "errors": 0,
-    "seconds": 280.436,
-    "log_sha256": "1ae8e9192abf4c20248e2eaaa7a3cfa5ceba7421577815670b087470ac6a921c"
+    "seconds": 619.797,
+    "log_sha256": "0572d8ec264bc6117a510ab34a6ea38187eb640fb5c5f5c67dd8082ec0d74897"
   },
   "real_recording_acceptance": {
     "checks": [
@@ -120,19 +120,19 @@
         "status": "passed"
       },
       {
-        "id": "LAYOUT-2\u00d72-Dark-1024",
+        "id": "LAYOUT-2×2-Dark-1024",
         "status": "passed"
       },
       {
-        "id": "LAYOUT-2\u00d72-Dark-1536",
+        "id": "LAYOUT-2×2-Dark-1536",
         "status": "passed"
       },
       {
-        "id": "LAYOUT-2\u00d72-Light-1024",
+        "id": "LAYOUT-2×2-Light-1024",
         "status": "passed"
       },
       {
-        "id": "LAYOUT-2\u00d72-Light-1536",
+        "id": "LAYOUT-2×2-Light-1536",
         "status": "passed"
       },
       {
@@ -219,11 +219,12 @@
     "application_callback_errors": 0,
     "expected_safety_rejections": 7,
     "manual_unrun": 5,
-    "run_id": "4b0e5632-9bb0-4127-8344-996281bce994",
-    "started_at_utc": "2026-10-29T03:36:29.900669+00:00",
-    "finished_at_utc": "2026-10-29T03:43:37.189465+00:00",
-    "seconds": 427.289,
-    "report_sha256": "67f4375f79b7b55fe8ce752fcd408e93775a029caeb03de43efa2c15668c0bd1"
+    "checks_count": 49,
+    "run_id": "84ab1a23-26a5-49e4-9bf2-30b6810ef7b7",
+    "started_at_utc": "2026-10-29T13:52:19.668442+00:00",
+    "finished_at_utc": "2026-10-29T13:59:50.442085+00:00",
+    "seconds": 450.774,
+    "report_sha256": "7080bc93f9fc1cb6606b1adde33abfcbe1f5eeff258e96d2d71683530927310c"
   },
   "new_workflows": {
     "fullscreen_all_split_panes_same_identity_and_stable_hover": true,
@@ -233,7 +234,8 @@
     "complete_activity_events": 1757,
     "pdf_pages_for_real_pair": 12,
     "independent_interval_integration_agrees": true,
-    "raw_sources_and_original_plots_unchanged": true
+    "raw_sources_and_original_plots_unchanged": true,
+    "pair_seconds_with_output_inspection": 117.387
   },
   "manual_checks_unrun": [
     "Physical wheel, box selection and keyboard navigation in every zoom mode",
@@ -242,9 +244,41 @@
     "Keyboard-only task completion and screen-reader announcements",
     "Long-running acquisition-sized workloads and antivirus policy interaction"
   ],
-  "remaining_gates": [
-    "Native Windows unit suite and three packaged 49-check runs",
-    "Installer lifecycle and previous-v2.4.2 actual-GUI updates/recovery",
-    "Independent public files/feed/manual/tag verification"
-  ]
+  "remaining_gates": [],
+  "source_commit": "4fc6367d732babd5de2f9e345047c4826502f7fb",
+  "diagnostic_qualification": {
+    "qt_worker_polling": "Qt events are processed around Python sleep to release the GIL; original deadlines and evidence checks remain unchanged.",
+    "synthetic_compression_bytes": 21420000,
+    "qtest_wait_seconds": 8.418065387,
+    "python_sleep_worker_seconds": 0.100111359,
+    "normal_qt_event_loop_worker_seconds": 0.093566812,
+    "all_three_archive_crc_and_decompressed_hashes_agree": true,
+    "native_frame_watchdog": "Replaced unsafe asynchronous C frame walking with a daemon Python observer that owns frame references and uses ordinary traceback formatting.",
+    "isolated_minimal_qt_controls": {
+      "unsafe_c_observer_crashes": 3,
+      "unsafe_c_observer_runs": 3,
+      "without_observer_passed": 3,
+      "without_observer_runs": 3,
+      "safe_python_observer_passed": 3,
+      "safe_python_observer_runs": 3
+    },
+    "final_49_check_run_used_safe_observer": true,
+    "final_49_check_snapshot_captured": true
+  },
+  "native_viewport_alignment_regression": {
+    "deterministic_reproduction": "One-pixel viewport inset on a real Qt widget recreated the same one-pixel drawing-edge mismatch.",
+    "correction": "Global drawing intersection within each grid column, actual spacer allocation and independent numeric ranges.",
+    "focused_geometry_tests_passed": 7,
+    "fullscreen_hover_zoom_tests_passed": 46,
+    "drawing_tolerance_logical_pixels": 0.5,
+    "numeric_time_bounds_tolerance": 1e-07,
+    "zero_idle_alignment_timer_emissions": true,
+    "previous_long_native_stall_explanation": "Not established; finite phase diagnostics were added without skipping tests.",
+    "native_interaction_gate_passed": true,
+    "alignment_frame_interval_ms": 16,
+    "minimum_width_roundoff_resolution_logical_pixels": 1e-06
+  },
+  "final_release_evidence": "release-v2.4.3.json",
+  "final_release_source": "4fc6367d732babd5de2f9e345047c4826502f7fb",
+  "final_release_workflow": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/40884894135"
 }
