@@ -5,7 +5,7 @@ Raw interval samples, all difference intervals and all events remain in the
 workbook/JSON. A report never infers pairings, calibrations or acceptance limits.
 """
 from copy import copy, deepcopy
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -210,64 +210,148 @@ def build_evidence(store, workspace, data, summary, metadata=None, scorecard=Non
     return evidence, tables
 
 
+def _excel_value(value):
+    """Match the existing pandas export types without allocating Excel cells.
+
+    Missing readings remain explicit text. Source strings, including formulas
+    and error tokens, are written literally by the streaming writer below.
+    """
+    # DataFrame.itertuples yields native Python primitives for ordinary
+    # measurement columns. Keep their common path cheap across millions of
+    # cells; extension/object columns fall through to the explicit conversions.
+    kind = type(value)
+    if kind is str:return value, None
+    if kind is float:
+        if math.isnan(value):return 'Not Available', None
+        if math.isinf(value):return '-inf' if value < 0 else 'inf', None
+        return value, None
+    if kind is int or kind is bool:return value, None
+    if isinstance(value, (dict, list, tuple, np.ndarray)):
+        return text(value), None
+    if value is None or value is pd.NA or value is pd.NaT:
+        return 'Not Available', None
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value), None
+    if isinstance(value, (int, np.integer)):
+        return int(value), None
+    if isinstance(value, (float, np.floating)):
+        if np.isnan(value):return 'Not Available', None
+        if np.isinf(value):return '-inf' if value < 0 else 'inf', None
+        return float(value), None
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            raise ValueError('Excel does not support datetimes with timezones.')
+        return value, 'YYYY-MM-DD HH:MM:SS'
+    if isinstance(value, date):
+        return value, 'YYYY-MM-DD'
+    if isinstance(value, timedelta):
+        return value.total_seconds()/86400, '0'
+    return str(value), None
+
+
 def write_workbook(path, data, summary, evidence, tables, scorecard=None):
-    """Retain existing sample/summary sheets and add complete report evidence."""
+    """Stream complete evidence rows with bounded Excel-cell memory.
+
+    A realistic comparison has millions of cells. Building a normal worksheet
+    and revisiting every cell retained them all in memory. Append each row
+    once to bound Excel-cell memory, preserving the
+    same sheets, full numeric precision, literal text and match accents.
+    """
+    from contextlib import suppress
+    from openpyxl import Workbook
+    from openpyxl.cell import WriteOnlyCell
     from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
     frames = {'Active interval': data, 'Cursor summary': summary}
     if scorecard is not None:
         frames['Comparison'] = scorecard
     frames.update(tables)
-    extended=[]
-    with pd.ExcelWriter(path, engine='openpyxl') as writer:
-        parts=[{'Table':name,'Sheet':sheet,'First source row':start+1,'Last source row':end,
-                'Data rows':end-start} for name,frame in frames.items()
-               for sheet,start,end in worksheet_parts(name,len(frame))]
-        evidence['workbook_parts']=parts
-        frames['Workbook parts']=pd.DataFrame(parts)
-        for name,original,start,end in [(sheet,frame,start,end) for original_name,frame in frames.items()
-                for sheet,start,end in worksheet_parts(original_name,len(frame))]:
-            checkpoint('Writing '+name)
-            original=original.iloc[start:end]
-            frame = original.copy()
-            for column in frame:
-                if not pd.api.types.is_object_dtype(frame[column].dtype):continue
-                frame[column] = frame[column].map(lambda value: text(value) if isinstance(value, (dict, list, tuple)) else value)
-                for row,value in frame[column].items():
-                    if isinstance(row,(int,np.integer)) and row%8192==0:checkpoint()
-                    if isinstance(value,str) and len(value)>30000:
-                        identity=uuid4().hex
-                        for part,start in enumerate(range(0,len(value),30000),1):
-                            extended.append({'Text ID':identity,'Sheet':name,'Source row':row+2,
-                                'Column':column,'Part':part,'Text':value[start:start+30000]})
-                        frame.at[row,column]='Complete text: Extended text / '+identity
-            frame.to_excel(writer, sheet_name=name, index=False, na_rep='Not Available')
-            sheet = writer.sheets[name]
-            sheet.freeze_panes = 'A2'
-            sheet.auto_filter.ref = sheet.dimensions
-            for cell in sheet[1]:
-                cell.font = Font(bold=True, color='FFFFFF')
-                cell.fill = PatternFill('solid', fgColor='243A53')
-            from openpyxl.utils import get_column_letter
-            for number,column in enumerate(frame,1):
-                values=[column,*frame[column].head(60).tolist()]
-                sheet.column_dimensions[get_column_letter(number)].width=min(60,max(13,
-                    max(len(str(value)) for value in values)+2))
-            if 'match_percent' in frame:
-                index = list(frame.columns).index('match_percent')+1
-                for row in range(2, sheet.max_row+1):
-                    if row % 8192 == 0: checkpoint()
-                    cell = sheet.cell(row, index)
-                    color = match_color(cell.value)
+    parts = [{'Table':name, 'Sheet':sheet, 'First source row':start+1,
+              'Last source row':end, 'Data rows':end-start}
+             for name,frame in frames.items()
+             for sheet,start,end in worksheet_parts(name,len(frame))]
+    evidence['workbook_parts'] = parts
+    frames['Workbook parts'] = pd.DataFrame(parts)
+    extended = []
+    book = Workbook(write_only=True)
+    heading_font = Font(bold=True, color='FFFFFF')
+    heading_fill = PatternFill('solid', fgColor='243A53')
+    match_fills = {}
+
+    def write_part(name, frame, start, end, *, retain_extended=True):
+        sheet = book.create_sheet(name)
+        columns = list(frame.columns)
+        # Write-only XML normally omits dimensions. The exact size is known
+        # before streaming: publish it so read-only Excel consumers can inspect
+        # row counts without scanning or loading the complete worksheet.
+        dimension = 'A1:'+get_column_letter(max(1,len(columns)))+str(end-start+1)
+        sheet.calculate_dimension = lambda value=dimension: value
+        sheet.freeze_panes = 'A2'
+        sheet.auto_filter.ref = dimension
+        for number,column in enumerate(columns,1):
+            values = [column, *frame.iloc[start:min(end,start+60),number-1].tolist()]
+            sheet.column_dimensions[get_column_letter(number)].width = min(60,max(13,
+                max(len(str(value)) for value in values)+2))
+        headings = []
+        for column in columns:
+            cell = WriteOnlyCell(sheet, str(column))
+            cell.data_type = 's'
+            cell.font, cell.fill = heading_font, heading_fill
+            headings.append(cell)
+        sheet.append(headings)
+        match_index = columns.index('match_percent') if 'match_percent' in columns else -1
+        for position, values in enumerate(frame.iloc[start:end].itertuples(index=False,name=None),start):
+            if (position-start)%4096 == 0:
+                checkpoint('Writing '+name, position-start, end-start)
+            cells = []
+            for number,value in enumerate(values):
+                value, number_format = _excel_value(value)
+                if retain_extended and isinstance(value,str) and len(value)>30000:
+                    identity = uuid4().hex
+                    for part,offset in enumerate(range(0,len(value),30000),1):
+                        extended.append({'Text ID':identity, 'Sheet':name,
+                            'Source row':position+2, 'Column':columns[number],
+                            'Part':part, 'Text':value[offset:offset+30000]})
+                    value = 'Complete text: Extended text / '+identity
+                color = match_color(value) if number==match_index else None
+                if isinstance(value,str) or number_format or color:
+                    cell = WriteOnlyCell(sheet,value)
+                    if isinstance(value,str):cell.data_type='s'
+                    if number_format:cell.number_format=number_format
                     if color:
-                        cell.fill = PatternFill('solid', fgColor=color.lstrip('#'))
+                        if color not in match_fills:
+                            match_fills[color] = PatternFill('solid',fgColor=color.lstrip('#'))
+                        cell.fill = match_fills[color]
                         cell.number_format = '0.0"%"'
+                    cells.append(cell)
+                else:
+                    cells.append(value)
+            sheet.append(cells)
+        sheet.close()
+
+    try:
+        for original_name, frame in frames.items():
+            for name,start,end in worksheet_parts(original_name,len(frame)):
+                checkpoint('Writing '+name,0,end-start)
+                write_part(name,frame,start,end)
         if extended:
-            frame=pd.DataFrame(extended)
+            frame = pd.DataFrame(extended)
             for name,start,end in worksheet_parts('Extended text',len(frame)):
-                frame.iloc[start:end].to_excel(writer,sheet_name=name,index=False)
-                sheet=writer.sheets[name];sheet.freeze_panes='A2';sheet.auto_filter.ref=sheet.dimensions
-        from app_reporting import literal_workbook_text
-        literal_workbook_text(writer.book)
+                write_part(name,frame,start,end,retain_extended=False)
+        checkpoint('Finalizing complete comparison workbook')
+        book.save(path)
+    finally:
+        # Cancellation before save must not leave open write-only XML streams
+        # or their temporary files. The destination itself is staged atomically.
+        for sheet in book:
+            with suppress(Exception):
+                if not sheet.closed:sheet.close()
+            writer = getattr(sheet,'_writer',None)
+            if writer is not None:
+                with suppress(OSError):
+                    writer.cleanup()
+        book.close()
 
 
 class _Pages:

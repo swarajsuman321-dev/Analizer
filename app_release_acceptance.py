@@ -8,6 +8,7 @@ unrun; offscreen geometry is not evidence for those claims.
 """
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import faulthandler
 import hashlib
 from itertools import combinations
 import json
@@ -173,6 +174,41 @@ def isolated_environment(output):
                 os.environ[key] = value
 
 
+def acceptance_worker_events(app):
+    """Deliver real GUI signals while yielding Python to its background worker.
+
+    QTest.qWait can retain the GIL through much of its native polling loop.
+    Using it repeatedly around a Python report writer can serialize compression
+    and make the diagnostic workload much slower than the normal app event loop.
+    Python sleep releases the GIL; GUI callbacks still run on the GUI thread.
+    """
+    app.processEvents()
+    time.sleep(.025)
+    app.processEvents()
+
+
+def wait_for_acceptance_workers(window, events, *, timeout, cancel_timeout=30):
+    """Keep the original deadline a failure, then drain queued cancellation.
+
+    A failed asynchronous check must not leave its worker running after its
+    nonblocking-message boundary is restored. Deliver the normal Cancel action
+    and process its queued completion for a bounded cleanup period. Successful
+    cleanup never turns the missed original deadline into a pass.
+    """
+    deadline = time.monotonic()+timeout
+    while (window.busy or window.workers) and time.monotonic() < deadline:
+        events()
+    if not window.busy and not window.workers:
+        return
+    window.cancel_operation()
+    cleanup_deadline = time.monotonic()+cancel_timeout
+    while (window.busy or window.workers) and time.monotonic() < cleanup_deadline:
+        events()
+    state = ('cancellation completed' if not window.busy and not window.workers
+             else 'cancellation is still pending')
+    raise AssertionError('The comparison worker did not finish within six minutes; '+state)
+
+
 class AcceptanceRecorder:
     """Persist completed checks even when a later application callback fails."""
     def __init__(self, path, metadata=None):
@@ -189,6 +225,10 @@ class AcceptanceRecorder:
 
     def check(self, name, operation, category, requires=()):
         self.current = name
+        self.result['current_check'] = name
+        self.result['check_started_at_utc'] = datetime.now(timezone.utc).isoformat()
+        self.result['current_stage'] = 'Starting check'
+        self.save()
         started = time.perf_counter()
         complete = {row['id']: row['status'] for row in self.result['checks']}
         blockers = [dependency for dependency in requires if complete.get(dependency) != 'passed']
@@ -215,6 +255,13 @@ class AcceptanceRecorder:
         self.save()
         return row
 
+    def stage(self, message):
+        """Retain the last real UI progress message if a frozen process stalls."""
+        if message != self.result.get('current_stage'):
+            self.result['current_stage'] = str(message)
+            self.result['stage_updated_at_utc'] = datetime.now(timezone.utc).isoformat()
+            self.save()
+
     def finish(self, required_checks=()):
         present = {row['id'] for row in self.result['checks']}
         for missing in sorted(set(required_checks)-present):
@@ -235,6 +282,21 @@ class AcceptanceRecorder:
         self.result['finished_at_utc'] = datetime.now(timezone.utc).isoformat()
         self.save()
         return self.result
+
+
+@contextmanager
+def acceptance_stack_diagnostics(output):
+    """Capture all Python threads even when a windowed EXE has no stderr.
+
+    This watchdog observes the diagnostic CLI only. It does not interrupt work,
+    extend its deadline, or turn an unfinished check into a successful one.
+    """
+    with (Path(output)/'acceptance-stacks.txt').open('w', encoding='utf-8') as stream:
+        faulthandler.dump_traceback_later(120, repeat=True, file=stream)
+        try:
+            yield
+        finally:
+            faulthandler.cancel_dump_traceback_later()
 
 
 def run_acceptance(samples, output):
@@ -264,7 +326,7 @@ def run_acceptance(samples, output):
         'edition': 'source' if not frozen else 'installed' if installed else 'standalone',
         'distribution_form': distribution_form,
         'qt_platform_requested': os.environ.get('QT_QPA_PLATFORM', 'offscreen'), 'inputs': []})
-    with isolated_environment(output):
+    with isolated_environment(output), acceptance_stack_diagnostics(output):
         _run_workbench(recorder, Path(samples).resolve() if samples else None, output)
     return recorder.finish(required_checks=REQUIRED_CHECK_IDS)
 
@@ -300,6 +362,7 @@ def _run_workbench(recorder, samples, output):
         window = AdvancedStudioWindow()
         window.resize(1536, 960)
         window.show()
+        window.statusBar().messageChanged.connect(recorder.stage)
         events()
         store = window.store
         workspace = window.dashboard
@@ -872,10 +935,7 @@ def _run_workbench(recorder, samples, output):
                         patch.object(PdfPages, 'savefig', observe_saved_pdf_page):
                     controls.action.trigger()
                     assert window.busy and window.workers, 'Compare did not start its background operation'
-                    deadline = time.monotonic()+360
-                    while (window.busy or window.workers) and time.monotonic() < deadline:
-                        events()
-                    assert not window.busy and not window.workers, 'The comparison worker did not finish within six minutes'
+                    wait_for_acceptance_workers(window, lambda: acceptance_worker_events(app), timeout=360)
                     events()
                 assert warnings == [], 'The real comparison reported errors: '+repr(warnings)
                 result, bundle = controls.last_result, controls.last_bundle

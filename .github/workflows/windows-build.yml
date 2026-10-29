@@ -139,6 +139,11 @@ jobs:
             if ($tail.Length -gt 2600) { $tail = $tail.Substring($tail.Length - 2600) }
             $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error title=Packaged user workflow failure::$tail"
+            $diagnostics = & .venv-exe\Scripts\python.exe scripts/check_packaged_workflows.py --diagnostics build/packaged-acceptance 2>&1
+            foreach ($detail in $diagnostics) {
+              $detail = ([string]$detail).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error title=Frozen acceptance checkpoint and stacks::$detail"
+            }
           }
           exit $code
       - name: Verify real application updates and workspace recovery
@@ -183,6 +188,7 @@ jobs:
             build/packaged-acceptance/**/process-stderr.txt
             build/packaged-acceptance/**/process-result.json
             build/packaged-acceptance/**/acceptance.json
+            build/packaged-acceptance/**/acceptance-stacks.txt
             build/packaged-acceptance/*.log
           if-no-files-found: ignore
       - name: Publish tested version to GitHub Releases

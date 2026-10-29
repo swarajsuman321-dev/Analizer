@@ -13,7 +13,7 @@ import numpy as np
 
 from app_channel_store import Channel
 from app_release_acceptance import AcceptanceRecorder, MANUAL_WINDOWS_CHECKS, REQUIRED_CHECK_IDS, isolated_environment, time_pixel_alignment, viewport_time_x, verify_comparison_interval_metrics
-from scripts.check_packaged_workflows import REQUIRED_CATEGORIES, capture_runtime, validate_packaged_report
+from scripts.check_packaged_workflows import REQUIRED_CATEGORIES, capture_runtime, failure_diagnostics, validate_packaged_report
 from tools.audit_user_workflows import observe_processing
 
 
@@ -257,6 +257,37 @@ class PackagedEvidenceTests(unittest.TestCase):
         self.assertTrue(result['timed_out'])
         self.assertIsNotNone(result['returncode'])
         self.assertEqual(result['run_id'], 'timed-out-run')
+
+    def test_timeout_diagnostics_locate_incomplete_check_and_real_worker_stack(self):
+        output = Path(self.directory.name)
+        (output/'acceptance.json').write_text(json.dumps({
+            'run_id': 'current-run', 'current_check': 'REAL-TWO-SIGNAL-COMPARISON-EVIDENCE',
+            'check_started_at_utc': '2026-10-29T04:10:00Z',
+            'current_stage': 'Writing complete comparison JSON evidence',
+            'checks': [{'id': 'previous-check', 'status': 'passed', 'seconds': 2.5}]}))
+        (output/'process-result.json').write_text(json.dumps({
+            'run_id': 'current-run', 'timed_out': True, 'returncode': 1, 'seconds': 900}))
+        (output/'acceptance-stacks.txt').write_text('x'*6000+'\nWorker thread: report_writer.py line 57')
+        (output/'process-stderr.txt').write_text('current native warning')
+        result = failure_diagnostics(output)
+        self.assertEqual(result['acceptance']['current_check'], 'REAL-TWO-SIGNAL-COMPARISON-EVIDENCE')
+        self.assertEqual(result['acceptance']['current_stage'], 'Writing complete comparison JSON evidence')
+        self.assertEqual(result['acceptance']['completed_checks'], 1)
+        self.assertEqual(result['acceptance']['recent_checks'][0]['id'], 'previous-check')
+        self.assertTrue(result['process']['timed_out'])
+        self.assertIn('report_writer.py line 57', result['stack_tail'])
+        self.assertLessEqual(len(result['stack_tail']), 5500)
+        self.assertEqual(result['stderr_tail'], 'current native warning')
+
+    def test_incomplete_diagnostic_json_cannot_hide_process_or_stack_evidence(self):
+        output = Path(self.directory.name)
+        (output/'acceptance.json').write_text('{"incomplete":')
+        (output/'process-result.json').write_text(json.dumps({'run_id': 'new-run', 'timed_out': True}))
+        (output/'acceptance-stacks.txt').write_text('Qt worker blocked in current_function')
+        result = failure_diagnostics(output)
+        self.assertEqual(result['acceptance_read_error'], 'JSONDecodeError')
+        self.assertEqual(result['process']['run_id'], 'new-run')
+        self.assertIn('current_function', result['stack_tail'])
 
     def test_hidden_callback_failed_contract_or_incomplete_summary_rejected(self):
         for change in ('callback', 'unmet', 'summary'):

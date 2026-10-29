@@ -23,6 +23,54 @@ REQUIRED_CATEGORIES = {'real_recordings', 'dataset_isolation', 'templates', 'syn
                        'processing', 'persistence', 'exports'}
 
 
+def failure_diagnostics(output):
+    """Expose bounded timeout evidence without requiring artifact authentication.
+
+    Acceptance writes its durable checkpoint separately from this supervisor.
+    Include the current checkpoint, recent outcomes and real worker stack dump
+    in the public Actions annotation, so a frozen-runtime stall can be located
+    even when the process never reaches its final report.
+    """
+    output = Path(output)
+    result = {'edition_directory': output.name}
+    for filename, key in (('process-result.json', 'process'),
+                          ('acceptance.json', 'acceptance')):
+        path = output/filename
+        if not path.is_file():
+            continue
+        try:
+            value = json.loads(path.read_text(encoding='utf-8'))
+            if key == 'process':
+                result[key] = {name: value.get(name) for name in
+                               ('run_id', 'timed_out', 'returncode', 'seconds')}
+            else:
+                rows = value.get('checks', [])
+                result[key] = {name: value.get(name) for name in
+                               ('run_id', 'current_check', 'check_started_at_utc',
+                                'current_stage', 'started_at_utc', 'finished_at_utc')}
+                result[key]['completed_checks'] = len(rows)
+                result[key]['recent_checks'] = [{name: row.get(name) for name in
+                                                ('id', 'status', 'seconds')}
+                                               for row in rows[-4:]]
+                result[key]['failures'] = [{'id': row.get('id'), 'status': row.get('status'),
+                                           'error': str(row.get('error', ''))[-2000:]}
+                                          for row in rows if row.get('status') != 'passed'][-2:]
+        except (OSError, ValueError, TypeError, AttributeError) as exc:
+            result[key+'_read_error'] = type(exc).__name__
+    for filename, key, limit in (('process-stderr.txt', 'stderr_tail', 1500),
+                                 ('acceptance-stacks.txt', 'stack_tail', 5500)):
+        path = output/filename
+        if not path.is_file():
+            continue
+        try:
+            with path.open('rb') as stream:
+                stream.seek(max(0, path.stat().st_size-limit))
+                result[key] = stream.read(limit).decode('utf-8', errors='replace')
+        except OSError as exc:
+            result[key+'_read_error'] = type(exc).__name__
+    return result
+
+
 def capture_runtime(command, environment, output, *, timeout, run_id):
     """Keep crash/timeout evidence and stop the onefile bootloader's children.
 
@@ -149,13 +197,24 @@ def check(executable, samples, output, *, edition='standalone', form=None, timeo
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--exe', type=Path, required=True)
+    command = parser.add_mutually_exclusive_group(required=True)
+    command.add_argument('--exe', type=Path)
+    command.add_argument('--diagnostics', type=Path,
+                         help='Print bounded evidence from each failed edition directory')
     parser.add_argument('--samples', type=Path, default=ROOT/'tests/samples/recordings')
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--output', type=Path)
     parser.add_argument('--edition', choices=('standalone', 'installed'), default='standalone')
     parser.add_argument('--form', choices=('standalone-onefile', 'standalone-folder', 'installed'))
     parser.add_argument('--timeout', type=int, default=900)
     args = parser.parse_args()
+    if args.diagnostics is not None:
+        for folder in ('onefile', 'folder', 'installed'):
+            output = args.diagnostics/folder
+            if output.is_dir():
+                print(json.dumps(failure_diagnostics(output), ensure_ascii=True))
+        return 0
+    if args.output is None:
+        parser.error('--output is required with --exe')
     if args.form and (args.form == 'installed') != (args.edition == 'installed'):
         parser.error('--form and --edition must describe the same distribution')
     report = check(args.exe, args.samples, args.output, edition=args.edition,
