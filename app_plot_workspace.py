@@ -702,7 +702,10 @@ class PlotPane(pg.PlotWidget):
         # Opposite panes can provide the widest left and right axes. Reserve
         # their combined gutters as well as useful canvas space; narrow windows
         # can then scroll instead of clipping tick labels or crushing the plot.
-        required=int(np.ceil(max(self._axis_minimum_width+sum(requested),minimum_width)))
+        # Geometry measurements pass through several fractional transforms.
+        # Do not turn an integral logical-pixel width plus floating-point noise
+        # into an extra pixel, then remove it again on the next layout pass.
+        required=int(np.ceil(max(self._axis_minimum_width+sum(requested),minimum_width)-1e-6))
         if self.minimumWidth()!=required:self.setMinimumWidth(required)
         if all(abs(a-b)<.05 for a,b in zip(requested,self._canvas_padding)):return
         self._canvas_padding=requested
@@ -1039,7 +1042,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         if self._canvas_alignment_running:
             self._canvas_alignment_dirty=True
             return
-        if not self._canvas_alignment_timer.isActive():self._canvas_alignment_timer.start(0)
+        # Wait for one frame's axis/viewport resize events to settle. Reposting
+        # a zero-time timer from those events can starve native Qt layouts.
+        if not self._canvas_alignment_timer.isActive():self._canvas_alignment_timer.start(16)
 
     def _align_canvas_gutters(self):
         """Align drawing edges within each grid column without changing ranges.
@@ -1077,7 +1082,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         finally:
             self._canvas_alignment_running=False
             if self._canvas_alignment_dirty and not self._canvas_alignment_timer.isActive():
-                self._canvas_alignment_timer.start(0)
+                self._canvas_alignment_timer.start(16)
 
     def _apply_proportions(self):
         rows,cols=LAYOUTS[self.layout_name];saved=self.layout_proportions.get(self.layout_name,{})

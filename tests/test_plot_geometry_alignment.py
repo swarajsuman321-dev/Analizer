@@ -6,6 +6,7 @@ different viewport pixels. These checks use the complete viewport transform.
 """
 import unittest
 import sys
+import json
 from unittest.mock import patch
 
 import numpy as np
@@ -180,19 +181,34 @@ class PlotGeometryAlignmentTests(unittest.TestCase):
         self.bind_groups([[self.pressure,self.power,self.flow],[self.temperature],
                           [self.speed],[self.temperature]])
         first,second,third,fourth=self.work.visible_panes()
+        def observed(phase):
+            # Retain safe, ordinary GUI-thread measurements if a native layout
+            # blocks before the outer test supervisor can produce its result.
+            print('GEOMETRY '+json.dumps({'phase':phase,'panes':[
+                {'width':pane.width(),'minimum':pane.minimumWidth(),
+                 'viewport_width':pane.viewport().width(),
+                 'origin':pane.viewport().mapToGlobal(QtCore.QPoint()).x(),
+                 'scene_width':pane.sceneRect().width(),'translate_x':pane.viewportTransform().dx(),
+                 'padding':pane._canvas_padding,
+                 'spacers':[spacer.geometry().width() for spacer in pane._canvas_spacers],
+                 'edges':self.drawing_edges(pane)} for pane in self.work.visible_panes()]}),flush=True)
         # A native frame/inset can remove one logical viewport pixel without
         # changing the outer widget's grid-column width. Equal local gutters
         # used to leave the right drawing edge exactly one pixel out of line.
+        observed('before native insets')
         third.setViewportMargins(0,0,1,0)
         fourth.setViewportMargins(1,0,0,0)
+        observed('native insets applied')
         self.work.queue_canvas_alignment()
         self.settle()
+        observed('native insets settled')
         self.assertEqual(first.width(),third.width())
         self.assertEqual(first.viewport().width(),third.viewport().width()+1)
         self.assert_locked_time_geometry()
         self.work.set_time_lock(False)
         first.setXRange(10,30,padding=0);third.setXRange(50,90,padding=0)
         self.settle()
+        observed('independent ranges settled')
         self.assert_column_geometry()
         np.testing.assert_allclose(first.getViewBox().viewRange()[0],[10,30],rtol=0,atol=1e-7)
         np.testing.assert_allclose(third.getViewBox().viewRange()[0],[50,90],rtol=0,atol=1e-7)
@@ -201,6 +217,15 @@ class PlotGeometryAlignmentTests(unittest.TestCase):
         for _ in range(30):self.app.processEvents()
         self.assertEqual(alignment.count(),0)
         self.assertFalse(self.work._canvas_alignment_timer.isActive())
+
+    def test_subpixel_measurement_noise_does_not_toggle_integer_minimum_width(self):
+        pane=self.work.visible_panes()[0]
+        for residual in (0.,1e-10,-1e-10,4e-11,-4e-11):
+            pane.set_canvas_padding(0,0,minimum_width=1000+residual)
+            self.assertEqual(pane.minimumWidth(),1000)
+        pane.set_canvas_padding(0,0,minimum_width=1000.01)
+        self.assertEqual(pane.minimumWidth(),1001,
+                         'A genuine fractional width must still reserve enough space')
 
 
 if __name__ == '__main__':
