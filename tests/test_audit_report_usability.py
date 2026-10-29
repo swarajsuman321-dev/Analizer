@@ -125,7 +125,10 @@ class AuditReportUsabilityTests(unittest.TestCase):
             path=Path(root)/'Comparison.pdf'
             tables=export_engineering(path,store,[reference,candidate],compare_runs(reference,candidate,reference['profile']),view={'cursors':[2,4]},scope='both')
             self.assertEqual(set(tables['Comparison Results'].Scope),{'Whole recording','Active cursor interval'})
-            self.assertEqual(len(re.findall(rb'/Type\s*/Page\b',path.read_bytes())),10)
+            evidence=json.loads(path.with_suffix('.evidence.json').read_text())
+            self.assertEqual(len(re.findall(rb'/Type\s*/Page\b',path.read_bytes())),evidence['page_plan']['expected_pages'])
+            self.assertEqual(evidence['page_plan']['comparison_records'],len(tables['Comparison Results']))
+            self.assertGreater(evidence['page_plan']['comparison_continuation_pages'],0)
             from openpyxl import load_workbook
             workbook=load_workbook(path.with_suffix('.evidence.xlsx'))
             self.assertTrue(any(dim.hidden for dim in workbook['Comparison Results'].column_dimensions.values()))

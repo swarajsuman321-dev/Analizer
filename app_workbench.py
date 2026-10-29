@@ -111,10 +111,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         from app_trace_controls import TraceColorControls
         from app_data_comparison import DataComparisonControls
         from app_graph_fullscreen import GraphFullscreenController
+        from app_workspace_fullscreen import WorkspaceFullscreenController
         from app_panel_folding import PanelFoldingControls
         self.trace_colors=TraceColorControls(self)
         self.data_comparison=DataComparisonControls(self)
         self.graph_fullscreen=GraphFullscreenController(self)
+        self.graph_fullscreen.action.setShortcut('Shift+F11')
+        self.graph_fullscreen.action.setToolTip('Expand only the selected graph. Shift+F11 or Esc returns.')
+        self.graph_fullscreen.exit_action.setToolTip('Return this graph to its original position (Esc or Shift+F11).')
+        self.workspace_fullscreen=WorkspaceFullscreenController(self)
         self.panel_folding=PanelFoldingControls(self)
         color=self.channel_menu.addAction('Change Trace Color…')
         color.setToolTip('Choose a color for the selected channel without resetting the graph')
@@ -125,28 +130,63 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.properties.layout().insertRow(0,button)
         self.portal.traceColorRequested.connect(lambda ids:self.guard(lambda:self.trace_colors.choose(ids)))
         self.portal.comparisonRequested.connect(lambda ids:self.guard(lambda:self.data_comparison.add_channels(ids)))
-        self.view_menu.addSeparator();self.view_menu.addAction(self.graph_fullscreen.action)
+        self.view_menu.addSeparator();self.view_menu.addAction(self.workspace_fullscreen.action);self.view_menu.addAction(self.graph_fullscreen.action)
+        self.report_details_action=QtGui.QAction('Report Details & Conclusions…',self)
+        self.report_details_action.setToolTip('Optional title, authors, test conditions, observations, conclusions and actions for both report workflows')
+        self.report_details_action.triggered.connect(lambda:self.guard(self.edit_report_details))
+        self.studio.submenus['Export'].addAction(self.report_details_action)
+        self.studio.submenus['Engineering'].addAction(self.report_details_action)
+        from app_signal_comparison_controls import SignalComparisonControls
+        self.signal_comparison=SignalComparisonControls(self)
+        self.main_toolbar.insertAction(self.compare_data_action,self.signal_comparison.action)
+        self.studio.submenus['Engineering'].addAction(self.signal_comparison.action)
         before=next((action for action in self.main_toolbar.actions() if action.text()=='Calculate Channel'),None)
         self.main_toolbar.insertWidget(before,self.panel_folding.button)
         def fullscreen_icon(dark=None):
             from app_adaptive_ui import navigation_icon
             if dark is None:dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness()<128
             self.graph_fullscreen.action.setIcon(navigation_icon('fullscreen',dark))
+            self.workspace_fullscreen.action.setIcon(navigation_icon('fullscreen',dark))
         fullscreen_icon();self.theme.themeChanged.connect(fullscreen_icon)
+        self.fullscreen_menus=[]
         for workspace in self.workspaces:
             bar=workspace.navigation_bar
             # Keep the compact expansion control with the zoom icons, before
             # longer lock/setup labels. Native Windows fonts need more width
             # than offscreen Linux, and common graph actions should stay in
             # view while the existing toolbar handles narrow-window overflow.
-            bar.insertAction(workspace.time_lock_action,self.graph_fullscreen.action)
-            button=bar.widgetForAction(self.graph_fullscreen.action)
+            bar.insertAction(workspace.time_lock_action,self.workspace_fullscreen.action)
+            button=bar.widgetForAction(self.workspace_fullscreen.action)
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
-            button.setAccessibleName('Fullscreen Selected Graph')
+            button.setAccessibleName('Fullscreen Workspace')
+            menu=QtWidgets.QMenu(button);menu.addAction(self.workspace_fullscreen.action);menu.addAction(self.graph_fullscreen.action)
+            button.setMenu(menu);button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+            self.fullscreen_menus.append(menu)
         self.panel_folding.apply_defaults(['Properties','Channel Math','Channel Table','Interval Measurements'])
 
     def exit_graph_fullscreen(self):
+        if hasattr(self,'workspace_fullscreen'):self.workspace_fullscreen.exit()
         if hasattr(self,'graph_fullscreen'):self.graph_fullscreen.exit()
+
+    def report_metadata(self,engineering=False):
+        """Capture user notes independently of live widgets for export workers."""
+        metadata=deepcopy(self.engineering.session.get('metadata',{}))
+        if not engineering and metadata.get('Report title')=='Engineering report':
+            metadata.pop('Report title')
+        return metadata
+
+    def edit_report_details(self):
+        self.mutate()
+        from app_report_details import ReportDetailsDialog,update_report_details
+        parent=self
+        for name in ('workspace_fullscreen','graph_fullscreen'):
+            controller=getattr(self,name,None)
+            if controller is not None and controller.is_active:parent=controller.fullscreen_window
+        dialog=ReportDetailsDialog(self.engineering.session.get('metadata',{}),parent)
+        if dialog.exec()!=QtWidgets.QDialog.DialogCode.Accepted:return False
+        self.engineering.session['metadata']=update_report_details(self.engineering.session.get('metadata',{}),dialog.values())
+        self.statusBar().showMessage('Report details updated. Save the workspace to retain them for later sessions.')
+        return True
 
     def plot_theme(self,dark):
         color='#e3eaf5' if dark else '#182033';background='#151b26' if dark else '#ffffff'
@@ -385,6 +425,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         if command=='cursor':self.studio.cursor_lock_dialog()
         elif command=='export':self.report()
         elif command=='fullscreen':self.graph_fullscreen.enter(pane)
+        elif command=='fullscreen-workspace':self.workspace_fullscreen.enter(workspace)
         elif command.startswith('trace-color:'):self.trace_colors.choose([command.partition(':')[2]])
         elif command=='compare':self.data_comparison.add_channels(pane.ids)
         elif command=='fft':
@@ -1049,11 +1090,15 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             # Capture widget state on the GUI thread. The worker only sees
             # immutable source data and plain snapshots, never Qt plot items.
             store=self.store;state=deepcopy(self.active_workspace.state());score=getattr(self,'scorecard_data',None) if self.active_workspace is self.comparison else None
+            state['workspace_name']='Comparison' if self.active_workspace is self.comparison else 'Analysis'
+            state['report_kind']='comparison' if self.active_workspace is self.comparison else 'analysis'
+            state['statistics_scope']=self.stats_scope.currentText()
+            metadata=self.report_metadata()
             score=score.copy(deep=True) if score is not None else None;title=self.studio.options['title']
             def complete(_):
                 self.last_export=Path(path);self.open_export_button.show();self.open_export_folder_button.show()
                 self.statusBar().showMessage(f'Report saved: {path}')
-            self.background(lambda:export_report(path,store,state,score,title=title),complete,title='Exporting active workspace')
+            self.background(lambda:export_report(path,store,state,score,title=title,metadata=metadata),complete,title='Exporting active workspace')
 
     def set_snap(self,value):
         for pane in self.active_workspace.visible_panes():

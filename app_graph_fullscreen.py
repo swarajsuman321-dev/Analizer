@@ -27,6 +27,39 @@ def _number(value):
     return f'{value:.6g}' if math.isfinite(value) else 'Unknown'
 
 
+class _HoverReadoutLabel(QtWidgets.QLabel):
+    """Reserve two text lines so pointer motion cannot resize the graph.
+
+    The placeholder is one line, while an actual reading has coordinates and a
+    source-sample line. A minimum height lets QLabel's changing size hint move
+    the canvas on every enter/leave. Fix the allocated height to font metrics,
+    and recalculate it only for real font/style/display changes.
+    """
+    def __init__(self, text, parent):
+        super().__init__(text, parent)
+        self.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        self.setWordWrap(False)
+        self.setContentsMargins(8, 2, 8, 2)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
+        self._fit_two_lines()
+
+    def _fit_two_lines(self):
+        metrics = self.fontMetrics()
+        margins = self.contentsMargins()
+        height = max(36, metrics.height()+metrics.lineSpacing()+
+                     margins.top()+margins.bottom()+2*self.margin())
+        if self.minimumHeight() != height or self.maximumHeight() != height:
+            self.setFixedHeight(height)
+
+    def event(self, event):
+        result = super().event(event)
+        if event.type() in (QtCore.QEvent.Type.FontChange, QtCore.QEvent.Type.ApplicationFontChange,
+                            QtCore.QEvent.Type.StyleChange, QtCore.QEvent.Type.Polish,
+                            QtCore.QEvent.Type.DevicePixelRatioChange):
+            self._fit_two_lines()
+        return result
+
+
 class _GraphFullscreenWindow(QtWidgets.QMainWindow):
     def __init__(self, controller):
         super().__init__(controller.window, QtCore.Qt.WindowType.Window)
@@ -122,16 +155,13 @@ class GraphFullscreenController(QtCore.QObject):
         row.addWidget(self.navigation_bar, 1)
         self.exit_button = QtWidgets.QToolButton(host)
         self.exit_button.setDefaultAction(self.exit_action)
-        self.exit_button.setText('Exit Fullscreen (F11)')
+        self.exit_button.setText('Exit Fullscreen ('+self.action.shortcut().toString()+')')
         self.exit_button.setAccessibleName('Exit Fullscreen Graph')
         self.exit_button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
         row.addWidget(self.exit_button)
         layout.addLayout(row)
-        self.hover_readout = QtWidgets.QLabel('Mouse X/Y · Move over the graph to inspect values', host)
+        self.hover_readout = _HoverReadoutLabel('Mouse X/Y · Move over the graph to inspect values', host)
         self.hover_readout.setObjectName('fullscreenMouseReadout')
-        self.hover_readout.setTextFormat(QtCore.Qt.TextFormat.PlainText)
-        self.hover_readout.setMinimumHeight(28)
-        self.hover_readout.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
         self.hover_readout.setAccessibleName('Mouse X and Y values')
         layout.addWidget(self.hover_readout)
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, host)
@@ -185,6 +215,9 @@ class GraphFullscreenController(QtCore.QObject):
 
     def enter(self, pane=None):
         """Expand the same visible PlotPane, retaining its source/curve objects."""
+        other=getattr(self.window,'workspace_fullscreen',None)
+        if other is not None and other is not self and other.is_active:
+            other.exit()
         if pane is None:
             pane = self.window.active_workspace.active
         if self.is_active:

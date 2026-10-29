@@ -452,8 +452,11 @@ class PlotPane(pg.PlotWidget):
             for command in ('pan','cursor','xy','x','y'):
                 menu.addAction(workspace.navigation_actions[command])
         menu.addSeparator()
+        expand_all=menu.addAction('Full Screen Workspace')
+        expand_all.setToolTip('Expand every graph in the current split layout (F11)')
+        expand_all.triggered.connect(lambda:self.contextRequested.emit('fullscreen-workspace',self))
         expand=menu.addAction('Full Screen Graph')
-        expand.setToolTip('Expand this graph with zoom controls and cursor values (F11)')
+        expand.setToolTip('Expand this graph with zoom controls and cursor values (Shift+F11)')
         expand.triggered.connect(lambda:self.contextRequested.emit('fullscreen',self))
         colors=menu.addMenu('Change Trace Color');colors.setEnabled(bool(self.ids))
         menu._submenus.append(colors)

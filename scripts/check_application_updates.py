@@ -33,14 +33,14 @@ from app_version import VERSION
 from scripts.check_installer import registration, invoke
 from scripts.build_installer import compile_installer
 
-PRIOR_VERSION='2.4.1'
+PRIOR_VERSION='2.4.2'
 PRIOR_ARTIFACTS={
-    'portable':{'name':'ApplianceSignalStudio.exe','size':154947356,
-                'sha256':'490540513144e981f597334c833a4cb1913c6b90946d559f86eaccd80cde703e'},
-    'portable-zip':{'name':'ApplianceSignalStudio_Portable.zip','size':155789725,
-                    'sha256':'8974f6bed1ea52e2bde3bec73757525ef30d0278e07610a9ad9afc143ba36ecc'},
-    'installer':{'name':'ApplianceSignalStudio-Setup-2.4.1.exe','size':134843409,
-                 'sha256':'53c32165db4c1aa8b01dd4157c8ebfe67727157775e40ba7c1dce27cba285da6'},
+    'portable':{'name':'ApplianceSignalStudio.exe','size':155109658,
+                'sha256':'b227a1b4df6dd8ed250e748ef81f2b476fe734c9ab61c0b3e0f2eb9d7467a872'},
+    'portable-zip':{'name':'ApplianceSignalStudio_Portable.zip','size':155948594,
+                    'sha256':'bc030804f15666e358e5e11b75ca7386f8a2660b372b63421fb82d0a7f83f344'},
+    'installer':{'name':'ApplianceSignalStudio-Setup-2.4.2.exe','size':135000968,
+                 'sha256':'89de0b9aaa3fcf3940fc7afbde97bb96c381fd35b029bcb2664bf4b4d1e1cff7'},
 }
 
 
@@ -652,7 +652,7 @@ def check():
                                          'poll_ms':25,'positive_control':public_visibility_summary(visibility_positive_control,setup=setup,manual_positive_control=True),
                                          'installed_cases':visibility_checks},
             'limitations':['Harness invokes the current production updater against actual pinned v'+PRIOR_VERSION+' GUIs; it does not click the previous binary\'s update UI.',
-                           'The immutable v2.4.1 update UI still invokes /SILENT; its one-time transition may show Setup progress. Quiet-window evidence covers the current launcher code, not a retroactive old-binary change.',
+                           'The pinned v2.4.2 updater already uses quiet Setup. This harness invokes the current launcher directly rather than clicking that prior binary\'s update UI.',
                            'Visible windows are sampled every 25 ms; this does not certify the absence of every shorter transient flash or OS security prompt.',
                            'The previous runtime supports acknowledgements, but fallback uses ordinary --restore; its exact-version GUI survival and independent recovery snapshot load are checked separately.',
                            'Installed late-failure fallback restarts previous runtime; full registration/shortcut rollback requires rerunning previous official Setup.',

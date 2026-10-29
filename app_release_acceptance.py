@@ -45,6 +45,8 @@ REQUIRED_CHECK_IDS = frozenset({
     'REAL-LOADED-DATA-COMPARISON-ISOLATION',
     'REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE',
     'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES',
+    'REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE',
+    'REAL-TWO-SIGNAL-COMPARISON-EVIDENCE',
 } | {f'LAYOUT-{layout}-{theme}-{width}'
      for layout in ('Single', 'Horizontal split', 'Vertical split', '2×2', 'Stacked', '3 stacked', '10 panels')
      for theme in ('Dark', 'Light') for width in (1024, 1536)})
@@ -99,6 +101,56 @@ def time_pixel_alignment(panes, columns, *, tolerance=.5):
                          'tolerance_logical_pixels': tolerance, 'panes': records})
     assert observed, 'No temporal pane was available for pixel-alignment acceptance'
     return observed
+
+
+def verify_comparison_interval_metrics(result):
+    """Independently integrate exported linear differences, not engine totals.
+
+    Simpson integration is exact for a linear difference and its square. For
+    absolute error, split an interval at a sign crossing before integrating.
+    This cross-check consumes the complete exported evidence and also rejects
+    omitted/overlapping timeline intervals or unsupported values marked known.
+    """
+    import math
+    import numpy as np
+    assert result.get('status') == 'compared'
+    scope, metrics = result['scope'], result['metrics']
+    rows = result['differences']
+    assert rows and scope['span_min'] > 0
+    end = float(scope['start_min'])
+    duration = bias_area = square_area = absolute_area = 0.
+    maximum = 0.
+    supported = 0
+    for row in rows:
+        left, right = float(row['start_min']), float(row['end_min'])
+        assert np.isclose(left, end, rtol=0, atol=1e-7), 'Difference evidence omits or overlaps a timeline interval'
+        h = right-left
+        assert h > 0 and np.isclose(h, row['duration_min'], rtol=1e-9, atol=1e-9)
+        end = right
+        if not row['supported']:
+            assert row['delta_start'] is None and row['delta_end'] is None
+            continue
+        a, b = float(row['delta_start']), float(row['delta_end'])
+        assert math.isfinite(a) and math.isfinite(b)
+        midpoint = (a+b)/2
+        duration += h
+        bias_area += h*(a+4*midpoint+b)/6
+        square_area += h*(a*a+4*midpoint*midpoint+b*b)/6
+        fractions = [0., 1.]
+        if a*b < 0:
+            fractions.insert(1, -a/(b-a))
+        for x, y in zip(fractions, fractions[1:]):
+            absolute_area += h*(y-x)*(abs(a+(b-a)*x)+abs(a+(b-a)*y))/2
+        maximum = max(maximum, abs(a), abs(b))
+        supported += 1
+    assert np.isclose(end, scope['end_min'], rtol=0, atol=1e-7)
+    assert duration > 0 and supported > 0
+    expected = {'compared_duration_min': duration, 'coverage_fraction': duration/scope['span_min'],
+                'mean_bias': bias_area/duration, 'mean_absolute_difference': absolute_area/duration,
+                'rmse': math.sqrt(square_area/duration), 'max_absolute_difference': maximum}
+    for field, value in expected.items():
+        assert np.isclose(metrics[field], value, rtol=1e-9, atol=1e-8), 'Exported intervals disagree with '+field
+    return {'supported_intervals': supported, 'complete_intervals': len(rows), **expected}
 
 
 @contextmanager
@@ -621,6 +673,303 @@ def _run_workbench(recorder, samples, output):
                     'same_pane_curves_grid_and_docks_restored': True}
         recorder.check('REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE', selected_graph_fullscreen,
                        'graph_fullscreen', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def complete_workspace_fullscreen():
+            from app_plot_workspace import PlotPane
+            from shiboken6 import isValid
+            window.tabs.setCurrentWidget(workspace)
+            workspace.set_layout('Vertical split')
+            workspace.set_time_lock(True)
+            temperature = real_channel('tdms', '°C')
+            pressure = real_channel('machine', 'Pa')
+            speed = real_channel('machine', 'RPM')
+            actuator = next(channel for channel in fixture_stores['machine'].channels.values()
+                            if channel.attributes.get('actuator_binary'))
+            first, second = workspace.visible_panes()
+            first.bind([temperature.id, pressure.id])
+            second.bind([speed.id, actuator.id])
+            workspace.set_active(second)
+            x, y = speed.values()
+            finite = np.flatnonzero(np.isfinite(y))
+            assert len(finite) > 3
+            sample = int(finite[len(finite)//3])
+            later = int(finite[2*len(finite)//3])
+            assert sample+1 < later and np.isfinite(y[sample+1])
+            for cursor, index in enumerate((sample, later)):
+                second.lock_cursor(cursor, speed.id)
+                second.cursor_locks[cursor]['index'] = index
+            second.restore_ranges(second.state())
+            events()
+            panes = tuple(workspace.visible_panes())
+            container = workspace.container
+            slots = [workspace.grid.getItemPosition(workspace.grid.indexOf(pane)) for pane in panes]
+            curves = [dict(pane.curves) for pane in panes]
+            ids = [list(pane.ids) for pane in panes]
+            ranges = [deepcopy(pane.getViewBox().viewRange()) for pane in panes]
+            originals = {channel.id: (channel, channel.x, channel.y, channel.raw_y)
+                         for channel in (temperature, pressure, speed, actuator)}
+            docks, geometry = QtCore.QByteArray(window.saveState()), QtCore.QRect(window.geometry())
+            controller = window.workspace_fullscreen
+            assert controller.action.shortcut().toString() == 'F11'
+            assert window.graph_fullscreen.action.shortcut().toString() == 'Shift+F11'
+            checked_geometries = []
+            try:
+                # This is the same QAction as the graph-header control and F11.
+                controller.action.trigger()
+                for _ in range(4):events()
+                host = controller.fullscreen_window
+                assert controller.is_active and host.isVisible() and host.isFullScreen()
+                assert controller.workspace is workspace
+                assert controller.graph_scroll.widget() is container
+                assert set(p for p in host.findChildren(PlotPane) if p.isVisible()) == set(panes)
+                for index, pane in enumerate(panes):
+                    assert pane.ids == ids[index] and pane.curves == curves[index]
+                    np.testing.assert_allclose(pane.getViewBox().viewRange(), ranges[index], rtol=0, atol=1e-7)
+                active = workspace.active
+                stable_rects = [QtCore.QRect(pane.viewport().mapToGlobal(QtCore.QPoint()), pane.viewport().size())
+                                for pane in panes]
+                stable_ranges = [deepcopy(pane.getViewBox().viewRange()) for pane in panes]
+                for index, pane in enumerate(panes):
+                    bounds = pane.getViewBox().sceneBoundingRect()
+                    point = bounds.topLeft()+QtCore.QPointF(bounds.width()*.4, bounds.height()*.45)
+                    QtTest.QTest.mouseMove(pane.viewport(), pane.mapFromScene(point))
+                    # Native/offscreen platforms differ in synthetic scene
+                    # delivery. The real coalescer still resolves QCursor and
+                    # widget ownership, including a queued stale leave event.
+                    pane.scene().sigMouseMoved.emit(point)
+                    for _ in range(3):events()
+                    assert pane.hover_state is not None
+                    assert 'Graph '+str(index+1) in controller.hover_readout.text()
+                    assert len(controller.hover_readout.text().splitlines()) == 2
+                    assert workspace.active is active, 'Read-only hover changed the active graph'
+                    for number, graph in enumerate(panes):
+                        assert QtCore.QRect(graph.viewport().mapToGlobal(QtCore.QPoint()), graph.viewport().size()) == stable_rects[number], 'Mouse hover moved a split graph canvas'
+                        np.testing.assert_allclose(graph.getViewBox().viewRange(), stable_ranges[number], rtol=0, atol=1e-9)
+                    QtTest.QTest.mouseMove(controller.exit_button, controller.exit_button.rect().center())
+                    pane.scene().sigMouseMoved.emit(point)
+                    for _ in range(3):events()
+                    assert pane.hover_state is None and len(controller.hover_readout.text().splitlines()) == 1
+                    for number, graph in enumerate(panes):
+                        assert QtCore.QRect(graph.viewport().mapToGlobal(QtCore.QPoint()), graph.viewport().size()) == stable_rects[number]
+                    checked_geometries.append([stable_rects[index].x(), stable_rects[index].y(),
+                                               stable_rects[index].width(), stable_rects[index].height()])
+                controller.pane_selector.setCurrentIndex(0)
+                for _ in range(2):events()
+                assert controller.pane is first
+                assert {controller.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)
+                        for row in range(controller.readout.rowCount())} == set(first.ids)
+                controller.pane_selector.setCurrentIndex(1)
+                for _ in range(2):events()
+                assert controller.pane is second
+                rows = {controller.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole): row
+                        for row in range(controller.readout.rowCount())}
+                assert set(rows) == set(second.ids)
+                assert controller.readout.item(rows[speed.id], 2).text() == f'{y[sample]:.6g}'
+                workspace.navigation_actions['x'].trigger()
+                before_x = np.array(second.getViewBox().viewRange()[0])
+                before_y = [[list(view.viewRange()[1]) for view in pane.y_views()] for pane in panes]
+                workspace.navigation_actions['in'].trigger()
+                for _ in range(2):events()
+                zoomed = second.getViewBox().viewRange()[0]
+                assert np.isclose(np.ptp(zoomed)/np.ptp(before_x), .8)
+                for number, pane in enumerate(panes):
+                    np.testing.assert_allclose(pane.getViewBox().viewRange()[0], zoomed, rtol=0, atol=1e-7)
+                    assert tuple(pane.getViewBox().state['mouseEnabled']) == (True, False)
+                    for view, expected in zip(pane.y_views(), before_y[number]):
+                        np.testing.assert_allclose(view.viewRange()[1], expected, rtol=0, atol=1e-7)
+                second.step_cursor(0, 1)
+                for _ in range(2):events()
+                assert second.cursor_locks[0]['index'] == sample+1
+                assert controller.readout.item(rows[speed.id], 2).text() == f'{y[sample+1]:.6g}'
+                deliberate = [deepcopy(pane.state()) for pane in panes]
+            finally:
+                controller.exit()
+                events()
+            assert workspace.scroll.widget() is container
+            assert tuple(workspace.visible_panes()) == panes
+            assert window.saveState() == docks and window.geometry() == geometry
+            for index, pane in enumerate(panes):
+                assert workspace.grid.getItemPosition(workspace.grid.indexOf(pane)) == slots[index]
+                assert pane.ids == ids[index] and pane.curves == curves[index]
+                current = pane.state()
+                for key in ('ids', 'bindings', 'cursors', 'cursor_locks', 'annotations'):
+                    assert current.get(key) == deliberate[index].get(key), 'Fullscreen return changed '+key
+                np.testing.assert_allclose(current['range'], deliberate[index]['range'], rtol=0, atol=1e-7)
+            assert all(isValid(action) for action in workspace.navigation_actions.values())
+            for channel_id, (channel, raw_x, raw_y, original_values) in originals.items():
+                assert store.channels[channel_id] is channel and channel.x is raw_x and channel.y is raw_y
+                assert channel.raw_y is original_values
+            return {'source_roles': ['tdms', 'machine'], 'visible_panes': len(panes),
+                    'units': ['°C', 'Pa', 'RPM', 'state'], 'hover_canvas_rectangles': checked_geometries,
+                    'fixed_hover_geometry': True, 'same_container_panes_curves_and_grid_restored': True,
+                    'cursor_A_source_index': sample+1, 'shared_X_zoom_ratio': .8,
+                    'active_pane_values_and_raw_sources_preserved': True}
+        recorder.check('REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE', complete_workspace_fullscreen,
+                       'graph_fullscreen', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
+
+        def two_signal_comparison_evidence():
+            """Drive the actual one-click worker and inspect its complete outputs."""
+            from unittest.mock import patch
+            from openpyxl import load_workbook
+            from matplotlib.backends.backend_pdf import PdfPages
+            from matplotlib.text import Text
+            from matplotlib.table import Table
+            import re
+            from app_dialog_history import remember_path
+
+            reference = next(channel for channel in fixture_stores['machine'].channels.values()
+                             if channel.unit == 'RPM' and 'feedback' in channel.name.casefold())
+            candidate = next(channel for channel in fixture_stores['simulation'].channels.values()
+                             if channel.unit == 'RPM' and channel.name == 'drum_speed')
+            assert reference.dataset_id != candidate.dataset_id
+            window.tabs.setCurrentWidget(workspace)
+            window.portal.search.clear()
+            window.portal.regex.setChecked(False)
+            window.portal.rebuild()
+            iterator = QtWidgets.QTreeWidgetItemIterator(window.portal.tree)
+            chosen = {reference.id, candidate.id}
+            while iterator.value():
+                item = iterator.value()
+                item.setSelected(item.data(0, QtCore.Qt.ItemDataRole.UserRole) in chosen)
+                iterator += 1
+            events()
+            assert window.portal.selected() == [reference.id, candidate.id], 'The explicit cross-file selection was not retained'
+            controls = window.signal_comparison
+            before_views = deepcopy([view.state() for view in window.workspaces])
+            before_channel_ids, before_dataset_ids = set(store.channels), set(store.datasets)
+            originals = {channel.id: (channel, channel.x, channel.y, channel.raw_y,
+                sha256_file(samples/next(entry['filename'] for entry in manifest['files']
+                    if entry['role'] == role)),
+                hashlib.sha256(channel.x.tobytes()+channel.y.tobytes()).hexdigest())
+                for role, channel in (('machine', reference), ('simulation', candidate))}
+            metadata = deepcopy(window.engineering.session['metadata'])
+            test_note = 'Acceptance evidence: compare supported measurements; no test limits evaluated.'
+            window.engineering.session['metadata']['Observations'] = test_note
+            destination = output/'two-signal-report'
+            destination.mkdir(exist_ok=True)
+            assert remember_path('SignalComparisonReport', destination/'requested.pdf')
+            before_files = set(destination.iterdir())
+            warnings = []
+            rendered_pages = []
+            save_pdf_page = PdfPages.savefig
+            def observe_saved_pdf_page(pdf, figure, *args, **kwargs):
+                # Observe the actual text artists supplied to the shipped PDF
+                # backend and still call that backend. No PDF reader library
+                # or alternate test renderer is required in frozen packages.
+                texts = [artist.get_text() for artist in figure.findobj(match=Text)]
+                for table in figure.findobj(match=Table):
+                    texts.extend(cell.get_text().get_text() for cell in table.get_celld().values())
+                value = save_pdf_page(pdf, figure, *args, **kwargs)
+                rendered_pages.append('\n'.join(texts))
+                return value
+            started = time.monotonic()
+            try:
+                # Only a failure-message boundary is made nonblocking. The
+                # selected QAction, engine, background worker, report writers
+                # and results dialog all run as shipped in this distribution.
+                with patch.object(QtWidgets.QMessageBox, 'warning',
+                        side_effect=lambda parent, title, message, *args: warnings.append(str(message))), \
+                        patch.object(PdfPages, 'savefig', observe_saved_pdf_page):
+                    controls.action.trigger()
+                    assert window.busy and window.workers, 'Compare did not start its background operation'
+                    deadline = time.monotonic()+360
+                    while (window.busy or window.workers) and time.monotonic() < deadline:
+                        events()
+                    assert not window.busy and not window.workers, 'The comparison worker did not finish within six minutes'
+                    events()
+                assert warnings == [], 'The real comparison reported errors: '+repr(warnings)
+                result, bundle = controls.last_result, controls.last_bundle
+                assert result and result['status'] == 'compared' and bundle
+                assert result['reference']['channel_id'] == reference.id
+                assert result['candidate']['channel_id'] == candidate.id
+                assert result['alignment']['mode'] == 'elapsed'
+                assert result['metrics']['unit'] == 'RPM'
+                independent = verify_comparison_interval_metrics(result)
+                paths = {key: Path(bundle[key]) for key in ('pdf', 'workbook', 'evidence')}
+                assert all(path.parent.resolve() == destination.resolve() and path.is_file() and path.stat().st_size > 0
+                           for path in paths.values())
+                assert set(destination.iterdir())-before_files == set(paths.values()), 'A report transaction left partial or unowned files'
+                evidence = json.loads(paths['evidence'].read_text(encoding='utf-8'))
+                exported = evidence['signal_comparison']
+                assert exported == result, 'The JSON companion differs from the displayed comparison'
+                assert evidence['report']['Metadata']['Observations'] == test_note
+                assert evidence['raw_interval_sample_count'] == len(reference.x)+len(candidate.x)
+                assert len(evidence['raw_interval_samples']) == evidence['raw_interval_sample_count']
+                assert len(exported['differences']) == independent['complete_intervals']
+                # The workbook keeps native numbers, not six-digit display
+                # strings, and retains every sample, interval and event.
+                book = load_workbook(paths['workbook'], read_only=True, data_only=True)
+                try:
+                    required = {'Active interval', 'Cursor summary', 'Pair comparison',
+                                'Difference intervals', 'Activity events', 'Sources'}
+                    assert required <= set(book.sheetnames)
+                    assert book['Active interval'].max_row-1 == evidence['raw_interval_sample_count']
+                    assert book['Difference intervals'].max_row-1 == len(result['differences'])
+                    assert book['Activity events'].max_row-1 == len(result['events'])
+                    rows = iter(book['Pair comparison'].values)
+                    headers = next(rows)
+                    assert 'Field' in headers and 'Value' in headers
+                    fi, vi = headers.index('Field'), headers.index('Value')
+                    metric_cells = {row[fi]: row[vi] for row in rows}
+                    for key in ('compared_duration_min', 'coverage_fraction', 'mean_bias',
+                                'mean_absolute_difference', 'rmse', 'max_absolute_difference'):
+                        value = metric_cells['metrics.'+key]
+                        assert isinstance(value, (int, float)) and not isinstance(value, bool)
+                        assert np.isclose(value, result['metrics'][key], rtol=1e-12, atol=1e-10), 'Workbook rounded '+key
+                finally:
+                    book.close()
+                pdf_bytes = paths['pdf'].read_bytes()
+                assert pdf_bytes.startswith(b'%PDF-') and b'%%EOF' in pdf_bytes[-1024:]
+                page_count = len(re.findall(rb'/Type\s*/Page\b', pdf_bytes))
+                assert page_count == len(rendered_pages), 'The saved PDF page objects differ from actual backend writes'
+                pdf_text = '\n'.join(rendered_pages)
+                pdf_words = ' '.join(pdf_text.split())
+                assert reference.name in pdf_words and candidate.name in pdf_words
+                assert 'elapsed' in pdf_text.casefold() and 'coverage' in pdf_text.casefold()
+                assert 'Acceptance evidence' in pdf_words and 'no test limits evaluated' in pdf_words
+                for label in ('Time-weighted average difference', 'Root mean square difference',
+                              'Largest absolute difference', 'Supported comparison coverage'):
+                    assert label in pdf_words, 'The PDF omitted the paired result '+label
+                assert evidence['pdf_pages'] == page_count and page_count >= 4
+                assert controls.result_dialog is not None and controls.result_dialog.isVisible()
+                assert reference.name in controls.result_dialog.sources.text()
+                assert candidate.name in controls.result_dialog.sources.text()
+                shown = {controls.result_dialog.metrics.item(row, 0).text():
+                         controls.result_dialog.metrics.item(row, 1).text()
+                         for row in range(controls.result_dialog.metrics.rowCount())}
+                assert shown['Root mean square difference'] == f'{result["metrics"]["rmse"]:.6g} RPM'
+                assert shown['Supported comparison coverage'] == f'{100*result["metrics"]["coverage_fraction"]:.6g}%'
+                button_texts = {button.text() for button in controls.result_dialog.findChildren(QtWidgets.QPushButton)}
+                assert {'Open Report', 'Open Workbook', 'Open Folder'} <= button_texts
+                assert window.last_export == paths['pdf']
+                assert controls.action.isEnabled()
+                assert [view.state() for view in window.workspaces] == before_views, 'Pair comparison changed the original plotted workspace'
+                assert set(store.channels) == before_channel_ids and set(store.datasets) == before_dataset_ids
+                for role, channel in (('machine', reference), ('simulation', candidate)):
+                    original, raw_x, raw_y, raw_original, file_hash, array_hash = originals[channel.id]
+                    assert store.channels[channel.id] is original and channel.x is raw_x and channel.y is raw_y
+                    assert channel.raw_y is raw_original
+                    assert hashlib.sha256(channel.x.tobytes()+channel.y.tobytes()).hexdigest() == array_hash
+                    filename = next(entry['filename'] for entry in manifest['files'] if entry['role'] == role)
+                    assert sha256_file(samples/filename) == file_hash
+                return {'source_roles': ['machine', 'simulation'],
+                    'reference': reference.name, 'candidate': candidate.name, 'alignment': 'elapsed',
+                    'unit': 'RPM', 'raw_samples': evidence['raw_interval_sample_count'],
+                    'complete_difference_intervals': len(result['differences']),
+                    'complete_activity_events': len(result['events']), 'pdf_pages': page_count,
+                    'independent_interval_integrals': independent,
+                    'bundle': {key: {'filename': path.name, 'bytes': path.stat().st_size,
+                                    'sha256': sha256_file(path)} for key, path in paths.items()},
+                    'real_QAction_worker_and_results_dialog': True,
+                    'raw_sources_and_original_workspaces_unchanged': True,
+                    'seconds_with_output_inspection': round(time.monotonic()-started, 3)}
+            finally:
+                window.engineering.session['metadata'] = metadata
+                if controls.result_dialog is not None:
+                    controls.result_dialog.close()
+                events()
+        recorder.check('REAL-TWO-SIGNAL-COMPARISON-EVIDENCE', two_signal_comparison_evidence,
+                       'comparison_report', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
 
         def combinations_and_model_removal():
             assert len(fixture_stores) == 4, 'Import must complete before file combinations'

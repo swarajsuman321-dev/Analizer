@@ -1,0 +1,250 @@
+{
+  "schema": 1,
+  "version": "2.4.3",
+  "date": "2026-10-29",
+  "platform": "Linux Qt offscreen",
+  "status": "source verified; native Windows/public publication pending",
+  "unit_tests": {
+    "tests_run": 553,
+    "passed": 548,
+    "skipped": 5,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 280.436,
+    "log_sha256": "1ae8e9192abf4c20248e2eaaa7a3cfa5ceba7421577815670b087470ac6a921c"
+  },
+  "real_recording_acceptance": {
+    "checks": [
+      {
+        "id": "REAL-FIXTURE-INTEGRITY-IMPORT",
+        "status": "passed"
+      },
+      {
+        "id": "DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT",
+        "status": "passed"
+      },
+      {
+        "id": "PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-TRACE-COLOR-SCOPE-PRESET-EXPORT",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-LOADED-DATA-COMPARISON-ISOLATION",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-TWO-SIGNAL-COMPARISON-EVIDENCE",
+        "status": "passed"
+      },
+      {
+        "id": "ALL-15-FILE-COMBINATIONS",
+        "status": "passed"
+      },
+      {
+        "id": "PER-FILE-CHECKBOX-AND-CLOSE-DATASET",
+        "status": "passed"
+      },
+      {
+        "id": "TDMS-FIRST-REVIEW-REUSE-UNKNOWN-ONLY",
+        "status": "passed"
+      },
+      {
+        "id": "SYNTHETIC-SOURCE-EDGE-CASES",
+        "status": "passed"
+      },
+      {
+        "id": "LOCKED-SAMPLE-MARKER-HUD-EXPORT-RESTORE",
+        "status": "passed"
+      },
+      {
+        "id": "GRAPH-HEADER-CONTEXT-SAFE-NATIVE-FFT",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Single-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Horizontal split-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Vertical split-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-2\u00d72-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-Stacked-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-3 stacked-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Dark-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Dark-1536",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Light-1024",
+        "status": "passed"
+      },
+      {
+        "id": "LAYOUT-10 panels-Light-1536",
+        "status": "passed"
+      },
+      {
+        "id": "NON-TEMPORAL-AND-UNLOCKED-INDEPENDENCE",
+        "status": "passed"
+      },
+      {
+        "id": "NUMERICAL-UNITS-AND-SAFETY-REJECTIONS",
+        "status": "passed"
+      },
+      {
+        "id": "PROCESSING-PREFLIGHT-VALID-DEFAULT-AND-EXPLANATIONS",
+        "status": "passed"
+      },
+      {
+        "id": "QT-WHEEL-BOX-KEYBOARD-SHARED-MODES",
+        "status": "passed"
+      },
+      {
+        "id": "EXACT-REAL-SOURCE-WORKSPACE-ROUNDTRIP",
+        "status": "passed"
+      },
+      {
+        "id": "REAL-INTERVAL-EXPORT-FORMATS-AND-AGREEMENT",
+        "status": "passed"
+      },
+      {
+        "id": "SOURCE-FILES-UNCHANGED",
+        "status": "passed"
+      }
+    ],
+    "passed": 49,
+    "unmet": 0,
+    "unrun": 0,
+    "runner_errors": 0,
+    "application_callback_errors": 0,
+    "expected_safety_rejections": 7,
+    "manual_unrun": 5,
+    "run_id": "4b0e5632-9bb0-4127-8344-996281bce994",
+    "started_at_utc": "2026-10-29T03:36:29.900669+00:00",
+    "finished_at_utc": "2026-10-29T03:43:37.189465+00:00",
+    "seconds": 427.289,
+    "report_sha256": "67f4375f79b7b55fe8ce752fcd408e93775a029caeb03de43efa2c15668c0bd1"
+  },
+  "new_workflows": {
+    "fullscreen_all_split_panes_same_identity_and_stable_hover": true,
+    "two_signal_actual_UI_worker_and_complete_bundle": true,
+    "raw_samples_preserved": 163642,
+    "complete_difference_intervals": 74101,
+    "complete_activity_events": 1757,
+    "pdf_pages_for_real_pair": 12,
+    "independent_interval_integration_agrees": true,
+    "raw_sources_and_original_plots_unchanged": true
+  },
+  "manual_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "remaining_gates": [
+    "Native Windows unit suite and three packaged 49-check runs",
+    "Installer lifecycle and previous-v2.4.2 actual-GUI updates/recovery",
+    "Independent public files/feed/manual/tag verification"
+  ]
+}

@@ -25,7 +25,7 @@ class UpdateWindowObserverTests(unittest.TestCase):
         self.assertEqual(gate.screen_intersections((1919,0,1920,1),monitors),[(1919,0,1920,1)])
 
     def test_previous_pins_match_permanent_verified_release_evidence(self):
-        evidence=json.loads((gate.ROOT/'docs/validation/release-v2.4.1.json').read_text())
+        evidence=json.loads((gate.ROOT/'docs/validation'/('release-v'+gate.PRIOR_VERSION+'.json')).read_text())
         self.assertEqual(gate.PRIOR_VERSION,evidence['version'])
         for kind,artifact in [('portable','standalone-onefile'),('portable-zip','standalone-folder'),('installer','installed-setup')]:
             pin=gate.PRIOR_ARTIFACTS[kind];actual=evidence['artifacts'][artifact]

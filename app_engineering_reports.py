@@ -42,7 +42,7 @@ def source_records(store,cancel=None,dataset_ids=None):
                 for block in iter(lambda:stream.read(1024*1024),b''):
                     if cancel and cancel.is_set():raise InterruptedError('Report cancelled')
                     digest.update(block)
-            method='SHA-256 source file'
+            method='SHA-256 source file at report generation'
         else:
             for channel in store.channels.values():
                 same_source=channel.source==c.source if c.source else not channel.source and channel.dataset_id==c.dataset_id
@@ -54,24 +54,103 @@ def source_records(store,cancel=None,dataset_ids=None):
     return rows
 
 
+def report_traces(store,run,selected_ids=None,*,quality=False):
+    """Use mapped sources and explicitly selected time channels, never guesses."""
+    from app_engineering_trace import Trace
+    traces={**(run.get('quality_traces',{}) if quality else {}),**run['traces']}
+    represented={trace.channel.id for trace in traces.values()}
+    for id in selected_ids or []:
+        channel=store.channels.get(id) if store is not None else None
+        if channel and channel.id not in represented and channel.dataset_id==run['dataset_id'] and channel.coordinate_kind=='time':
+            traces['source_'+id]=Trace(channel,offset=run['offset_s'])
+            represented.add(channel.id)
+    return traces
+
+
+def reporting_runs(runs,comparison):
+    """Name legacy ordered run arguments without changing their measurements."""
+    counts={};result=[]
+    for run in runs:
+        scope=run.get('report_scope','whole_recording')
+        index=counts.get(scope,0);counts[scope]=index+1
+        default=(('reference','candidate','golden') if comparison else
+                 ('analysis','candidate','golden'))[min(index,2)]
+        result.append({**run,'role':run.get('role') or default})
+    return result
+
+
+def comparison_evidence_rows(store,runs,current,scope):
+    """Attach configured run identities and limitations to existing KPI deltas.
+
+    Values and deviations come solely from compare_runs. Source labels, timing
+    support and reasons explain those existing results; labels never create a
+    new channel pairing, calibration, acceptance decision or match score.
+    """
+    from app_engineering_report_summary import scope_label,finite_number
+    scoped=[run for run in runs if scope_label(run)==scope]
+    def run_for(role,index):
+        explicit=next((run for run in scoped if run.get('role')==role),None)
+        if explicit is not None:return explicit
+        # Preserve the original ordered API only when no roles were declared.
+        # An explicit Golden run must never become a missing Candidate by index.
+        return scoped[index] if not any(run.get('role') for run in scoped) and index<len(scoped) else None
+    candidate=run_for('candidate',1)
+    rows=[]
+    for baseline_role,index,key,label in [('reference',0,'kpis','Reference vs Candidate'),('golden',2,'golden_kpis','Golden vs Candidate')]:
+        baseline=run_for(baseline_role,index)
+        left={row['id']:row for row in (baseline or {}).get('kpis',[])}
+        right={row['id']:row for row in (candidate or {}).get('kpis',[])}
+        for original in current.get(key,[]):
+            a,b=left.get(original['id'],{}),right.get(original['id'],{})
+            def identity(run,result):
+                dataset=store.datasets.get((run or {}).get('dataset_id'))
+                return {'dataset_id':(run or {}).get('dataset_id'),
+                        'recording':dataset.name if dataset is not None else 'Not provided',
+                        'sources':result.get('source_details',[]),'coverage':result.get('coverage'),
+                        'unit':result.get('unit'),'offset_s':(run or {}).get('offset_s'),
+                        'quality':result.get('quality',{}),'acceptance':result.get('acceptance','Not Evaluated')}
+            limitations=[]
+            for role,result in [(baseline_role.title(),a),('Candidate',b)]:
+                if result.get('value') is None:
+                    limitations.append(role+': '+str(result.get('reason') or result.get('blocker') or 'Required result is unavailable'))
+            if original.get('reference')==0 and original.get('percent') is None:
+                limitations.append('Relative deviation not evaluated: the baseline value is zero')
+            rows.append({**original,'Comparison':label,'Scope':scope,
+                         'baseline_role':baseline_role,'candidate_role':'candidate',
+                         'baseline_evidence':identity(baseline,a),'candidate_evidence':identity(candidate,b),
+                         'result_state':'Available' if finite_number(original.get('delta')) is not None else 'Not Available',
+                         'comparison_reason':'; '.join(limitations) or 'Existing KPI values compared for the stated scope; acceptance requires configured test-plan evidence'})
+    return rows
+
+
 def report_tables(store,runs,comparison,metadata=None,cancel=None,scope='whole_recording',view=None,selected_ids=None):
-    from app_engineering_report_summary import event_identity,event_category,scope_label,required_result,GROUPING_POLICY
+    from app_engineering_report_summary import event_identity,event_category,scope_label,required_result,GROUPING_POLICY,REVIEWED_REPORT_FIELDS
+    runs=reporting_runs(runs,comparison)
     metadata=metadata or {};profile=runs[0]['profile'];stamp=datetime.now(timezone.utc).isoformat()
     sources=source_records(store,cancel,{r['dataset_id'] for r in runs} if all(r.get('dataset_id') is not None for r in runs) else None);info={'Application version':VERSION,'Generated UTC':stamp,'Profile':profile['id'],'Profile schema':profile['schema_version'],**profile.get('metadata',{}),**metadata,'Report ID':metadata.get('Report ID') or uuid4().hex,'Report scope':scope,'Data policy':runs[0]['quality_policy'],'Profile configuration':profile,'Calibration definitions':profile.get('calibrations',{}),'Tolerance configuration':profile.get('tolerances',{}),'Acceptance limits':profile.get('acceptance',{}),'Sources':sources,'Run alignment':[{'role':r.get('role','analysis'),'dataset':r['dataset_id'],'offset_s':r['offset_s'],'scope':scope_label(r)} for r in runs],'Processing':[{'id':c.id,'name':c.name,'parents':c.parents,'recipe':c.recipe,'masks':c.masks,'shift':c.shift,'unit':c.unit,'source_unit':c.attributes.get('raw_unit',c.unit)} for c in store.channels.values()],'View':view or metadata.get('View',{}),'Event grouping policy':GROUPING_POLICY}
     positions=(view or {}).get('cursors',[])
-    info['Source timing quality']=[{'Run':run.get('role','analysis'),'Scope':scope_label(run),'channel_id':trace.channel.id,'source':trace.channel.name,'canonical_role':key,**trace.quality(run.get('scope_start_s',(run.get('run_bounds') or (None,None))[0]),run.get('scope_end_s',(run.get('run_bounds') or (None,None))[1]))} for run in runs for key,trace in run.get('quality_traces',run['traces']).items()]
+    info['Reviewed report notes']={key:str(info.get(key) or '').strip() or 'Not provided' for key in REVIEWED_REPORT_FIELDS}
+    info['Source timing quality']=[]
+    for run in runs:
+        dataset=store.datasets.get(run.get('dataset_id'))
+        for key,trace in report_traces(store,run,selected_ids,quality=True).items():
+            info['Source timing quality'].append({'Run':run.get('role','analysis'),'Scope':scope_label(run),
+                'dataset_id':run.get('dataset_id'),'recording':dataset.name if dataset is not None else 'Not provided',
+                'channel_id':trace.channel.id,'source':trace.channel.name,'canonical_role':key,'unit':trace.unit,
+                **trace.quality(run.get('scope_start_s',(run.get('run_bounds') or (None,None))[0]),run.get('scope_end_s',(run.get('run_bounds') or (None,None))[1]))})
     if len(positions)==2:
         from app_engineering_report_pdf import cursor_trace_values
-        from app_engineering_trace import Trace
         cursor_rows=[];a,b=sorted(float(value)*60 for value in positions)
         for run in runs:
-            traces=dict(run['traces']);represented={trace.channel.id for trace in traces.values()}
-            for id in selected_ids or []:
-                channel=store.channels.get(id)
-                if channel and channel.id not in represented and channel.dataset_id==run['dataset_id'] and channel.coordinate_kind=='time':traces['source_'+id]=Trace(channel,offset=run['offset_s'])
-            for key,trace in traces.items():
+            dataset=store.datasets.get(run.get('dataset_id'))
+            for key,trace in report_traces(store,run,selected_ids).items():
                 values=cursor_trace_values(trace,positions,(view or {}).get('cursor_locks'),(view or {}).get('snap',True))
-                cursor_rows.append({'run':run.get('role','analysis'),'scope':scope_label(run),'channel_id':trace.channel.id,'source':trace.channel.name,'canonical_role':None if key.startswith('source_') else key,'unit':trace.unit,'A_min':positions[0],'B_min':positions[1],'A_value':values[0],'B_value':values[1],'absolute_delta_x_min':abs(b-a)/60,'absolute_delta_y':abs(values[1]-values[0]),'interval_statistics':trace.stats(a,b)})
+                cursor_rows.append({'run':run.get('role','analysis'),'scope':scope_label(run),'dataset_id':run.get('dataset_id'),
+                    'recording':dataset.name if dataset is not None else 'Not provided','channel_id':trace.channel.id,'source':trace.channel.name,
+                    'canonical_role':None if key.startswith('source_') else key,'unit':trace.unit,'A_min':positions[0],'B_min':positions[1],
+                    'A_value':values[0],'B_value':values[1],'absolute_delta_x_min':abs(b-a)/60,'signed_delta_y':values[1]-values[0],
+                    'absolute_delta_y':abs(values[1]-values[0]),'interval_statistics':trace.stats(a,b),'interval_quality':trace.quality(a,b),
+                    'cursor_locks':(view or {}).get('cursor_locks',[]),'snap':(view or {}).get('snap',True)})
         info['Cursor interval evidence']=cursor_rows
     kpis=[];phases=[];events=[];mapping=[]
     for number,run in enumerate(runs):
@@ -91,7 +170,7 @@ def report_tables(store,runs,comparison,metadata=None,cancel=None,scope='whole_r
     if metadata.get('Interval comparison'):comparisons.append((metadata['Interval comparison'],'Active cursor interval'))
     comparison_rows=[]
     for current,comparison_scope in comparisons:
-        comparison_rows.extend([{**row,'Comparison':'Reference vs Candidate','Scope':comparison_scope} for row in current['kpis']]+[{**row,'Comparison':'Golden vs Candidate','Scope':comparison_scope} for row in current['golden_kpis']])
+        comparison_rows.extend(comparison_evidence_rows(store,runs,current,comparison_scope))
         for channel,record in current['envelopes'].items():
             if record['breaches']:
                 for event in record['breaches']:breaches.append({'Channel':channel,'Scope':comparison_scope,**event,'Maximum deviation':record['max_deviation'],'Unit':record['unit'],'Maximum %':record['max_percent'],'Compared seconds':record['coverage_s']})
@@ -114,10 +193,42 @@ def report_tables(store,runs,comparison,metadata=None,cancel=None,scope='whole_r
     return tables,info
 
 
-def report_preview(runs,scope='whole_recording',view=None,comparison=None,selected_ids=None,detailed_appendix=False):
+def report_preview(runs,scope='whole_recording',view=None,comparison=None,selected_ids=None,detailed_appendix=False,metadata=None,store=None):
     """Return the same exact page budget used by PDF export, without file I/O."""
     from app_engineering_report_summary import report_plan
-    plan=report_plan(runs,scope=scope,detailed_appendix=detailed_appendix)
+    if store is not None:
+        view,selected_ids=source_view_identity(store,view,selected_ids)
+    metadata=metadata or {}
+    positions=(view or {}).get('cursors',[])
+    cursor_records=sum(len(report_traces(store,run,selected_ids)) for run in runs) if len(positions)==2 else 0
+    quality_records=sum(len(report_traces(store,run,selected_ids,quality=True)) for run in runs)
+    visual=[run for run in runs if run.get('report_scope','whole_recording')=='whole_recording'] or runs
+    visual_traces=[report_traces(store,run,selected_ids) for run in visual]
+    keys=list(dict.fromkeys(key for traces in visual_traces for key in traces))
+    if selected_ids:
+        selected_keys=[key for key in keys if any(key in traces and traces[key].channel.id in selected_ids for traces in visual_traces)]
+        if selected_keys:keys=selected_keys
+    else:keys=[] # The established summary selects four priority roles by default.
+    comparison_records=sum(len((comparison or {}).get(key,[])) for key in ('kpis','golden_kpis'))
+    interval=metadata.get('Interval comparison')
+    if interval:comparison_records+=sum(len(interval.get(key,[])) for key in ('kpis','golden_kpis'))
+    elif scope=='both' and comparison:comparison_records*=2
+    dataset_ids={run.get('dataset_id') for run in runs}
+    identities=set()
+    if store is not None:
+        for channel in store.channels.values():
+            if channel.dataset_id in dataset_ids:
+                identities.add((channel.source,channel.dataset_id if not channel.source else None))
+    present={run.get('report_scope','whole_recording') for run in runs}
+    requested={'whole_recording','cursor_interval'} if scope=='both' else {scope}
+    # Previewing a changed scope can use an earlier analysis until recalculation.
+    # Counts are disclosed as an estimate; export always supplies scoped runs.
+    if scope=='both' and len(present)==1:
+        cursor_records*=2;quality_records*=2
+    plan=report_plan(runs,scope=scope,detailed_appendix=detailed_appendix,
+        comparison_records=comparison_records,cursor_records=cursor_records,
+        selected_plot_records=len(keys),quality_records=quality_records,
+        source_records=len(identities),metadata={**(runs[0]['profile'].get('metadata',{}) if runs else {}),**metadata})
     extra=len((comparison or {}).get('warnings',[]))
     if extra:
         plan['event_records']+=extra
@@ -125,10 +236,9 @@ def report_preview(runs,scope='whole_recording',view=None,comparison=None,select
             import math
             plan['appendix_pages']=math.ceil(plan['event_records']/20)
             plan['expected_pages']=plan['summary_pages']+plan['appendix_pages']
-    plan['cursors_min']=list((view or {}).get('cursors',[]))
-    present={run.get('report_scope','whole_recording') for run in runs}
-    requested={'whole_recording','cursor_interval'} if scope=='both' else {scope}
+    plan['cursors_min']=list(positions)
     plan['event_count_exact']=bool(runs) and present==requested
+    plan['page_count_exact']=plan['event_count_exact'] and store is not None
     return plan
 
 
@@ -188,6 +298,14 @@ def _write_workbook(path,tables,cancel=None):
                 frame[column]=frame[column].map(lambda v:json_text(v) if isinstance(v,(dict,list)) else v)
             frame.to_excel(writer,sheet_name=name,index=False,na_rep='Not Available')
             ws=writer.sheets[name];ws.freeze_panes='A2';ws.auto_filter.ref=ws.dimensions
+            # Report text is evidence, never an Excel program. openpyxl
+            # otherwise infers leading '=' strings as formulas, including user
+            # notes and source labels. Preserve their exact text while leaving
+            # measured numeric cells numeric for downstream calculations.
+            for row_number,row in enumerate(ws.iter_rows(),1):
+                if row_number%8192==0 and cancel and cancel.is_set():raise InterruptedError('Report cancelled')
+                for cell in row:
+                    if isinstance(cell.value,str):cell.data_type='s'
             for cell in ws[1]:cell.font=Font(bold=True,color='FFFFFF');cell.fill=PatternFill('solid',fgColor='243A53')
             if 'percent' in frame:
                 percent_column=list(frame.columns).index('percent')+1
@@ -263,6 +381,7 @@ def export_engineering(path,store,runs,comparison=None,metadata=None,view=None,c
     path=Path(path)
     if path.suffix.lower() not in ('.pdf','.xlsx'):raise ValueError('Choose PDF or Excel for an engineering report')
     view,selected_ids=source_view_identity(store,view,selected_ids)
+    runs=reporting_runs(runs,comparison)
     runs,comparison=_scope_runs(runs,comparison,scope,view,cancel)
     if scope=='both' and comparison:
         from app_engineering_compare import compare_runs
@@ -277,7 +396,7 @@ def export_engineering(path,store,runs,comparison=None,metadata=None,view=None,c
     if not tables['Fault & Anomaly Log'].empty:
         tables['Fault & Anomaly Log']['summary_group_id']=tables['Fault & Anomaly Log']['event_id'].map(group_by_id)
         tables['Fault & Anomaly Log']['report_id']=info['Report ID']
-    plan=report_preview(runs,scope,view,comparison,selected_ids,detailed_appendix)
+    plan=report_preview(runs,scope,view,comparison,selected_ids,detailed_appendix,info,store)
     if scope=='both' and (metadata or {}).get('Interval comparison'):
         plan['event_records']=len(events)
         if detailed_appendix:

@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
-from PySide6 import QtCore, QtTest, QtWidgets
+from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 from shiboken6 import isValid
 
 from app_channel_store import Channel, Dataset
@@ -110,6 +110,54 @@ class GraphFullscreenTests(unittest.TestCase):
         np.testing.assert_allclose(pane.getViewBox().viewRange()[0], before_x, rtol=0, atol=1e-7)
         self.assertTrue(self.controller.exit_button.isVisible())
         self.assertTrue(self.controller.readout.isVisible())
+
+    def test_pointer_hover_and_clear_keep_fullscreen_graph_geometry_stable(self):
+        self.controller.enter(self.pane)
+        self.workspace.navigate('x')
+        self.events()
+        label = self.controller.hover_readout
+        for larger_font in (False, True):
+            with self.subTest(larger_font=larger_font):
+                if larger_font:
+                    font = label.font()
+                    font.setPointSizeF(font.pointSizeF()+4)
+                    label.setFont(font)
+                    self.events()
+                # The whole two-line reading fits at the effective font/DPI;
+                # text contents never participate in the allocated row height.
+                metrics = label.fontMetrics()
+                self.assertEqual(label.minimumHeight(), label.maximumHeight())
+                self.assertGreaterEqual(label.contentsRect().height(), metrics.height()+metrics.lineSpacing())
+                viewport = self.pane.viewport()
+                original_geometry = QtCore.QRect(viewport.mapToGlobal(QtCore.QPoint()), viewport.size())
+                original_ranges = np.array(self.pane.getViewBox().viewRange())
+                original_split = self.controller.splitter.sizes()
+                for fraction in (.2, .65, .35):
+                    rectangle = self.pane.getViewBox().sceneBoundingRect()
+                    point = rectangle.topLeft()+QtCore.QPointF(rectangle.width()*fraction, rectangle.height()*.45)
+                    QtTest.QTest.mouseMove(viewport, self.pane.mapFromScene(point))
+                    # Offscreen Qt does not always emit QGraphicsScene motion
+                    # for a synthetic viewport move. Deliver that same scene
+                    # input to the real coalescer; it resolves actual QCursor
+                    # position/widget ownership rather than trusting this point.
+                    self.pane.scene().sigMouseMoved.emit(point)
+                    self.events()
+                    self.assertIsNotNone(self.pane.hover_state,
+                        f'pointer={QtWidgets.QApplication.widgetAt(viewport.mapToGlobal(self.pane.mapFromScene(point)))} '
+                        f'viewport={viewport} position={viewport.mapToGlobal(self.pane.mapFromScene(point))} cursor={QtGui.QCursor.pos()}')
+                    self.assertEqual(len(label.text().splitlines()), 2)
+                    self.assertIn('Mouse X', label.text())
+                    self.assertEqual(QtCore.QRect(viewport.mapToGlobal(QtCore.QPoint()), viewport.size()), original_geometry)
+                    self.assertEqual(self.controller.splitter.sizes(), original_split)
+                    np.testing.assert_allclose(self.pane.getViewBox().viewRange(), original_ranges, rtol=0, atol=1e-9)
+                    QtTest.QTest.mouseMove(self.controller.exit_button, self.controller.exit_button.rect().center())
+                    self.pane.scene().sigMouseMoved.emit(point)
+                    self.events()
+                    self.assertIsNone(self.pane.hover_state)
+                    self.assertEqual(len(label.text().splitlines()), 1)
+                    self.assertEqual(QtCore.QRect(viewport.mapToGlobal(QtCore.QPoint()), viewport.size()), original_geometry)
+                    self.assertEqual(self.controller.splitter.sizes(), original_split)
+                    np.testing.assert_allclose(self.pane.getViewBox().viewRange(), original_ranges, rtol=0, atol=1e-9)
 
     def test_live_duplicate_locked_source_values_units_statistics_and_colors(self):
         self.pane.lock_cursor(0, self.pressure.id)

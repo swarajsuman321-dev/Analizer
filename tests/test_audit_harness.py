@@ -12,7 +12,7 @@ from unittest.mock import patch
 import numpy as np
 
 from app_channel_store import Channel
-from app_release_acceptance import AcceptanceRecorder, MANUAL_WINDOWS_CHECKS, REQUIRED_CHECK_IDS, isolated_environment, time_pixel_alignment, viewport_time_x
+from app_release_acceptance import AcceptanceRecorder, MANUAL_WINDOWS_CHECKS, REQUIRED_CHECK_IDS, isolated_environment, time_pixel_alignment, viewport_time_x, verify_comparison_interval_metrics
 from scripts.check_packaged_workflows import REQUIRED_CATEGORIES, capture_runtime, validate_packaged_report
 from tools.audit_user_workflows import observe_processing
 
@@ -104,6 +104,48 @@ class ProcessingAuditTests(unittest.TestCase):
             raise AttributeError('application callback defect')
         with self.assertRaisesRegex(AttributeError, 'callback defect'):
             observe_processing(None, 'FFT', transform_fn=broken)
+
+
+class ComparisonEvidenceDetectorTests(unittest.TestCase):
+    """Corrupted complete difference evidence cannot inherit a green summary."""
+    def evidence(self):
+        return {'status': 'compared', 'scope': {'start_min': 0., 'end_min': 3., 'span_min': 3.},
+            'metrics': {'compared_duration_min': 2., 'coverage_fraction': 2/3,
+                'mean_bias': 1., 'mean_absolute_difference': 1.5,
+                'rmse': np.sqrt(8/3), 'max_absolute_difference': 2.},
+            'differences': [
+                {'start_min': 0., 'end_min': 1., 'duration_min': 1.,
+                 'supported': True, 'delta_start': -2., 'delta_end': 2.},
+                {'start_min': 1., 'end_min': 2., 'duration_min': 1.,
+                 'supported': False, 'delta_start': None, 'delta_end': None},
+                {'start_min': 2., 'end_min': 3., 'duration_min': 1.,
+                 'supported': True, 'delta_start': 2., 'delta_end': 2.}]}
+
+    def test_sign_crossing_absolute_error_and_gap_use_supported_time_only(self):
+        observed = verify_comparison_interval_metrics(self.evidence())
+        self.assertEqual(observed['complete_intervals'], 3)
+        self.assertEqual(observed['supported_intervals'], 2)
+        self.assertEqual(observed['compared_duration_min'], 2.)
+        self.assertEqual(observed['mean_absolute_difference'], 1.5)
+
+    def test_missing_or_overlapping_intervals_cannot_pass_complete_evidence(self):
+        for change in ('missing', 'overlap', 'unsupported_value'):
+            result = self.evidence()
+            if change == 'missing':
+                result['differences'].pop(1)
+            elif change == 'overlap':
+                result['differences'][1]['start_min'] = .5
+            else:
+                result['differences'][1]['delta_start'] = 0.
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                verify_comparison_interval_metrics(result)
+
+    def test_summary_numbers_must_agree_with_independent_interval_integration(self):
+        for metric in self.evidence()['metrics']:
+            result = self.evidence()
+            result['metrics'][metric] += .1
+            with self.subTest(metric=metric), self.assertRaisesRegex(AssertionError, metric):
+                verify_comparison_interval_metrics(result)
 
 
 class AcceptanceRecorderTests(unittest.TestCase):
@@ -244,6 +286,8 @@ class PackagedEvidenceTests(unittest.TestCase):
             'REAL-LOADED-DATA-COMPARISON-ISOLATION',
             'REAL-SELECTED-GRAPH-FULLSCREEN-VALUES-RESTORE',
         }
+        workspace_comparison_checks = {'REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE',
+                                       'REAL-TWO-SIGNAL-COMPARISON-EVIDENCE'}
         self.assertTrue(new_checks <= REQUIRED_CHECK_IDS)
         # Preserve the entire pre-existing 42-contract release gate.
         original_checks = {
@@ -261,9 +305,9 @@ class PackagedEvidenceTests(unittest.TestCase):
              for theme in ('Dark', 'Light') for width in (1024, 1536)}
         self.assertEqual(len(original_checks), 42)
         self.assertEqual(REQUIRED_CHECK_IDS, original_checks | new_checks |
-                         {'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'})
+                         {'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'} | workspace_comparison_checks)
         for edition in ('standalone', 'installed'):
-            for missing in new_checks:
+            for missing in new_checks | workspace_comparison_checks:
                 with self.subTest(edition=edition, missing=missing):
                     altered = copy.deepcopy(self.report)
                     altered['edition'] = edition
@@ -275,7 +319,7 @@ class PackagedEvidenceTests(unittest.TestCase):
     def test_persistent_dialog_folders_contract_is_mandatory_for_every_packaged_edition(self):
         identity = 'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'
         self.assertIn(identity, REQUIRED_CHECK_IDS)
-        self.assertEqual(len(REQUIRED_CHECK_IDS), 47)
+        self.assertEqual(len(REQUIRED_CHECK_IDS), 49)
         for edition in ('standalone', 'installed'):
             with self.subTest(edition=edition):
                 altered = copy.deepcopy(self.report)

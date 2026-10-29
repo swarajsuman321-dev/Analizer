@@ -10,6 +10,20 @@ from app_operation_context import checkpoint
 from app_channel_identity import channel_label
 
 
+def literal_workbook_text(book):
+    """Report strings are literal labels/notes, never spreadsheet formulas.
+
+    Measurements and statistics are calculated before export. Preserve text
+    starting with '=' or Excel error tokens without changing numeric precision.
+    """
+    for sheet in book:
+        checkpoint('Retaining literal report text in '+sheet.title)
+        for row in sheet.iter_rows():
+            if row and row[0].row % 8192 == 0:checkpoint()
+            for cell in row:
+                if isinstance(cell.value,str):cell.data_type='s'
+
+
 def match_scorecard(score):
     """Express verified relative differences as a bounded similarity percentage.
 
@@ -58,13 +72,30 @@ def interval_tables(store,workspace):
     return pd.concat(frames,ignore_index=True),pd.DataFrame(summary)
 
 
-def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis report'):
+def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis report',metadata=None):
     """One save dialog, no configuration wizard; never interpolate exported samples."""
     from app_workspace_io import render_report
     from app_operation_context import checkpoint
     from app_atomic_export import atomic_export
     checkpoint('Collecting active cursor interval');path=Path(path);data,summary=interval_tables(store,workspace)
     if path.suffix.lower() not in ('.csv','.xlsx','.pdf','.png'):raise ValueError('Choose PDF, Excel, CSV or PNG')
+    comparison=(workspace.get('report_kind')=='comparison' or workspace.get('workspace_name')=='Comparison')
+    if comparison and path.suffix.lower()=='.pdf':
+        from app_comparison_report import export_comparison_bundle
+        export_comparison_bundle(path,store,workspace,metadata,scorecard,title=title,_prepared=(data,summary))
+        return data,summary
+    if comparison and path.suffix.lower()=='.xlsx':
+        import json
+        from app_comparison_report import build_evidence,write_workbook,clean
+        from app_engineering_reports import staged_report_bundle
+        evidence,tables=build_evidence(store,workspace,data,summary,metadata,scorecard,title)
+        companion=path.with_suffix('.evidence.json')
+        with staged_report_bundle([path,companion]) as staged:
+            write_workbook(staged[path],data,summary,evidence,tables,scorecard)
+            checkpoint('Writing complete comparison JSON evidence')
+            staged[companion].write_text(json.dumps(clean(evidence),indent=2,ensure_ascii=False,allow_nan=False)+'\n',encoding='utf-8')
+            checkpoint('Committing comparison workbook and evidence')
+        return data,summary
     with atomic_export(path) as temporary:
         if path.suffix.lower()=='.csv':data.to_csv(temporary,index=False)
         elif path.suffix.lower()=='.xlsx':
@@ -82,5 +113,6 @@ def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis r
                             if row%8192==0:checkpoint()
                             cell=sheet.cell(row,column);color=match_color(cell.value)
                             if color:cell.fill=PatternFill('solid',fgColor=color.lstrip('#'));cell.number_format='0.0"%"'
+                literal_workbook_text(writer.book)
         else:render_report(temporary,store,workspace,title=title,scorecard=scorecard)
     return data,summary

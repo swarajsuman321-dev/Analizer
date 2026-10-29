@@ -61,7 +61,10 @@ class QuickAnalysisControlsTests(unittest.TestCase):
         self.assertIn('Rename Channel', [a.text() for a in w.channel_menu.actions()])
         self.assertIn(w.compare_data_action, w.main_toolbar.actions())
         self.assertIn(w.graph_fullscreen.action, w.view_menu.actions())
-        self.assertTrue(all(w.graph_fullscreen.action in p.navigation_bar.actions() for p in w.workspaces))
+        self.assertIn(w.workspace_fullscreen.action, w.view_menu.actions())
+        self.assertEqual(w.workspace_fullscreen.action.shortcut().toString(),'F11')
+        self.assertEqual(w.graph_fullscreen.action.shortcut().toString(),'Shift+F11')
+        self.assertTrue(all(w.workspace_fullscreen.action in p.navigation_bar.actions() for p in w.workspaces))
         self.assertTrue(any(w.main_toolbar.widgetForAction(a) is w.panel_folding.button
                             for a in w.main_toolbar.actions()))
         self.assertTrue(w.panel_folding.button.isVisible())
@@ -69,7 +72,7 @@ class QuickAnalysisControlsTests(unittest.TestCase):
         self.assertTrue(bar.isVisible())
         self.assertTrue(w.graph_fullscreen.action.isEnabled())
         header_actions=w.dashboard.navigation_bar.actions()
-        self.assertLess(header_actions.index(w.graph_fullscreen.action),
+        self.assertLess(header_actions.index(w.workspace_fullscreen.action),
                         header_actions.index(w.dashboard.time_lock_action))
         self.assertFalse(w.graph_fullscreen.action.icon().isNull())
         previous_theme=w.theme.mode
@@ -93,10 +96,10 @@ class QuickAnalysisControlsTests(unittest.TestCase):
                 if narrow:
                     bar.setFixedWidth(180)
                 self.app.processEvents()
-                action=w.graph_fullscreen.action
+                action=w.workspace_fullscreen.action
                 button=bar.widgetForAction(action)
                 if button.isVisible():
-                    QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton)
+                    QtTest.QTest.mouseClick(button,QtCore.Qt.MouseButton.LeftButton,pos=QtCore.QPoint(4,button.height()//2))
                 else:
                     overflow=bar.findChild(QtWidgets.QToolButton,'qt_toolbar_ext_button')
                     self.assertIsNotNone(overflow)
@@ -124,9 +127,9 @@ class QuickAnalysisControlsTests(unittest.TestCase):
                     if errors:raise errors[0]
                     self.assertEqual(selected,[action])
                 self.app.processEvents()
-                self.assertTrue(w.graph_fullscreen.is_active)
-                self.assertIs(w.graph_fullscreen.pane,w.dashboard.active)
-                w.graph_fullscreen.exit()
+                self.assertTrue(w.workspace_fullscreen.is_active)
+                self.assertIs(w.workspace_fullscreen.pane,w.dashboard.active)
+                w.workspace_fullscreen.exit()
                 self.app.processEvents()
 
     def test_portal_color_and_comparison_use_the_clicked_source_identity(self):

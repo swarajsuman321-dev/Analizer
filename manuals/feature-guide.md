@@ -714,3 +714,72 @@ Open and save dialogs remember the folder you last chose for that purpose, inclu
 On the first save for a purpose, the configured output folder remains the starting location. After you choose another destination, that purpose starts there next time and keeps its suggested filename. An open dialog without its own remembered folder uses its supplied starting location, then the latest selected folder if no starting location is supplied. If a remembered folder has been removed, the dialog uses its nearest existing parent. Cancelling a dialog leaves the remembered choices unchanged.
 
 Only folder paths are stored in **dialog-history.json** under the per-user settings folder shown in **About → About / Updates**; selected filenames and measurement contents are not stored there. The normal Windows location is **%APPDATA%/ApplianceSignalStudio**. A configured settings-directory override applies as usual. Nothing is opened, saved or exported solely because a folder is remembered.
+
+## Fullscreen the current split workspace | 2.4.3
+
+1. Activate **Analysis** or **Comparison** and choose the split layout you want to inspect.
+2. Press **F11**, choose **View → Fullscreen Workspace**, or use the graph-header fullscreen control.
+3. All visible graphs in that workspace move into the fullscreen view together. Existing traces, units, cursor locks and split positions remain part of the same workspace.
+4. Click a graph or use the graph selector to make its live values active. Shared zoom X/Y/XY, pan, reset and cursor controls remain available. **Lock Time Axes** continues synchronizing compatible time plots; independent frequency/sample panes keep their own coordinates.
+5. Press **F11** again, **Esc**, or **Exit Fullscreen** to return. The original layout and main-window arrangement are restored while deliberate graph navigation is retained.
+
+The readout shows the active graph's A/B values and statistics while the other graphs remain visible. Drag its divider to share space with the graphs. Very large stacked layouts retain scrolling so axes and values remain readable. **Shift+F11 / Fullscreen Selected Graph** remains available when you deliberately want only one graph enlarged; the graph-header fullscreen button's arrow also offers this option. Fullscreen does not duplicate or resample source channels.
+
+## Stable mouse hover while navigating | 2.4.3
+
+The fullscreen Mouse X/Y readout reserves a stable two-line area outside the canvas. Moving between its placeholder and a channel/sample value does not move the top edge of the graph. The area follows font/display sizing rather than changing height with each pointer value. This fixes the visible vertical bounce demonstrated during hover with Zoom X selected; it does not change time ranges or recorded measurements.
+
+Choose **Zoom X**, **Zoom Y**, **Zoom XY** or **Hand / Pan** before using gestures. Mouse hover is an inspection aid, not a measurement cursor. Cyan A and orange B remain the report's measurement cursors, including any explicit sample locks.
+
+## Compare Two Signals | 2.4.3
+
+Use this workflow to compare one chosen parameter from each of two recordings without configuring an appliance profile. Examples include drum speed from two appliance tests, temperatures from two runs, or reviewed valve-state signals.
+
+1. Open both raw recordings and complete any required TDMS parameter review.
+2. Select the two channel rows in **Data Portal**, one from each recording. Choose parameters with the physical meaning and compatible units you intend to compare. The first channel in portal order is Reference; the second is Candidate. Source-qualified names identify both in the results.
+3. Click **Compare Two Signals** in the main toolbar, or choose it under **Tools → Engineering Diagnostics**. Exactly two selected rows compare directly. If fewer than two rows are selected and exactly two channels are plotted, those form the pair. Otherwise a compact Reference/Candidate chooser asks you to pick the pair; more than two selected channels never cause an arbitrary pair to be chosen.
+4. The comparison uses **elapsed time from each recording's start**, as requested. A channel that starts later in its recording keeps that delay; its first sample is not silently treated as the recording start. This alignment is a separate report calculation and leaves original timestamps and plots unchanged.
+5. Read the concise results, then choose **Open Report**, **Open Workbook** or **Open Folder**. A uniquely named PDF, matching Excel workbook and evidence JSON are saved together in the report output folder or the remembered destination for this comparison-report purpose.
+
+The report identifies Reference, Candidate, units, time scope and supported comparison coverage. It explains signed Candidate−Reference differences alongside magnitude/error statistics, the largest observed difference and its time, and supported activity/timing differences where applicable. Difference statistics use supported elapsed time rather than giving more weight to a logger merely because it recorded more samples. The complete workbook/evidence keeps the detailed difference intervals and events so a short PDF summary does not discard the supporting records.
+
+Difference duration excludes floating-point interpolation or unit-conversion roundoff. This calculation resolution is separate from measurement accuracy and engineering acceptance limits; raw differences and full error statistics remain in the evidence.
+
+Mismatched sampling rates are compared only on supported overlapping time. Missing values, masks and acquisition gaps remain limitations; they are not filled with known zero or extrapolated beyond a recording. Duplicate timestamps and the effective timing policy remain disclosed. Incompatible or unverified physical units, insufficient overlap or unsupported coordinates produce an explanation rather than an invented physical result.
+
+Activity depends on the reviewed signal interpretation. A confirmed actuator uses ON/OFF state behavior; arbitrary numeric parameters are not automatically converted to actuator states. For declared rotation-unit signals, the report describes supported nonzero-signal time and numeric zero/nonzero transitions or sign changes. Negative values can be command readings, feedback or unreviewed protocol codes; a numeric sign change alone does not prove mechanical reversal. Transitions require known contiguous evidence. These observations do not establish a manufacturer operating threshold or a formal appliance acceptance decision. Configure engineering limits separately when a test plan requires Pass/Fail.
+
+Source data, current plots and saved channel configurations remain intact. Cancellation or failure must retain the previous complete outputs; the PDF/workbook/JSON bundle is staged before publication. Optional report notes are described below and are not a mandatory wizard step.
+
+## Detailed comparison reports | 2.4.3
+
+For an existing multi-channel **Comparison** workspace, keep using **Export Report** or Ctrl+P. PDF uses readable pagination across four main sections: report/source scope, plotted evidence, channel/cursor results, and quality/provenance with reviewed notes. All selected visible panes and their channel evidence remain represented; additional channels continue onto readable pages rather than a single increasingly tall figure.
+
+A Comparison PDF also saves its matching Excel workbook and evidence JSON atomically. For a PDF named `Comparison.pdf`, keep `Comparison.xlsx` and `Comparison.evidence.json` beside it when sharing the complete report evidence. Cancellation or failed publication preserves the previous complete bundle.
+
+Check A/B positions, sample locks and the selected statistics scope before exporting. Tables identify channel and recording, units, cursor values and their signed difference, interval/statistical scope, and supported coverage. Plot traces, independent axes and valid percentage-match accents remain associated with their original channels. The configured scope and available data determine the results; a familiar channel name does not establish a cross-file reference/candidate pairing.
+
+Comparison **Excel** retains active-interval samples and cursor summaries and adds source, quality, report-detail, view and processing/provenance evidence. An explicit two-signal comparison includes its paired metrics, detailed difference intervals and events. **PNG** remains a high-resolution graph snapshot; **CSV** retains active-interval sample exports. Use the workbook or JSON when further calculations and complete comparison evidence are needed.
+
+General channel plots and a configured engineering evaluation remain distinct. Ordinary comparison does not invent appliance phase meanings, calibration curves, tolerance bands or engineering acceptance limits. Source fingerprints identify their method: a hash of an available source file is distinguished from a preserved loaded-data fingerprint when that file is unavailable.
+
+## Report Details & Conclusions | 2.4.3
+
+Open **Tools / More → Export Utilities → Report Details & Conclusions…** to add optional report information. The same action is available under **Engineering Diagnostics**, and the engineering report dialog provides an optional button for these shared details.
+
+- **Report title**, **Prepared by** and **Reviewed by** identify the document and people supplied by the user.
+- **Test conditions** records the context needed to interpret the two runs.
+- **Observations** records what you reviewed in the evidence.
+- **Conclusions** and **Recommended actions** support final report preparation.
+
+Choose Save to apply the notes to both comparison and engineering reports, or Cancel to retain the previous details. Blank entries remain unprovided rather than fabricated. Save the workspace to retain these details for a later session or update recovery. Existing advanced/custom engineering metadata remains supported.
+
+These are user-provided notes. Entering a reviewer name does not digitally sign the report, and a written conclusion does not change calculated results, configured tolerances, mappings, calibration or formal Pass/Fail status. Reports label the evidence and limitations independently. Long notes continue onto readable pages as needed.
+
+## Complete engineering comparison evidence | 2.4.3
+
+**Generate Engineering Report** retains its explicit Whole Recording / Active Cursor Interval / Both scope and four main sections. Comparison results can continue onto additional pages so all comparison rows are available instead of only the first few. Cursor evidence identifies the source and run, including Reference/Candidate counterparts and available selected-channel values. User-provided report observations, conclusions, conditions and actions are included with the evidence.
+
+Review the page estimate after choosing scope and optional notes. Readable pagination may add pages for comparison results, cursor evidence or long reviewed text; the report is not forced into exactly four pages. The established Analysis regression fixture remains the baseline for a concise default summary, rather than a universal page count for every data combination.
+
+The complete companion workbook and JSON retain the detailed results, source fingerprints, mappings, quality/coverage, definitions and configuration; the event CSV retains every original event. Data-quality gaps remain distinct from demonstrated appliance faults. Unconfigured or unsupported results retain their reasons and next actions. Manual notes and deviation colours do not invent acceptance limits or turn missing evidence into a pass.

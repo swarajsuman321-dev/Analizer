@@ -241,9 +241,26 @@ class EngineeringTools(QtCore.QObject):
         from app_compact_forms import CollapsibleHelp
         form.addRow(CollapsibleHelp('The PDF has four main sections. Complete KPI, event, mapping and configuration evidence is saved beside it as Excel, CSV and JSON. Primary / mandatory results can continue onto readable extra pages. An optional full-event appendix can add many pages; its estimate uses prior analysis until the selected scope has been recalculated.'))
         def refresh():
+            nonlocal cursor_interval
             from app_engineering_reports import report_preview
-            runs=self.result['runs'] if self.result else []
-            record=report_preview(runs,scope=scope.currentData(),view=view,detailed_appendix=appendix.isChecked())
+            pane=self.w.active_workspace.active
+            view.clear();view.update(pane.state())
+            current_positions=view.get('cursors',[])
+            temporal=pane.coordinate and pane.coordinate[0]=='time'
+            cursor_interval=[float(value)*60 for value in current_positions[:2]] if temporal and len(current_positions)>=2 else None
+            if not temporal:
+                # An FFT/sample coordinate is not an engineering time in min.
+                # Keep the whole-recording route available without inventing
+                # time-cursor evidence from a different coordinate domain.
+                view['cursors']=[];view['cursor_locks']=[]
+                view['cursor_context_reason']='Active graph has no time-coordinate cursor interval.'
+            same_workspace=self.result is not None and getattr(self,'result_workspace',None) is self.w.active_workspace
+            runs=self.result['runs'] if same_workspace else []
+            comparison=self.result.get('comparison') if same_workspace else None
+            selected=list(dict.fromkeys(id for p in self.w.active_workspace.visible_panes() for id in p.ids))
+            record=report_preview(runs,scope=scope.currentData(),view=view,comparison=comparison,
+                                  selected_ids=selected,detailed_appendix=appendix.isChecked(),
+                                  metadata=self.w.report_metadata(engineering=True),store=self.w.store)
             count=record.get('event_records',0)
             from app_channel_identity import dataset_aliases
             aliases=dataset_aliases(self.w.store)
@@ -253,19 +270,24 @@ class EngineeringTools(QtCore.QObject):
                             (f"Prior analysis: {count:,} event records\n" if runs else 'Event counts calculated during analysis\n')+
                             sources+('\nCursor interval unavailable: activate a time plot with two distinct cursors.' if scope.currentData()!='whole_recording' and (not cursor_interval or cursor_interval[0]==cursor_interval[1]) else ''))
         scope.currentIndexChanged.connect(refresh);appendix.toggled.connect(refresh);refresh()
+        details=QtWidgets.QPushButton('Report Details & Conclusions…');details.setToolTip('Optional user-provided notes; retain the current analysis and report scope')
+        details.clicked.connect(lambda:self.w.guard(lambda:(self.w.edit_report_details(),refresh())))
+        form.addRow(details)
         export=QtWidgets.QPushButton('Choose Output and Generate');layout.addWidget(export)
         def generate():
+            refresh()
             chosen_scope=scope.currentData();detailed=appendix.isChecked()
             if chosen_scope!='whole_recording' and (not cursor_interval or cursor_interval[0]==cursor_interval[1]):raise ValueError('Use two distinct cursors on an active time plot for interval reporting')
             path,_=save_file(self.w,'Generate Engineering Report',str(output_path('Engineering report.pdf')),'PDF (*.pdf);;Excel (*.xlsx)',purpose='EngineeringReport')
             if not path:return
             session=self.state();workspace=self.w.active_workspace;comparison=workspace is self.w.comparison;store=self.w.store
+            report_view=copy.deepcopy(view)
             selected=list(dict.fromkeys(id for pane in workspace.visible_panes() for id in pane.ids))
             dialog.accept()
             def work(token):
                 from app_engineering_reports import export_engineering
                 result=analyze_session(store,session,comparison,token,report_scope=chosen_scope,cursor_interval_s=cursor_interval)
-                export_engineering(path,store,result['runs'],result['comparison'],{**session['metadata'],'View':view,'Engineering session':session,'Interval comparison':result.get('interval_comparison')},view,token,selected,scope=chosen_scope,detailed_appendix=detailed)
+                export_engineering(path,store,result['runs'],result['comparison'],{**session['metadata'],'View':report_view,'Engineering session':session,'Interval comparison':result.get('interval_comparison')},report_view,token,selected,scope=chosen_scope,detailed_appendix=detailed)
                 result['output_committed']=path;return result
             def complete(result):
                 self.result=result;self.result_workspace=workspace;self.w.statusBar().showMessage('Engineering report and complete evidence saved: '+path)

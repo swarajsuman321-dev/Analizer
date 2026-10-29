@@ -96,25 +96,16 @@ def cursor_trace_values(trace,cursors_min,locks=None,snap=False):
 def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_ids,plan=None,groups=None):
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_pdf import PdfPages
-    from app_engineering_reports import report_preview
-    from app_engineering_report_summary import summarize_events
+    from app_engineering_reports import report_preview,report_traces
+    from app_engineering_report_summary import summarize_events,reviewed_note_pages,COMPARISON_ROWS_PER_PAGE,CURSOR_ROWS_PER_PAGE
     from app_presentation import CURSOR_COLORS
-    plan=plan or report_preview(runs,info.get('Report scope','whole_recording'),view,comparison)
+    plan=plan or report_preview(runs,info.get('Report scope','whole_recording'),view,comparison,selected_ids,metadata=info,store=store)
     groups=groups if groups is not None else summarize_events(tables['Fault & Anomaly Log'].to_dict('records'))
     report_id=info['Report ID'];page=0;figures=[]
     scope=SCOPE_LABELS[info.get('Report scope','whole_recording')]
     sources=info['Sources'];profile=runs[0]['profile']
     whole=[run for run in runs if run.get('report_scope','whole_recording')=='whole_recording']
-    visual_runs=[{**run,'traces':dict(run['traces'])} for run in (whole or runs)]
-    if selected_ids:
-        from app_engineering_trace import Trace
-        represented={trace.channel.id for run in visual_runs for trace in run['traces'].values()}
-        for id in selected_ids:
-            channel=store.channels.get(id)
-            if id in represented or channel is None or channel.coordinate_kind!='time':continue
-            for run in visual_runs:
-                if channel.dataset_id==run['dataset_id']:
-                    run['traces']['source_'+id]=Trace(channel,offset=run['offset_s']);break
+    visual_runs=[{**run,'traces':report_traces(store,run,selected_ids)} for run in (whole or runs)]
     # One source identity everywhere; basename is safe for a shareable PDF.
     from app_channel_identity import dataset_aliases
     aliases=dataset_aliases(store)
@@ -124,14 +115,14 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
 
     def new(title,subtitle=None):
         check();fig=Figure(figsize=(11.7,8.3),facecolor='white')
-        fig.text(.05,.95,title,fontsize=17,weight='bold',color=INK)
-        fig.text(.05,.913,subtitle or scope,fontsize=8,color=MUTED)
+        fig.text(.05,.95,title,fontsize=17,weight='bold',color=INK,parse_math=False)
+        fig.text(.05,.913,subtitle or scope,fontsize=8,color=MUTED,parse_math=False)
         return fig
 
     def paragraph(fig,text,x=.05,y=.87,width=130,size=9,line=.025,color=INK):
         for segment in str(text).split('\n'):
             for part in textwrap.wrap(segment,width,break_long_words=True) or ['']:
-                fig.text(x,y,part,fontsize=size,color=color,va='top');y-=line
+                fig.text(x,y,part,fontsize=size,color=color,va='top',parse_math=False);y-=line
         return y
 
     def table(fig,headers,rows,box=(.05,.14,.90,.67),widths=None,fontsize=8,max_lines=3):
@@ -151,6 +142,7 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
         grid.auto_set_font_size(False);grid.set_fontsize(fontsize)
         for (r,c),cell in grid.get_celld().items():
             cell.set_edgecolor('#d6dee8');cell.set_linewidth(.4)
+            cell.get_text().set_parse_math(False)
             if r==0:cell.set_facecolor('#243a53');cell.get_text().set_color('white');cell.get_text().set_weight('bold')
             elif r%2:cell.set_facecolor('#f1f5f9')
         return grid
@@ -167,10 +159,11 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
 
     # 1. Purpose/readiness: useful conclusions and next actions precede numbers.
     fig=new('1. Purpose and analysis readiness')
-    y=paragraph(fig,str(info.get('Report title','Engineering Report')),y=.867,size=14,line=.035)
+    y=paragraph(fig,short(info.get('Report title','Engineering Report'),95),y=.867,size=14,line=.035)
     identity=' | '.join(f'{label}: {info.get(label) or info.get(key) or "Not provided / not reviewed"}' for key,label in [('test_id','Test ID'),('manufacturer','Manufacturer'),('model','Model'),('operator','Operator'),('test_scenario','Program / Settings')])
     y=paragraph(fig,identity,y=y-.01,size=9)
-    y=paragraph(fig,'Recordings: '+'; '.join(PureWindowsPath(s['source']).name for s in sources),y=y-.008,size=9)
+    names=[PureWindowsPath(s['source']).name for s in sources]
+    y=paragraph(fig,'Recordings: '+'; '.join(short(name,48) for name in names[:3])+(' | '+str(len(names)-3)+' more in traceability' if len(names)>3 else ''),y=y-.008,size=9)
     summaries=[run.get('readiness_summary',{}) for run in runs]
     incomplete=any(k['value'] is None for run in runs for k in run['kpis']) or any(s.get('data_adequacy')=='Needs review' for s in summaries)
     y=paragraph(fig,'Incomplete analysis — review source mapping, timing coverage and applicable acceptance setup.' if incomplete else 'Calculated results are available for the stated scope; acceptance depends on explicitly configured limits.',y=y-.015,size=11)
@@ -197,18 +190,22 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
     # 2. Mapping and coverage with no silently inferred units.
     fig=new('1. Sources, mapping review and timing coverage')
     rows=[]
-    for run in runs:
-        for key,trace in {**run.get('quality_traces',{}),**run['traces']}.items():
-            q=trace.quality(run.get('scope_start_s'),run.get('scope_end_s')) if hasattr(trace,'quality') else trace.stats()
-            mapping=next((row for row in run['mapping'] if row.get('channel_id')==trace.channel.id),{})
-            role=key+' ['+trace.unit+']'+(' · timing only' if key not in run['traces'] else '')
-            rows.append([run.get('role','analysis').title(),short(trace.channel.name,30),role,mapping.get('review_status',mapping.get('method','Unreviewed')),f'{q.get("observed_span_s",q.get("duration_s",0))/60:.4g} / {q.get("supported_duration_s",q.get("known_s",0))/60:.4g} / {q.get("requested_span_s",q.get("duration_s",0))/60:.4g}',f'{100*q.get("coverage",0):.2f}%',str(q.get('duplicate_timestamps',trace.duplicates))+' / '+str(q.get('missing_readings',int((~np.isfinite(trace.raw_y)).sum()))),f'{trace.max_gap:.5g} s'])
+    for q in info.get('Source timing quality',[]):
+        run=next((run for run in runs if run.get('dataset_id')==q.get('dataset_id') and scope_of(run).startswith(q['Run'].title()+' · '+q['Scope'])),{})
+        mapping=next((row for row in run.get('mapping',[]) if row.get('channel_id')==q['channel_id']),{})
+        key=q['canonical_role'];role=('Selected source' if key.startswith('source_') else key)+' ['+q['unit']+']'
+        rows.append([q['Run'].title()+' · '+('A–B' if q['Scope']=='Active cursor interval' else 'Whole'),short(q.get('recording','')+' · '+q['source'],58),role,mapping.get('review_status',mapping.get('method','Unreviewed')),f'{q.get("observed_span_s",0)/60:.4g} / {q.get("supported_duration_s",0)/60:.4g} / {q.get("requested_span_s",0)/60:.4g}',f'{100*q.get("coverage",0):.2f}%',str(q.get('duplicate_timestamps',0))+' / '+str(q.get('missing_readings',0)),f'{q.get("gap_threshold_s",0):.5g} s'])
     table(fig,['Run','Selected source','Canonical role / unit','Review','Observed / supported / scope min','Coverage','Duplicates / missing','Gap limit'],rows[:12],box=(.05,.38,.90,.47),widths=[.07,.17,.15,.15,.14,.08,.12,.12],fontsize=7)
     y=paragraph(fig,'Coverage is supported elapsed time divided by the requested recording or interval span; a shorter sensor span does not imply full coverage. Supported-time totals exclude unknown gaps; a peak is an observed-sample statistic. No universal adequacy or Pass/Fail threshold is assumed.',y=.33,size=9,line=.024)
     y=paragraph(fig,'Timing policy: '+runs[0]['quality_policy'],y=y-.01,size=9,line=.024)
     y=paragraph(fig,'Unmapped or blocked roles remain visible with specific actions in the KPI evidence. Physical units, pressure calibration, actual/command source roles and phase codes must be explicitly verified.',y=y-.01,size=9,line=.024)
     note_more(fig,min(12,len(rows)),len(rows),'mapped source/scope rows')
     done(fig)
+    for start in range(12,len(rows),10):
+        fig=new('1. Source quality and timing coverage — continued')
+        table(fig,['Run / scope','Recording / source','Role / unit','Review','Observed / supported / scope min','Coverage','Duplicates / missing','Gap limit'],rows[start:start+10],box=(.05,.21,.90,.63),widths=[.10,.20,.14,.13,.13,.08,.12,.10],fontsize=8,max_lines=4)
+        paragraph(fig,'Each row retains its own acquisition policy and supported-time coverage. Missing or irregular observations do not become appliance faults or automatic passes. Complete source IDs, timing assumptions and exact counts remain in the companion evidence.',y=.16,size=8,line=.023)
+        done(fig)
 
     # 3. Timeline separates acquisition gaps from demonstrated appliance events.
     fig=new('2. Phase timeline and acquisition-event overview')
@@ -242,9 +239,9 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
     priority=('speed','target_speed','temperature','water_pressure','power','heater','drain','cold_valve')
     keys=sorted(keys,key=lambda k:priority.index(k) if k in priority else len(priority))
 
-    def graphics(detail=False):
+    def graphics(detail=False,display=None):
         fig=new('2. Selected source detail' if detail else '2. Whole-scope graphical evidence',scope+' · time in minutes; gaps are not connected')
-        display=keys[:4]
+        display=keys[:4] if display is None else display
         if not display:
             paragraph(fig,'No verified time-domain channels are available for this scope. Review mapping and units; unavailable signals are not fabricated.',y=.82,size=12);return fig
         for row,key in enumerate(display):
@@ -284,6 +281,8 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
         note_more(fig,len(display),len(keys),'selected source roles',y=.105)
         return fig
     done(graphics());done(graphics(True))
+    if selected_ids:
+        for start in range(4,len(keys),4):done(graphics(display=keys[start:start+4]))
 
     # 6–7. A concise result table plus explicit limitations/actions, not raw JSON.
     fig=new('3. Engineering results — values and configured acceptance')
@@ -317,13 +316,21 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
     if len(cursors)==2:
         a,b=sorted(cursors)
         y=paragraph(fig,f'Cursor A: {cursors[0]:.6g} min | Cursor B: {cursors[1]:.6g} min | absolute ΔX: {b-a:.6g} min. Cursor markers are context only in whole-recording reports; interval KPIs are explicitly labelled when selected.',y=y,size=9,line=.024)
+        # The executive preview represents different runs before using spare
+        # rows. Complete source-qualified observations follow when needed;
+        # neither Candidate nor later selected channels are silently omitted.
+        cursor_evidence=info.get('Cursor interval evidence',[])
+        preview_rows=balanced_rows([{'Run':record['run'],'Scope':record['scope'],'record':record}
+                                    for record in cursor_evidence],3)
         cursor_rows=[]
-        for key in keys[:3]:
-            source_run=next(run for run in visual_runs if key in run['traces']);trace=source_run['traces'][key];values=cursor_trace_values(trace,cursors,(view or {}).get('cursor_locks'),(view or {}).get('snap',True));stats=trace.stats(a*60,b*60)
-            role=trace.channel.name if key.startswith('source_') else key
-            if len(visual_runs)>1:role=source_run.get('role','analysis').title()+' · '+role
-            cursor_rows.append([short(role,35),trace.unit,value_text(values[0]),value_text(values[1]),value_text(abs(values[1]-values[0])),value_text(stats.get('min')),value_text(stats.get('max')),value_text(stats.get('mean'))])
-        table(fig,['Source role','Unit','A','B','|ΔY|','Min','Max','Mean'],cursor_rows,box=(.05,.24 if comparison else .18,.90,.10 if comparison else .12),fontsize=7)
+        for entry in preview_rows:
+            record=entry['record'];stats=record['interval_statistics']
+            label=record['run'].title()+' · '+record['source']
+            cursor_rows.append([short(label,43),record['unit'],value_text(record['A_value']),
+                value_text(record['B_value']),value_text(record['signed_delta_y']),
+                value_text(stats.get('min')),value_text(stats.get('max')),value_text(stats.get('mean'))])
+        table(fig,['Run / selected source','Unit','A','B','B − A','Min','Max','Mean'],cursor_rows,
+              box=(.05,.24 if comparison else .18,.90,.10 if comparison else .12),fontsize=7)
     if comparison:
         compared=tables['Comparison Results'].to_dict('records')
         # Keep comparison evidence visible even when A/B context is present.
@@ -343,6 +350,72 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
         paragraph(fig,f'Summary: {min(8,len(blocked))} of {len(blocked)} blocked/qualified results; {len(visible)} of {len(compared)} comparison rows. All results and reasons remain in companion evidence.',y=.075 if len(cursors)==2 else .105,size=8,line=.02,width=145)
     else:note_more(fig,min(8,len(blocked)),len(blocked),'blocked/qualified results',y=.105)
     done(fig)
+
+    # Every configured comparison appears once in the continuation tables.
+    # Values/deviations come from the engine; provenance and coverage qualify
+    # their interpretation rather than inventing a score or acceptance rule.
+    compared=tables['Comparison Results'].to_dict('records') if comparison else []
+    for start in range(0,len(compared),COMPARISON_ROWS_PER_PAGE):
+        batch=compared[start:start+COMPARISON_ROWS_PER_PAGE]
+        fig=new('3. Complete comparison results',
+                f'{scope} · rows {start+1}–{start+len(batch)} of {len(compared)}')
+        pairs=list(dict.fromkeys(
+            row.get('baseline_role','reference').title()+': '+row.get('baseline_evidence',{}).get('recording','Not provided')+
+            ' → Candidate: '+row.get('candidate_evidence',{}).get('recording','Not provided') for row in batch))
+        paragraph(fig,'; '.join(pairs),y=.865,size=8,line=.021,width=145)
+        rows=[]
+        for record in batch:
+            baseline=record.get('baseline_evidence',{});candidate=record.get('candidate_evidence',{})
+            def coverage(evidence):
+                value=finite_number(evidence.get('coverage'))
+                return f'{100*value:.1f}%' if value is not None else 'Not Available'
+            state=record.get('result_state','Not Available')
+            reason=str(record.get('comparison_reason',''))
+            # State the shared interpretation once below the table. Keep every
+            # specific blocker (including a zero baseline) beside its result;
+            # the complete reason remains unchanged in workbook/JSON evidence.
+            shared_reason='Existing KPI values compared for the stated scope; acceptance requires configured test-plan evidence'
+            limitation=state if state=='Available' and reason==shared_reason else state+('\n'+reason if reason else '')
+            rows.append([comparison_label(record),str(record.get('name',''))+'\n'+str(record.get('unit','')),
+                         value_text(record.get('reference')),value_text(record.get('candidate')),
+                         value_text(record.get('delta')),value_text(record.get('percent')),
+                         coverage(baseline)+' / '+coverage(candidate),
+                         limitation])
+        grid=table(fig,['Scope / baseline','Result / unit','Baseline','Candidate','B − A','Deviation %',
+                        'Supported baseline / candidate','State / limitation'],rows,
+                   box=(.05,.20,.90,.59),widths=[.12,.18,.09,.09,.09,.09,.13,.21],fontsize=8,max_lines=4)
+        for row,record in enumerate(batch,1):
+            color=record.get('accent')
+            if isinstance(color,str) and re.fullmatch(r'#[0-9a-fA-F]{6}',color):
+                grid[row,5].set_facecolor(color);grid[row,5].get_text().set_color(INK)
+        paragraph(fig,'B − A is Candidate minus its stated baseline. Deviation colors are not Pass/Fail; acceptance requires configured test-plan evidence. Zero baselines have no relative percentage. Full precision, per-result source identities, quality and reasons remain in Comparison Results in the companion workbook / JSON.',
+                  y=.15,size=8,line=.022,width=145)
+        done(fig)
+
+    cursor_evidence=info.get('Cursor interval evidence',[])
+    if len(cursor_evidence)>3:
+        for start in range(0,len(cursor_evidence),CURSOR_ROWS_PER_PAGE):
+            batch=cursor_evidence[start:start+CURSOR_ROWS_PER_PAGE]
+            fig=new('3. Complete cursor interval evidence',
+                    f'{scope} · rows {start+1}–{start+len(batch)} of {len(cursor_evidence)}')
+            paragraph(fig,f'A {cursors[0]:.6g} min | B {cursors[1]:.6g} min | absolute ΔX {abs(cursors[1]-cursors[0]):.6g} min. '
+                      'Values use the recorded sample / interpolation and explicit cursor-lock policy from the active view.',
+                      y=.86,size=9,line=.023,width=145)
+            rows=[]
+            for record in batch:
+                stats=record['interval_statistics'];quality=record.get('interval_quality',{})
+                rows.append([record['run'].title()+' · '+('A–B' if record['scope']=='Active cursor interval' else 'Whole')+'\n'+record['recording']+' · '+record['source'],
+                    record['unit'],value_text(record['A_value']),value_text(record['B_value']),
+                    value_text(record['signed_delta_y']),value_text(stats.get('min')),value_text(stats.get('max')),
+                    value_text(stats.get('mean')),f'{100*quality.get("coverage",0):.1f}%'])
+            grid=table(fig,['Run / recording / source','Unit','A','B','B − A','Min','Max','Mean','Supported'],rows,
+                       box=(.05,.20,.90,.58),widths=[.29,.07,.09,.09,.09,.09,.09,.10,.09],fontsize=8,max_lines=4)
+            for row in range(len(rows)+1):
+                for column,color in ((2,CURSOR_COLORS[0]),(3,CURSOR_COLORS[1])):
+                    grid[row,column].set_facecolor('#182033');grid[row,column].get_text().set_color(color)
+            paragraph(fig,'Each source/run retains its own units and supported-time interval statistics. Signed ΔY is B − A; absolute ΔY, RMS, original sample indices, source IDs, locks and timing policy remain in Cursor interval evidence in the companion metadata / JSON. Missing or unsupported readings remain Not Available.',
+                      y=.15,size=8,line=.022,width=145)
+            done(fig)
 
     # 8. Grouping does not change the complete event log.
     fig=new('4. Grouped events — acquisition quality and appliance evidence')
@@ -394,6 +467,26 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
     for method in methods:y=paragraph(fig,'• '+method,y=y,size=8,line=.022,width=145)-.006
     paragraph(fig,'Companion evidence: .evidence.xlsx (all nine sheets), .events.csv (every original event), .evidence.json (full configuration, recipes, mappings, calibration/acceptance definitions, group provenance and source paths). All carry this report ID. PDF metadata uses source basenames; full local provenance stays in the evidence.',y=.17,size=8,line=.022,width=145)
     done(fig)
+
+    for start in range(4,len(sources),8):
+        batch=sources[start:start+8]
+        fig=new('4. Source traceability — continued',
+                f'{scope} · sources {start+1}–{start+len(batch)} of {len(sources)}')
+        rows=[[PureWindowsPath(source['source']).name,source['sha256'],source['method']] for source in batch]
+        table(fig,['Recording / preserved source','SHA-256','Fingerprint method'],rows,
+              box=(.05,.20,.90,.64),widths=[.25,.48,.27],fontsize=8,max_lines=4)
+        paragraph(fig,'The method distinguishes an available source file from preserved workspace arrays. Fingerprints identify the evidence hashed for this report; original source paths and complete processing provenance remain in the companion evidence.',
+                  y=.15,size=8,line=.023,width=145)
+        done(fig)
+
+    for number,lines in enumerate(reviewed_note_pages(info),1):
+        fig=new('4. Reviewed observations, conclusions and actions',
+                f'{scope} · user-provided notes {number} of {plan["reviewed_note_pages"]}')
+        paragraph(fig,'These notes were entered by the report author/reviewer. They do not change measured results or configured acceptance decisions.',
+                  y=.865,size=9,line=.024,width=145)
+        for index,line in enumerate(lines):
+            fig.text(.05,.81-index*.025,line,fontsize=10,color=INK,va='top',parse_math=False)
+        done(fig)
 
     if plan['detailed_appendix']:
         for start in range(0,len(all_events),20):
