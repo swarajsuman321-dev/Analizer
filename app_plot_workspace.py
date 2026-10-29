@@ -688,8 +688,14 @@ class PlotPane(pg.PlotWidget):
         transform=self.viewportTransform()
         left=transform.map(view.mapViewToScene(QtCore.QPointF(low,0))).x()
         right=transform.map(view.mapViewToScene(QtCore.QPointF(high,0))).x()
-        return (max(0.,left-self._canvas_padding[0]),
-                max(0.,self.viewport().width()-right-self._canvas_padding[1]))
+        # Subtract the space Qt actually allocated, rather than the requested
+        # constraint. Native layouts can quantize a fractional spacer size.
+        padding=[transform.mapRect(spacer.sceneBoundingRect()).width()
+                 for spacer in self._canvas_spacers]
+        # Keep signed residuals: a native inset can leave the scene one pixel
+        # wider than its viewport. Clamping that residual loses the same pixel
+        # we need to align when another pane has a different viewport origin.
+        return (left-padding[0],self.viewport().width()-right-padding[1])
 
     def set_canvas_padding(self,left,right,minimum_width=0):
         requested=(max(0.,float(left)),max(0.,float(right)))
@@ -897,6 +903,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self._range_syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None;self.layout_proportions={}
         self._canvas_alignment_timer=QtCore.QTimer(self);self._canvas_alignment_timer.setSingleShot(True)
         self._canvas_alignment_timer.timeout.connect(self._align_canvas_gutters)
+        self._canvas_alignment_running=False;self._canvas_alignment_dirty=False
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
@@ -1029,6 +1036,9 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def queue_canvas_alignment(self):
         """Coalesce axis/font/layout changes into a single geometry pass."""
+        if self._canvas_alignment_running:
+            self._canvas_alignment_dirty=True
+            return
         if not self._canvas_alignment_timer.isActive():self._canvas_alignment_timer.start(0)
 
     def _align_canvas_gutters(self):
@@ -1038,16 +1048,36 @@ class PlotWorkspace(QtWidgets.QWidget):
         Padding only the missing gutter keeps each real axis fully automatic;
         this does not introduce geometry-dependent X linking or fixed tick widths.
         """
-        _,columns=LAYOUTS[self.layout_name];groups={}
-        for index,pane in enumerate(self.visible_panes()):
-            if getattr(pane,'_closing',False) or pane.__dict__.get('plotItem') is None:continue
-            groups.setdefault(index%columns,[]).append(pane)
-        for panes in groups.values():
-            margins=[pane.canvas_gutters() for pane in panes]
-            if len(panes)==1:
-                panes[0].set_canvas_padding(0,0,380+sum(margins[0]));continue
-            left=max(pair[0] for pair in margins);right=max(pair[1] for pair in margins)
-            for pane,(own_left,own_right) in zip(panes,margins):pane.set_canvas_padding(left-own_left,right-own_right,380+left+right)
+        if self._canvas_alignment_running:
+            self._canvas_alignment_dirty=True
+            return
+        self._canvas_alignment_running=True;self._canvas_alignment_dirty=False
+        try:
+            _,columns=LAYOUTS[self.layout_name];groups={}
+            for index,pane in enumerate(self.visible_panes()):
+                if (getattr(pane,'_closing',False) or pane.__dict__.get('plotItem') is None
+                        or self.grid.indexOf(pane)<0):continue
+                groups.setdefault(index%columns,[]).append(pane)
+            for panes in groups.values():
+                margins=[pane.canvas_gutters() for pane in panes]
+                if len(panes)==1:
+                    panes[0].set_canvas_padding(0,0,380+sum(margins[0]));continue
+                # Different native viewport insets can leave equal-width plot
+                # widgets with unequal viewport origins or widths. Equal local
+                # gutters then still draw the same time one pixel apart. Align
+                # the actual drawing intersection in their shared screen space.
+                origins=[pane.viewport().mapToGlobal(QtCore.QPoint()).x() for pane in panes]
+                edges=[(origin+left,origin+pane.viewport().width()-right)
+                       for pane,origin,(left,right) in zip(panes,origins,margins)]
+                left=max(edge[0] for edge in edges);right=min(edge[1] for edge in edges)
+                for pane,(own_left,own_right),(edge_left,edge_right) in zip(panes,margins,edges):
+                    padding=(left-edge_left,edge_right-right)
+                    frame=pane.width()-pane.viewport().width()
+                    pane.set_canvas_padding(*padding,minimum_width=380+own_left+own_right+sum(padding)+frame)
+        finally:
+            self._canvas_alignment_running=False
+            if self._canvas_alignment_dirty and not self._canvas_alignment_timer.isActive():
+                self._canvas_alignment_timer.start(0)
 
     def _apply_proportions(self):
         rows,cols=LAYOUTS[self.layout_name];saved=self.layout_proportions.get(self.layout_name,{})

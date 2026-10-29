@@ -175,6 +175,33 @@ class PlotGeometryAlignmentTests(unittest.TestCase):
         np.testing.assert_allclose(third.getViewBox().viewRange()[0], [50, 90], rtol=0, atol=1e-7)
         self.assertFalse(fourth.ids)
 
+    def test_native_viewport_insets_keep_both_global_drawing_edges_aligned(self):
+        self.work.set_layout('2×2')
+        self.bind_groups([[self.pressure,self.power,self.flow],[self.temperature],
+                          [self.speed],[self.temperature]])
+        first,second,third,fourth=self.work.visible_panes()
+        # A native frame/inset can remove one logical viewport pixel without
+        # changing the outer widget's grid-column width. Equal local gutters
+        # used to leave the right drawing edge exactly one pixel out of line.
+        third.setViewportMargins(0,0,1,0)
+        fourth.setViewportMargins(1,0,0,0)
+        self.work.queue_canvas_alignment()
+        self.settle()
+        self.assertEqual(first.width(),third.width())
+        self.assertEqual(first.viewport().width(),third.viewport().width()+1)
+        self.assert_locked_time_geometry()
+        self.work.set_time_lock(False)
+        first.setXRange(10,30,padding=0);third.setXRange(50,90,padding=0)
+        self.settle()
+        self.assert_column_geometry()
+        np.testing.assert_allclose(first.getViewBox().viewRange()[0],[10,30],rtol=0,atol=1e-7)
+        np.testing.assert_allclose(third.getViewBox().viewRange()[0],[50,90],rtol=0,atol=1e-7)
+        # Geometry must settle, rather than continually queuing zero-time work.
+        alignment=QtTest.QSignalSpy(self.work._canvas_alignment_timer.timeout)
+        for _ in range(30):self.app.processEvents()
+        self.assertEqual(alignment.count(),0)
+        self.assertFalse(self.work._canvas_alignment_timer.isActive())
+
 
 if __name__ == '__main__':
     unittest.main()
