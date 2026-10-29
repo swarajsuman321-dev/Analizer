@@ -8,13 +8,13 @@ unrun; offscreen geometry is not evidence for those claims.
 """
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import faulthandler
 import hashlib
 from itertools import combinations
 import json
 import os
 from pathlib import Path
 import sys
+import threading
 import time
 import traceback
 import uuid
@@ -284,19 +284,51 @@ class AcceptanceRecorder:
         return self.result
 
 
-@contextmanager
-def acceptance_stack_diagnostics(output):
-    """Capture all Python threads even when a windowed EXE has no stderr.
+def _acceptance_stack_snapshot(path):
+    """Read owned Python frame objects while holding the normal Python GIL.
 
-    This watchdog observes the diagnostic CLI only. It does not interrupt work,
-    extend its deadline, or turn an unfinished check into a successful one.
+    A C-level faulthandler timeout walks foreign interpreter frames without the
+    GIL. On Python 3.12 that walk can itself fault during PySide signal callbacks.
+    ``sys._current_frames`` promotes and owns its frame references safely; the
+    regular traceback formatter runs as ordinary Python diagnostic work.
     """
-    with (Path(output)/'acceptance-stacks.txt').open('w', encoding='utf-8') as stream:
-        faulthandler.dump_traceback_later(120, repeat=True, file=stream)
-        try:
-            yield
-        finally:
-            faulthandler.cancel_dump_traceback_later()
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    lines = ['Snapshot at '+datetime.now(timezone.utc).isoformat()+'\n']
+    for identity, frame in sys._current_frames().items():
+        lines.append('Thread '+hex(identity)+' ('+names.get(identity, 'Unknown')+'):\n')
+        lines.extend(traceback.format_stack(frame, limit=64))
+    with path.open('a', encoding='utf-8') as stream:
+        stream.writelines(lines)
+
+
+@contextmanager
+def acceptance_stack_diagnostics(output, *, interval=120):
+    """Observe the diagnostic CLI without asynchronous C-level frame walking.
+
+    The daemon's Event wait releases the GIL and exits promptly on cleanup.
+    Diagnostic failures cannot change application check results or deadlines.
+    Each snapshot owns and closes its file, including when cleanup times out.
+    """
+    path = Path(output)/'acceptance-stacks.txt'
+    path.write_text('', encoding='utf-8')
+    stopped = threading.Event()
+    def capture():
+        while not stopped.wait(interval):
+            try:
+                _acceptance_stack_snapshot(path)
+            except Exception as exc:
+                try:
+                    with path.open('a', encoding='utf-8') as stream:
+                        stream.write('Diagnostic snapshot failed: '+type(exc).__name__+'\n')
+                except OSError:
+                    pass
+    watcher = threading.Thread(target=capture, name='AcceptanceStackDiagnostics', daemon=True)
+    watcher.start()
+    try:
+        yield watcher
+    finally:
+        stopped.set()
+        watcher.join(timeout=5)
 
 
 def run_acceptance(samples, output):
