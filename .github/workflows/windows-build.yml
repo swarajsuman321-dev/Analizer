@@ -96,7 +96,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path build -Force | Out-Null
-          $tests = & .venv-exe\Scripts\python.exe -m unittest discover -s tests -v 2>&1
+          $tests = & .venv-exe\Scripts\python.exe -c "import sys; from build_exe import run; run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], timeout=900)" 2>&1
           $testCode = $LASTEXITCODE
           $tests | Tee-Object -FilePath build/native-unit-tests.log
           if ($testCode -ne 0) { exit $testCode }

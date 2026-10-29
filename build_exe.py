@@ -1,11 +1,13 @@
 """Build and check native Windows executables in a dedicated virtual environment."""
 import argparse
+import codecs
 import json
 import os
 from pathlib import Path
 import platform
 import subprocess
 import sys
+import time
 import zipfile
 
 PROJECT = Path(__file__).resolve().parent
@@ -20,11 +22,62 @@ def configure_console():
         if hasattr(stream,'reconfigure'):stream.reconfigure(encoding='utf-8',errors='backslashreplace')
 
 
-def run(command, *, env=None):
+def stop_process_tree(process):
+    """Stop a timed-out native test and its frozen-runtime descendants."""
+    if sys.platform == 'win32':
+        try:
+            subprocess.run(['taskkill.exe', '/PID', str(process.pid), '/T', '/F'],
+                           timeout=30, capture_output=True, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if process.poll() is None:
+        process.kill()
+    try:
+        process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        # The caller still reports the original phase timeout and preserves the
+        # output file. A blocked OS process must not defeat that finite bound.
+        pass
+
+
+def run_bounded(command, environment, timeout):
+    """Spool test output durably while supervising a finite process lifetime.
+
+    A blocking pipe line iterator cannot enforce a deadline when a test stops
+    printing. The child writes directly to the log; this supervisor tails the
+    regular file without a reader thread or an inherited pipe keeping it alive.
+    """
+    path = BUILD/'build.log'
+    decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+    with path.open('ab', buffering=0) as log, path.open('rb') as reader:
+        reader.seek(log.tell())
+        process = subprocess.Popen(command, cwd=PROJECT, env=environment, stdout=log,
+                                   stderr=subprocess.STDOUT)
+        deadline = time.monotonic()+timeout
+        def pump(*, final=False):
+            chunk = reader.read()
+            value = decoder.decode(chunk, final=final)
+            if value:
+                print(value, end='', flush=True)
+        while process.poll() is None:
+            pump()
+            if time.monotonic() >= deadline:
+                stop_process_tree(process)
+                pump(final=True)
+                raise subprocess.TimeoutExpired(command, timeout)
+            time.sleep(.05)
+        pump(final=True)
+        if process.returncode:
+            raise RuntimeError(f'Command exited with {process.returncode}. See build/build.log.')
+
+
+def run(command, *, env=None, timeout=None):
     configure_console()
     env={**os.environ,**(env or {}),'PYTHONIOENCODING':'utf-8','PYTHONUTF8':'1'}
     BUILD.mkdir(exist_ok=True)
     print('\nRunning: ' + subprocess.list2cmdline([str(v) for v in command]), flush=True)
+    if timeout is not None:
+        return run_bounded(command, env, timeout)
     with (BUILD / 'build.log').open('a', encoding='utf-8') as log:
         process = subprocess.Popen(command, cwd=PROJECT, env=env, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
@@ -55,7 +108,7 @@ def build(mode):
     destination = DIST if mode == 'onefile' else DIST / mode
     run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean',
          '--workpath', str(BUILD / mode), '--distpath', str(destination),
-         str(PROJECT / 'ApplianceSignalStudio.spec')], env=env)
+         str(PROJECT / 'ApplianceSignalStudio.spec')], env=env, timeout=1200)
     executable = (destination / 'ApplianceSignalStudio.exe' if mode == 'onefile'
                   else destination / 'ApplianceSignalStudio' / 'ApplianceSignalStudio.exe')
     if not executable.is_file():
@@ -97,7 +150,7 @@ def main():
             run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
             run([sys.executable, '-m', 'pip', 'install', '--only-binary=:all:',
                  '-r', str(PROJECT / 'requirements-build.txt')])
-        run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'])
+        run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], timeout=900)
         # Reuse the supplied code-based logo; data/results are never embedded.
         if not (PROJECT / 'app_icon.ico').exists() or not (PROJECT / 'app_logo.png').exists():
             run([sys.executable, str(PROJECT / 'generate_logo.py')])
