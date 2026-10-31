@@ -4,6 +4,10 @@ on:
     branches: [main]
   push:
     branches: [main, feature/recover-analysis-workflow]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
   workflow_dispatch:
 concurrency:
   group: windows-build-${{ github.ref }}

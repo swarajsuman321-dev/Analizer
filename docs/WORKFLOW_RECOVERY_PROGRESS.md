@@ -123,6 +123,13 @@ negative pre-program time.
   constructs 32 graphs and verifies rejection of a 33rd without layout mutation.
 - Fresh 2.5.0 full tests and supplied-recording acceptance are running. Source
   self-test has passed at 2.5.0. Native Windows output is not yet verified.
+- Native Windows workflow was observed running for source `c3106fb` (Actions run
+  41167515858). A follow-up corrects a final acceptance assertion for the new
+  folded Engineering Controls default and checks dock tab membership after
+  reopening the hidden dock (Qt omits hidden docks from tabifiedDockWidgets).
+  The focused default-layout test passes, including reopening and separate Help.
+- Documentation-only progress pushes no longer restart native builds. Source,
+  tests, bundled manuals and workflow changes still trigger native validation.
 
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared

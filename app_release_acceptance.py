@@ -475,11 +475,11 @@ def _run_workbench(recorder, samples, output):
                              for row in range(window.readout.rowCount())]
             assert after_readout == before_readout, 'Panel folding discarded the source readout'
             assert all(window.docks[name].widget() is widget for name, widget in original_widgets.items())
-            assert not controls.is_folded('Engineering Controls') and not controls.is_folded('Readout')
+            assert controls.is_folded('Engineering Controls') and not controls.is_folded('Readout')
             assert window.docks['Readout'].widget().isVisible(), 'Default folds hid the retained Readout'
             return {'default_folded': list(folded), 'source_role': 'tdms',
                     'expanded_and_refolded': len(folded), 'preserved_readout_rows': len(before_readout),
-                    'engineering_and_readout_available': True}
+                    'engineering_reopens_and_readout_available': True}
         recorder.check('DEFAULT-PANEL-FOLDS-EXPAND-PRESERVE-READOUT', folded_panels_preserve_readout,
                        'panel_folding', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
 
