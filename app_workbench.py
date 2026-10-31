@@ -10,7 +10,7 @@ from PySide6 import QtCore,QtGui,QtWidgets
 from app_channel_store import ChannelStore,Channel,Dataset
 from app_channel_portal import ChannelPortal
 from app_ingestion import ingest
-from app_plot_workspace import PlotWorkspace,LAYOUTS
+from app_plot_workspace import PlotWorkspace,LAYOUTS,PRESET_LAYOUTS
 from app_signal_processing import formula,transform,UNIT_DEFINITIONS
 from app_workspace_io import save_workspace,load_workspace
 from app_qt_style import ThemeController
@@ -373,7 +373,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.export_button.setToolTip('Save a PDF summary, interval CSV/Excel, or high-resolution PNG')
         report_action=QtGui.QAction(self);report_action.setShortcut('Ctrl+P');report_action.triggered.connect(lambda:self.guard(self.report));self.addAction(report_action)
         action('Calculate Channel',lambda:self.show_dock('Channel Math'),'Ctrl+M')
-        self.layout_combo=QtWidgets.QComboBox();self.layout_combo.setToolTip('Choose the graph panel layout');self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
+        self.layout_combo=QtWidgets.QComboBox();self.layout_combo.setToolTip('Choose a preset layout, or use Add Graph to build your own');self.layout_combo.addItems(PRESET_LAYOUTS);toolbar.addWidget(self.layout_combo)
         self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.set_graph_layout(text)))
         self.add_graph_action=toolbar.addAction('Add Graph',lambda:self.guard(self.add_graph))
         self.add_graph_action.setToolTip('Add a blank graph, then choose its channels in Data Portal. Right-click a graph to move, resize or remove it.')
@@ -1133,6 +1133,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             for workspace in self.workspaces:workspace.navigation_bar.setVisible(workspace is self.active_workspace)
             pane=self.active_workspace.active
             for widget,value in ((self.layout_combo,self.active_workspace.layout_name),(self.cursor_combo,pane.cursor_mode)):
+                if widget is self.layout_combo and widget.findText(value)<0:widget.addItem(value)
                 blocker=QtCore.QSignalBlocker(widget);widget.setCurrentIndex(widget.findData(value)) if widget is self.cursor_combo else widget.setCurrentText(value);del blocker
             blocker=QtCore.QSignalBlocker(self.snap_checkbox);self.snap_checkbox.setChecked(pane.snap);del blocker
         if hasattr(self,'compact'):self.compact.sync()

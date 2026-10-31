@@ -102,6 +102,28 @@ negative pre-program time.
   establish actual program starts of the supplied machine runs. Actual starts
   still require user evidence; the app does not guess them.
 
+### 2.5.0 development build preparation
+
+- Source identity and Windows version resources are 2.5.0; generated offline
+  manual and README clearly distinguish this development build from published
+  2.4.3 downloads.
+- Windows CI now also runs for this recovery branch, producing all three native
+  package forms and diagnostics. Release publication remains restricted to main;
+  a development-branch push does not publish a release.
+- The first full integration run finished with 601 tests, six failures and one
+  error (five skips). Four failures asserted the superseded panel defaults; one
+  asserted old pan-induced cursor clamping; one used Qt polling that starved a
+  background update worker. The error was stale IDs during recording removal.
+  These were corrected while preserving behavioral assertions. The revised
+  simplified-workbench suite passed 18 tests; updater suite passed 12 with one
+  platform skip. Dock teardown callback lifetime was also corrected.
+- Acceptance layout coverage is bounded to all original presets plus a custom
+  3-graph layout across themes/sizes. An accidental exhaustive run over every
+  generated count was stopped and is not a passing result. A separate regression
+  constructs 32 graphs and verifies rejection of a 33rd without layout mutation.
+- Fresh 2.5.0 full tests and supplied-recording acceptance are running. Source
+  self-test has passed at 2.5.0. Native Windows output is not yet verified.
+
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
 hover, overlap UI integration and broader comparison requirements remain open.

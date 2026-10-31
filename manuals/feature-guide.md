@@ -1,7 +1,7 @@
 # Versioned manual source
 
 Each topic records the first version that supports it. For the current unpublished
-draft, run `python scripts/build_manuals.py 2.4.2` after changing this source.
+draft, run `python scripts/build_manuals.py 2.5.0` after changing this source.
 Keep published version manuals unchanged.
 
 ## Quick start | 2.1.0
@@ -783,3 +783,43 @@ These are user-provided notes. Entering a reviewer name does not digitally sign 
 Review the page estimate after choosing scope and optional notes. Readable pagination may add pages for comparison results, cursor evidence or long reviewed text; the report is not forced into exactly four pages. The established Analysis regression fixture remains the baseline for a concise default summary, rather than a universal page count for every data combination.
 
 The complete companion workbook and JSON retain the detailed results, source fingerprints, mappings, quality/coverage, definitions and configuration; the event CSV retains every original event. Data-quality gaps remain distinct from demonstrated appliance faults. Unconfigured or unsupported results retain their reasons and next actions. Manual notes and deviation colours do not invent acceptance limits or turn missing evidence into a pass.
+
+## Program starts and shared time inspection | 2.5.0
+
+Open **Align Program Starts** and choose each recording. Enter the original source
+time in minutes for the actual program start, or activate a graph for that
+recording and use **Use Cursor A**. Describe the recorded start signal, reviewed
+rule or observation establishing the point, then Apply. Every time-based channel
+in that recording receives the same physical offset. Time zero is program start;
+pre-program data stays at negative time. Original timestamps, samples and source
+tables remain available. Save the workspace to retain the confirmed origin.
+
+The app does not assume that the first recorded sample, first nonzero valve or
+motor movement establishes program start. If the evidence is unclear, obtain a
+reviewed start point before comparing. Numeric comparison and default engineering
+comparison require confirmed origins; advanced engineering anchor overrides must
+be selected explicitly. Ordinary plots can still inspect original recording
+coordinates before confirmation; they are not evidence of program alignment.
+
+A/B is one shared pair across compatible time graphs. Shorter channels read
+Unknown outside their sample range and cannot pull the pair back onto their
+clocks. Panning/zooming does not move the pair. Time axes belonging to one
+recording stay linked even if the general time lock is off. Readout combines
+compatible time graphs; frequency and sample-domain graphs retain their own
+coordinates. Hover marks each available trace at its nearest actual sample, on
+its own value axis. The mouse-readout tooltip retains the complete sample values.
+
+## Freely arranged graphs | 2.5.0
+
+**Add Graph** creates an empty active graph. Choose its channels using Data Portal.
+Right-click a graph and open **Arrange Graphs** to move it up/down, change its
+relative row height or remove it. Removing a graph retains its source channels.
+Order, channel bindings and row proportions persist with the workspace. Existing
+fixed layouts remain available. A workspace supports up to 32 retained graphs.
+
+For numerical comparison of three or more signals, select their rows and choose
+**Compare Signals**, then review the reference and checked candidates. For two
+signals in one recording, use **Compare more signals** in the source chooser.
+Unknown units or incompatible interpretations remain explicit blockers for each
+pair rather than disappearing. Confirmed actuator channels receive pairwise ON
+overlap using supported time only; unknown samples and gaps are excluded.

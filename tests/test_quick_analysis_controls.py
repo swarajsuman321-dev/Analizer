@@ -84,9 +84,9 @@ class QuickAnalysisControlsTests(unittest.TestCase):
             self.assertTrue(strokes)
             self.assertGreater(max(strokes),160) if dark else self.assertLess(min(strokes),100)
         w.theme.apply(previous_theme)
-        expected = {'Properties', 'Channel Math', 'Channel Table', 'Interval Measurements'}
+        expected = {'Properties', 'Channel Math', 'Channel Table', 'Interval Measurements','Engineering Controls'}
         self.assertEqual({name for name, dock in w.docks.items() if dock.isHidden()}, expected)
-        self.assertFalse(w.docks['Engineering Controls'].isHidden())
+        self.assertTrue(w.docks['Engineering Controls'].isHidden())
         self.assertFalse(w.docks['Readout'].isHidden())
         # Native fonts, DPI and dock sizes determine the available header width.
         # Exercise its real visible route instead of requiring every button to

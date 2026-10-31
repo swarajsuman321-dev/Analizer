@@ -25,6 +25,9 @@ NOTES={'2.4.3':'F11 expands every graph in the current split workspace; selected
        '2.2.3':'Quick zoom controls beside Analysis/Comparison, distinct stable channel colors and visible legends, and About menu access to User Manual and Updates.'}
 
 
+NOTES['2.5.0']='Development build: source-wide program-start alignment, stable shared time cursors and combined readouts, freely added/reordered/resized graphs, shared per-trace hover markers, multi-signal comparison and confirmed-actuator overlap. CSV Excel text-literal timestamps retain fractional precision. Exported cursor guides are hidden by default with an opt-in setting. Program starts require explicit evidence; no recording-start fallback is used by the comparison UI. Windows build and release readiness must be checked separately.'
+
+
 def generate(versions=None):
     source=(ROOT/'manuals/feature-guide.md').read_text(encoding='utf-8')
     parts=re.split(r'^## (.+) \| (\d+\.\d+\.\d+)\n',source,flags=re.M)
@@ -37,6 +40,8 @@ def generate(versions=None):
             default='All View panels are enabled in a new workspace. Data Portal/Engineering Controls, Properties/Channel Math and the bottom measurement/table panels share dock tabs. Engineering Controls remains the default tab in its existing dock group.'
         if number>=(2,4,2):
             default='New workspaces start with Properties, Channel Math, Channel Table and Interval Measurements folded. Use the compact **Panels** button to expand or fold them. Data Portal, Engineering Controls and Readout remain available; Engineering Controls is the default tab in its dock group. Explicit saved workspace layouts, including legacy layouts, take precedence over these new-workspace defaults.'
+        if number>=(2,5,0):
+            default='New workspaces prioritize Data Portal, graphs and Readout. Engineering Controls, Properties, Channel Math, Channel Table and Interval Measurements start folded and remain available through Panels/View. Explicit saved layouts take precedence.'
         text=f'# Appliance Signal Studio — {version}\n\nComplete feature reference for this version. Use the matching version when following controls; later releases can change their placement.\n\n## Changes in this version\n\n{note}\n\n'
         for title,introduced,body in topics:
             if introduced>number:continue
@@ -153,6 +158,12 @@ def generate(versions=None):
                     body=body.replace('Only that pane expands into the fullscreen graph window; the complete multi-pane dashboard is not expanded.', 'This retained command expands only that pane. For the complete visible split layout, use **Fullscreen Workspace (F11)** instead.')
                 if title=='Export Report':
                     body+='In **Comparison**, PDF uses readable pages with source/scope, plotted evidence, channel/cursor statistics and data-quality/provenance details. Comparison Excel retains active interval samples and cursor summaries and adds supporting report evidence. **PNG** remains a high-resolution graph snapshot; **CSV** retains interval samples. See Detailed comparison reports and Report Details & Conclusions below.\n\n'
+            if number>=(2,5,0):
+                if title=='Compare Two Signals':
+                    title='Compare Signals'
+                    body='\nUse **Align Program Starts** to confirm program time zero for each recording, then select channels and choose **Compare Signals**. Two cross-recording parameters use the existing pair report; three or more selections open a reference/candidate review. **Compare more signals** also opens that chooser. Each candidate is compared with the explicit reference; incompatible units remain unavailable with a reason. Confirmed actuators receive pairwise ON-overlap analysis. Across different runs, overlap describes timing similarity, not physical simultaneous operation. PDF, Excel and JSON share the computed results; original samples and complete difference/event evidence remain in companions. No acceptance limit, phase meaning or program start is guessed.\n\n'
+                if title=='Report Details & Conclusions':
+                    body+='\nCursor guides are hidden in exported plots by default. Enable **Include cursor lines and markers in exported plots** to include them. Times and interval statistics remain in reports; on-screen cursors are unchanged. Save the workspace to retain this preference.\n\n'
             text+=f'## {title}\n' +body.replace('{{DEFAULT_VIEW}}',default)
         (ROOT/f'manuals/v{version}.md').write_text(text,encoding='utf-8')
 

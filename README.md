@@ -1,4 +1,11 @@
-# Appliance Signal Studio 2.4.3
+# Appliance Signal Studio
+
+Development branch: **2.5.0, unreleased**. This build adds confirmed program-start
+alignment, shared time cursors/readout, user-added graphs, shared hover,
+multi-signal comparison and actuator overlap, and clean report plots. See the
+[development progress](docs/WORKFLOW_RECOVERY_PROGRESS.md) and
+[2.5.0 manual](manuals/v2.5.0.md). Windows packages require native validation;
+the published downloads below remain **2.4.3**.
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.

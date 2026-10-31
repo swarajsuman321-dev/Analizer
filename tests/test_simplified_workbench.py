@@ -83,7 +83,7 @@ class SimplifiedWorkbenchTests(unittest.TestCase):
         stats=pane.measurements();self.assertEqual(stats[a.id]['ΔX'],6);self.assertEqual(stats[a.id]['ΔY'],-12)
         self.assertTrue(np.isnan(stats[b.id]['B']))
         pane.setXRange(3,6,padding=0);self.app.processEvents()
-        self.assertTrue(all(3<=line.value()<=6 for line in pane.cursor_lines))
+        self.assertEqual([line.value() for line in pane.cursor_lines],[8,2])
         pane.setXRange(-999,999,padding=0);self.app.processEvents();self.assertTrue(all(0<=line.value()<=10 for line in pane.cursor_lines))
     def test_cursor_colors_survive_themes_and_match_readout(self):
         w=self.window;c=self.add();w.dashboard.assign([c.id])

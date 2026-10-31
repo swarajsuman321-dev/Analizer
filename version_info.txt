@@ -1,12 +1,12 @@
 VSVersionInfo(
-  ffi=FixedFileInfo(filevers=(2, 4, 3, 0), prodvers=(2, 4, 3, 0), mask=0x3f,
+  ffi=FixedFileInfo(filevers=(2, 5, 0, 0), prodvers=(2, 5, 0, 0), mask=0x3f,
                    flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
   kids=[StringFileInfo([StringTable('040904B0', [
     StringStruct('FileDescription', 'Appliance Signal Studio'),
-    StringStruct('FileVersion', '2.4.3.0'),
+    StringStruct('FileVersion', '2.5.0.0'),
     StringStruct('InternalName', 'ApplianceSignalStudio'),
     StringStruct('OriginalFilename', 'ApplianceSignalStudio.exe'),
     StringStruct('ProductName', 'Appliance Signal Studio'),
-    StringStruct('ProductVersion', '2.4.3.0')
+    StringStruct('ProductVersion', '2.5.0.0')
   ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
 )

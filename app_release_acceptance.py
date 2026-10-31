@@ -1406,7 +1406,8 @@ def _run_workbench(recorder, samples, output):
                     'adopted_ranges': adopted, 'restored_ranges': bounds, 'drawing_heights': heights,
                     'paint_settle_passes': paint_passes, 'time_pixel_alignment': pixel_checks,
                     'scroll_maximum': workspace.scroll.verticalScrollBar().maximum()}
-        for layout in LAYOUTS:
+        from app_plot_workspace import PRESET_LAYOUTS
+        for layout in (*PRESET_LAYOUTS,'3 graphs'):
             for theme in ('Dark', 'Light'):
                 for size in ((1024, 680), (1536, 960)):
                     recorder.check(f'LAYOUT-{layout}-{theme}-{size[0]}',

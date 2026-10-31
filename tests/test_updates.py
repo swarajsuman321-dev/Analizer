@@ -1,4 +1,5 @@
 import hashlib
+import time
 import io
 import json
 from pathlib import Path
@@ -199,7 +200,7 @@ class InfoTests(unittest.TestCase):
             with patch('app_info.check_latest',return_value=manifest(version='3.0.0')):
                 w.info.check()
                 for _ in range(200):
-                    self.app.processEvents();QtTest.QTest.qWait(5)
+                    self.app.processEvents();time.sleep(.005)
                     if w.info.task is None:break
                 self.assertIsNone(w.info.task);self.assertTrue(w.info.install_button.isEnabled())
             with tempfile.TemporaryDirectory() as directory:
@@ -209,7 +210,7 @@ class InfoTests(unittest.TestCase):
                 with patch('app_info.download_update',side_effect=download),patch.object(w.info,'update_directory',return_value=Path(directory)):
                     w.info.update();w.info.cancel_download()
                     for _ in range(200):
-                        self.app.processEvents();QtTest.QTest.qWait(5)
+                        self.app.processEvents();time.sleep(.005)
                         if w.info.task is None:break
                     self.assertIsNone(w.info.task);self.assertIsNone(w.info.download);self.assertIn('cancelled',w.info.status.text())
         finally:w.close();self.app.processEvents()

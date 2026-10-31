@@ -12,8 +12,8 @@ from app_channel_identity import channel_label, channel_details
 
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
 COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
-LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
-LAYOUTS.update({f'{count} graphs':(count,1) for count in range(1,33)})
+PRESET_LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
+LAYOUTS={**PRESET_LAYOUTS,**{f'{count} graphs':(count,1) for count in range(1,33)}}
 
 
 class GraphHeaderNavigation(QtWidgets.QStackedWidget):

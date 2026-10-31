@@ -42,5 +42,15 @@ class FlexibleGraphTests(unittest.TestCase):
             self.assertTrue(any(p.ids==[c.id] for p in work.panes[2:]))
         finally:work.close();self.app.processEvents()
 
+    def test_maximum_graph_count_and_rejection_preserve_existing_layout(self):
+        work=PlotWorkspace(ChannelStore())
+        try:
+            work.set_layout('32 graphs')
+            self.assertEqual(len(work.visible_panes()),32)
+            before=work.state()
+            with self.assertRaisesRegex(ValueError,'32 graphs'):work.add_graph()
+            self.assertEqual(work.state(),before)
+        finally:work.close();self.app.processEvents()
+
 
 if __name__=='__main__':unittest.main()
