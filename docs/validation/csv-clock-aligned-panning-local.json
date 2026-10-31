@@ -1,0 +1,53 @@
+{
+  "source_commit": "cfaaf9c92e294f7b14e432e0d1a7647232996849",
+  "branch": "fix/aligned-graph-panning",
+  "published_release_affected": "2.5.0",
+  "patch_released": false,
+  "unit_tests": {
+    "command": "python -X faulthandler -m unittest discover -s tests -v",
+    "ran": 617,
+    "passed": 612,
+    "skipped": 5,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 328.478
+  },
+  "focused_tests": {
+    "ran": 102,
+    "passed": 102,
+    "seconds": 41.982
+  },
+  "supplied_csv": {
+    "rows": 1394,
+    "signals": 8,
+    "span_seconds": 139.599,
+    "coordinate_kind": "time",
+    "coordinate_unit": "min",
+    "application_callback_errors": 0,
+    "checks": [
+      "all 1394 timestamps and 8 signals imported",
+      "minute axis and millisecond precision",
+      "one A/B pair in both graphs",
+      "combined readout contains all 8 signals",
+      "real horizontal drag from either graph moves both",
+      "A/B unchanged by pan",
+      "Y scales unchanged by horizontal pan",
+      "original file, source table, arrays and shifts unchanged",
+      "program start remains unconfirmed rather than inferred from recording start"
+    ],
+    "private_input_committed": false
+  },
+  "compatible_csv_copy": {
+    "released_250_importer_verified": true,
+    "removed_bytes": 3,
+    "all_csv_content_after_bom_identical": true,
+    "rows": 1394,
+    "signals": 8,
+    "span_seconds": 139.599,
+    "coordinate_unit": "min",
+    "original_unchanged": true
+  },
+  "source_self_test_ok": true,
+  "native_windows_validation": "Not run for this unreleased source correction; installed 2.5.0 remains unchanged.",
+  "program_start": "The recording clock is recognized. Program start still requires a confirmed event; none is inferred from recording start or filename."
+}

@@ -4,7 +4,7 @@ Published release: **2.5.0**, independently verified on 31 October 2026.
 Release branch: `release/2.5.0`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: post-release CSV clock and aligned-panning correction
+## Current status: CSV clock and aligned-panning source correction validated
 
 The user supplied a CSV after showing 2.5.0 plots labelled sample (ksample),
 with independently moving X views and A/B cursors. Work is on
@@ -23,13 +23,21 @@ with independently moving X views and A/B cursors. Work is on
   and fit bounds. Real horizontal drags from either pane move its aligned group
   with the general time lock off; unrelated sample recordings and frequency
   results remain independent. Pan does not move A/B or change stored samples.
-- The earlier broader clock-candidate implementation passed 103 focused checks;
-  it was then narrowed after exact-file diagnosis and the user's confirmation
-  that other CSV files work. Its in-flight complete suite was stopped and is not
-  a passing result for the final correction. The final focused run passed all
-  102 checks in 41.982 seconds. Full discovery and exact-file GUI acceptance are
-  being rerun. Private CSV data stays outside Git;
-  the BOM fixture uses synthetic timestamps and values.
+- Source `cfaaf9c92e294f7b14e432e0d1a7647232996849` passed complete discovery:
+  **617 tests in 328.478 seconds, 612 passed, 5 platform skips, zero failures or
+  errors**. All 102 focused checks passed, and the source workbench self-test
+  passed. Exact-file GUI acceptance passed all nine checks with zero callback
+  errors, including real horizontal drags from either graph, shared A/B, all
+  eight readout rows and unchanged source arrays/table/file. Private CSV data
+  stays outside Git; the BOM fixture uses synthetic timestamps and values.
+- A compatible CSV copy removes only the three-byte BOM and preserves every
+  subsequent byte. It was verified using the released 2.5.0 importer: 1,394
+  timestamps and 8 signals load as minutes over 139.599 seconds. The private copy
+  is in the workspace output directory, not Git. Reopen it as a new recording;
+  restoring an old sample-indexed workspace does not reimport its clock.
+- Local evidence is retained in
+  `docs/validation/csv-clock-aligned-panning-local.json`. Native Windows validation
+  and a new installer/release have not been run for this source correction.
 
 The file establishes recording time, not a verified program-start event. Program
 time zero still needs the confirmed start point; no start is inferred from the
