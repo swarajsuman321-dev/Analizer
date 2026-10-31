@@ -4,7 +4,35 @@ Published release: **2.5.0**, independently verified on 31 October 2026.
 Release branch: `release/2.5.0`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: 2.5.0 published and public downloads verified
+## Current status: post-release CSV clock and aligned-panning correction
+
+The user supplied a CSV after showing 2.5.0 plots labelled sample (ksample),
+with independently moving X views and A/B cursors. Work is on
+`fix/aligned-graph-panning`; published 2.5.0 remains immutable.
+
+- Exact-file reproduction confirmed the ordinary CSV reader retains an invisible
+  UTF-8 BOM before the datetime heading. The released clock-name matcher misses
+  that heading, so all 8 signals incorrectly use sample coordinates 0–1393.
+- Shared clock candidate detection now ignores BOM/heading whitespace, recognizes
+  logger clock aliases and inspects date/clock-shaped text beyond the first four
+  columns. Numeric row IDs and remaining-time values do not invent a clock.
+  The supplied file now imports all 1,394 timestamps and 8 signals on a minute
+  axis over 139.599 seconds, preserving milliseconds and original source text.
+- Same-recording sample graphs now share X ranges, A/B positions, hover/readout
+  and fit bounds. Real horizontal drags from either pane move its aligned group
+  with the general time lock off; unrelated sample recordings and frequency
+  results remain independent. Pan does not move A/B or change stored samples.
+- All 103 focused clock, navigation, cursor, geometry, program-origin, TDMS and
+  engineering checks passed. A complete suite and exact-file GUI acceptance are
+  the next validation gates. Private CSV data stays outside Git; the BOM fixture
+  uses synthetic timestamps and values.
+
+The file establishes recording time, not a verified program-start event. Program
+time zero still needs the confirmed start point; no start is inferred from the
+filename or signal activity. This correction is not yet in an installed Windows
+build or a new published release.
+
+## Published 2.5.0 release checkpoint
 
 The user explicitly authorized release on 31 October 2026. Release preparation
 updates the current manual/release summary and download documentation without

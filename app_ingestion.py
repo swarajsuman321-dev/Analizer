@@ -49,7 +49,8 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             store.datasets[ds.id] = ds
             from app_unit_detection import detect_unit,projection_frame
             frame = projection_frame(frame)
-            candidates = [c for c in frame.columns if re.match(r'^(?:timestamp|datetime|date[ _]time|time|elapsed|relative[ _](?:time|minutes|seconds)|date)(?:$|[ _\[(])',str(c),re.I) and not re.search(r'remain|left|countdown',str(c),re.I)]
+            from app_data import timestamp_candidates
+            candidates = timestamp_candidates(frame) if not force_sample and not time_column else []
             time_origin=None
             clock = None if force_sample else time_column or (candidates[0] if candidates else None)
             clock_columns={clock}

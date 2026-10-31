@@ -460,11 +460,35 @@ def _parse_timestamp_column(target, column_name, unit_hint='', excel=False):
     return pd.to_datetime(text, format='mixed', errors='coerce', utc=True).dt.tz_localize(None)
 
 
+def timestamp_candidates(df):
+    """Rank clock headings, then inspect date/clock text without assuming a rate."""
+    names={column:re.sub(r'[_-]+',' ',str(column).strip().lstrip('\ufeff').strip().lower()) for column in df.columns}
+    priorities=('timestamp','datetime','date time','time stamp','dtime','elapsed',
+                'relative time','relative minutes','relative seconds','rel time',
+                'seconds','sekunden','time','zeit','uhrzeit','clock','dauer','date')
+    excluded=('left','remain','countdown','target','dest')
+    candidates=[]
+    for token in priorities:
+        for column,name in names.items():
+            if any(word in name for word in excluded):continue
+            if (name==token or name.startswith(token+' ') or name.startswith(token+'(') or name.startswith(token+'[')) and column not in candidates:
+                candidates.append(column)
+    # Instrument exports can place an unfamiliar clock heading after many
+    # signals. Only date/clock-shaped text is considered here; numeric rows
+    # alone cannot establish seconds or a sampling frequency.
+    for column,name in names.items():
+        if column in candidates or any(word in name for word in excluded):continue
+        sample=timestamp_text(df[column].dropna().head(20))
+        shaped=sample.str.match(r'^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]|$)|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}(?:[ T]|$)|\d{1,3}:\d{2}(?::\d{2}(?:\.\d+)?)?$)').fillna(False)
+        if len(sample) and shaped.sum()>=len(sample)*.6:candidates.append(column)
+    return candidates
+
+
 def extract_datetime_series(df, fallback=True):
     """Return indexed timestamps without treating remaining-time signals as clocks."""
     if df.empty:
         return pd.Series(pd.NaT, index=df.index, dtype='datetime64[ns]')
-    names = {column: re.sub(r'[_-]+', ' ', str(column).strip().lower()) for column in df.columns}
+    names = {column: re.sub(r'[_-]+', ' ', str(column).strip().lstrip('\ufeff').strip().lower()) for column in df.columns}
     date_col = next((c for c, name in names.items() if name in ('date', 'datum', 'day', 'tag')), None)
     time_col = next((c for c, name in names.items() if name in ('time', 'zeit', 'uhrzeit')), None)
     if date_col is not None and time_col is not None:
@@ -482,24 +506,10 @@ def extract_datetime_series(df, fallback=True):
         if parsed.notna().sum() > len(df) * 0.4:
             return parsed
 
-    priorities = ('timestamp', 'datetime', 'date time', 'time stamp', 'elapsed', 'relative time', 'rel time', 'seconds', 'sekunden', 'time', 'zeit', 'clock', 'dauer')
-    candidates = []
-    for token in priorities:
-        for column, name in names.items():
-            if any(excluded in name for excluded in ('left', 'remain', 'countdown', 'target', 'dest')):
-                continue
-            if (name == token or name.startswith(token + ' ') or name.startswith(token + '(') or name.startswith(token + '[')) and column not in candidates:
-                candidates.append(column)
-    for column in candidates:
+    for column in timestamp_candidates(df):
         parsed = _parse_timestamp_column(df[column], column, df.attrs.get('column_units', {}).get(column, ''), excel=df.attrs.get('source_format') == 'excel')
         if parsed.notna().sum() > len(df) * 0.4:
             return parsed
-    for column in df.columns[:4]:
-        sample = df[column].dropna().astype(str).str.strip().head(20)
-        if not sample.empty and sample.str.contains(r'[-/:]').sum() >= len(sample) * 0.6:
-            parsed = _parse_timestamp_column(df[column], column)
-            if parsed.notna().sum() > len(df) * 0.4:
-                return parsed
     if fallback:
         return pd.Series(pd.date_range(start='2000-01-01', periods=len(df), freq='1s'), index=df.index)
     return pd.Series(pd.NaT, index=df.index, dtype='datetime64[ns]')

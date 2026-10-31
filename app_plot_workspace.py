@@ -360,9 +360,9 @@ class PlotPane(pg.PlotWidget):
             try:
                 channels=[self.store.channels[id] for id in self.ids if id in self.store.channels and len(self.store.channels[id].x)]
                 workspace=getattr(self,'workspace',None)
-                shared=workspace is not None and workspace._temporal_group(self) is not None
+                shared=workspace is not None and workspace._shared_coordinate(self) is not None
                 if shared:
-                    channels=list({c.id:c for pane in workspace.visible_panes() if pane.coordinate==self.coordinate
+                    channels=list({c.id:c for pane in workspace._shared_panes(self)
                         for id in pane.ids if (c:=self.store.channels.get(id)) is not None and len(c.x)}.values())
                 if channels:
                     left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
@@ -604,9 +604,8 @@ class PlotPane(pg.PlotWidget):
         for view,marker in getattr(self,'inspection_markers',{}).values():view.removeItem(marker)
         self.inspection_markers={}
         workspace=getattr(self,'workspace',None)
-        shared_source=next((p for p in workspace.visible_panes() if p is not self and p.ids
-            and p.coordinate in {(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids}),None) if workspace else None
-        shared_state=shared_source.state() if shared_source is not None and shared_source.coordinate[0]=='time' else None
+        shared_source=next((p for p in workspace._shared_panes(self,ids=ids) if p is not self and p.ids),None) if workspace else None
+        shared_state=shared_source.state() if shared_source is not None else None
         for index,view in enumerate(self.marker_views):
             if view is not None:view.removeItem(self.cursor_markers[index]);self.marker_views[index]=None
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
@@ -840,7 +839,7 @@ class PlotPane(pg.PlotWidget):
         # have unequal widths. Independent Y viewboxes share the same clock.
         for _,view in self.axes.values():view.setXRange(*self.getViewBox().viewRange()[0],padding=0)
         workspace=getattr(self,'workspace',None)
-        if self.ids and not getattr(self,'_restored_positions',False) and not (workspace and workspace._temporal_group(self)):
+        if self.ids and not getattr(self,'_restored_positions',False) and not (workspace and workspace._shared_coordinate(self)):
             self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
@@ -868,9 +867,9 @@ class PlotPane(pg.PlotWidget):
         self.remember_view()
         left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
         workspace=getattr(self,'workspace',None)
-        if workspace is not None and workspace._temporal_group(self) is not None:
-            peers=[self.store.channels[id] for pane in workspace.visible_panes() if pane.coordinate==self.coordinate
-                for id in pane.ids if len(self.store.channels[id].x)]
+        if workspace is not None and workspace._shared_coordinate(self) is not None:
+            peers=[self.store.channels[id] for pane in workspace._shared_panes(self,navigation=True)
+                for id in pane.ids if id in self.store.channels and len(self.store.channels[id].x)]
             left=min(c.values()[0][0] for c in peers);right=max(c.values()[0][-1] for c in peers)
         self.setXRange(left,right if right>left else left+1,padding=.02)
         for unit in dict.fromkeys(self.bindings.values()):
@@ -1045,10 +1044,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         if state is None and pane is not self._hover_pane:return
         self._hover_pane=pane if state else None
         text=pane.hover_text if state else 'Mouse X/Y · Move over a graph to inspect values'
-        if state and self._temporal_group(pane) is not None:
+        if state and self._shared_coordinate(pane) is not None:
             values=[]
-            for target in self.visible_panes():
-                if target.coordinate!=pane.coordinate:continue
+            for target in self._shared_panes(pane):
                 for row in target.inspect_time(state['x']):
                     reading=f"{row['value']:.6g} {row['unit']}" if np.isfinite(row['value']) else 'Unknown'
                     if row['sample_time'] is not None:reading+=f" @ {row['sample_time']:.6g} {state['coordinate_unit']}"
@@ -1078,7 +1076,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         """Scale synchronized X once, and every independent Y axis once."""
         active=self.active
         if active is None:return
-        targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and self._temporal_group(active)==self._temporal_group(p) and self._temporal_group(active) is not None)]
+        targets=[p for p in self.visible_panes() if p is active or (self.time_axes_locked and active.coordinate and active.coordinate[0]=='time' and active.coordinate==p.coordinate)]
         if command in ('x','y','xy','box','pan','cursor'):
             self.navigation_mode='xy' if command=='box' else command
             self.navigation_actions[self.navigation_mode].setChecked(True)
@@ -1088,7 +1086,7 @@ class PlotWorkspace(QtWidgets.QWidget):
                 if command=='cursor' and pane.cursor_mode=='off':pane.set_cursor_mode('dual')
         elif command=='reset':
             for pane in targets:pane.fit()
-            channels=[self.store.channels[id] for pane in targets for id in pane.ids if len(self.store.channels[id].x)]
+            channels=[self.store.channels[id] for pane in self._shared_panes(active,navigation=True) for id in pane.ids if id in self.store.channels and len(self.store.channels[id].x)]
             if channels:active.setXRange(min(c.values()[0][0] for c in channels),max(c.values()[0][-1] for c in channels),padding=.02)
         elif command in ('in','out'):
             factor=factor if factor is not None else (.8 if command=='in' else 1.25)
@@ -1111,21 +1109,45 @@ class PlotWorkspace(QtWidgets.QWidget):
         if self.active is not pane:self.active=pane;self.activeChanged.emit(pane)
 
     @staticmethod
-    def _temporal_group(pane):
-        return pane.coordinate if pane.coordinate and pane.coordinate[0]=='time' else None
+    def _shared_coordinate(pane):
+        return pane.coordinate if pane.coordinate and pane.coordinate[0] in ('time','sample') else None
+
+    def _shared_panes(self,pane,*,ids=None,navigation=False):
+        """Share sample coordinates only within one connected recording group.
+
+        Sample numbers in unrelated recordings do not establish a common clock.
+        Time inspection retains its compatible-clock behavior; X navigation also
+        respects the general lock while always retaining same-recording links.
+        """
+        ids=pane.ids if ids is None else ids
+        channels=[self.store.channels[id] for id in ids if id in self.store.channels]
+        coordinates={(c.coordinate_kind,c.coordinate_unit) for c in channels}
+        group=next(iter(coordinates)) if len(coordinates)==1 else None
+        if not group or group[0] not in ('time','sample'):return [pane]
+        peers=[p for p in self.visible_panes() if p is pane or p.coordinate==group]
+        if pane not in peers:peers.insert(0,pane)
+        if group[0]=='time' and (not navigation or self.time_axes_locked):return peers
+        sources={c.dataset_id for c in channels if c.dataset_id}
+        selected={pane}
+        while True:
+            added=False
+            for target in peers:
+                if target in selected:continue
+                target_sources={self.store.channels[id].dataset_id for id in target.ids if id in self.store.channels and self.store.channels[id].dataset_id}
+                if sources.intersection(target_sources):
+                    selected.add(target);sources.update(target_sources);added=True
+            if not added:break
+        return [p for p in peers if p in selected]
 
     def _time_range_changed(self,pane,bounds):
         """Synchronize numbers, never screen edges or source timestamps."""
         if self._range_syncing or pane not in self.visible_panes():return
-        group=self._temporal_group(pane)
+        group=self._shared_coordinate(pane)
         if group is None or not np.isfinite(bounds).all():return
         self._range_syncing=True
         try:
-            for target in self.visible_panes():
-                if target is not pane and self._temporal_group(target)==group:
-                    source_datasets={self.store.channels[id].dataset_id for id in pane.ids if self.store.channels[id].dataset_id}
-                    target_datasets={self.store.channels[id].dataset_id for id in target.ids if self.store.channels[id].dataset_id}
-                    if not self.time_axes_locked and not source_datasets.intersection(target_datasets):continue
+            for target in self._shared_panes(pane,navigation=True):
+                if target is not pane:
                     target.setXRange(float(bounds[0]),float(bounds[1]),padding=0)
         finally:self._range_syncing=False
 
@@ -1275,15 +1297,18 @@ class PlotWorkspace(QtWidgets.QWidget):
         # Explicit numerical propagation is stable across unequal axis widths,
         # scroll positions and DPI. setXLink aligns scene pixels and can silently
         # change a requested 40–80 interval to 40.7463–80 on a narrower pane.
-        groups={}
+        ranges_seen=set();cursors_seen=set()
         for pane in self.visible_panes():
             pane.setXLink(None)
-            group=self._temporal_group(pane)
-            if group is not None:groups.setdefault(group,[]).append(pane)
-        for panes in groups.values():
-            source=self.active if self.active in panes else panes[0]
-            self._time_range_changed(source,source.getViewBox().viewRange()[0])
-            self._cursors(source)
+        for pane in self.visible_panes():
+            if self._shared_coordinate(pane) is None:continue
+            if pane not in ranges_seen:
+                peers=self._shared_panes(pane,navigation=True);ranges_seen.update(peers)
+                source=self.active if self.active in peers else peers[0]
+                self._time_range_changed(source,source.getViewBox().viewRange()[0])
+            if pane not in cursors_seen:
+                peers=self._shared_panes(pane);cursors_seen.update(peers)
+                self._cursors(self.active if self.active in peers else peers[0])
 
     def visible_panes(self):
         rows,cols=LAYOUTS[self.layout_name]
@@ -1292,9 +1317,7 @@ class PlotWorkspace(QtWidgets.QWidget):
     def measurement_rows(self):
         """A shared time readout with the owning pane retained for each channel."""
         if self.active is None:return {}
-        panes=[self.active]
-        if self._temporal_group(self.active) is not None:
-            panes += [p for p in self.visible_panes() if p is not self.active and p.coordinate==self.active.coordinate]
+        panes=[self.active]+[p for p in self._shared_panes(self.active) if p is not self.active]
         result={}
         for pane in panes:
             for id,stats in pane.measurements().items():result.setdefault(id,(pane,stats))
@@ -1304,8 +1327,8 @@ class PlotWorkspace(QtWidgets.QWidget):
         if self._syncing:return
         self._syncing=True
         try:
-            for target in self.visible_panes():
-                if target is not pane and target.coordinate==pane.coordinate and self._temporal_group(pane) is not None:
+            for target in self._shared_panes(pane):
+                if target is not pane:
                     target.cursor_locks=[dict(lock) if lock and lock['channel'] in self.store.channels else None for lock in pane.cursor_locks]
                     for index,lock in enumerate(target.cursor_locks):
                         target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+channel_label(self.store,lock['channel']).replace('{','{{').replace('}','}}') if lock else ''))
