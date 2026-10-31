@@ -69,6 +69,7 @@ class CompactUITests(unittest.TestCase):
     def test_engineering_results_plots_and_overlays_leave_originals_unchanged(self):
         ds=Dataset('Run B',pd.DataFrame(),'');self.w.store.datasets[ds.id]=ds;b=self.w.store.add(Channel('Power',[0,1,2],[100,220,100],unit='W',coordinate_unit='min',dataset_id=ds.id))
         engine=self.w.engineering;engine.session['runs'].update(reference=self.ds.id,candidate=ds.id);engine.session['profile']['tolerances']={'power':{'relative_percent':5}}
+        for dataset in (self.ds,ds):dataset.frame.attrs['program_start']={'source_min':0.,'confirmed':True,'evidence':'Reviewed fixture program start'}
         source=self.c.y.copy();engine.result=analyze_session(self.w.store,engine.session,True);engine.plot_comparison();self.app.processEvents()
         self.assertTrue(engine.overlays);np.testing.assert_array_equal(self.c.y,source);self.assertIs(self.w.store.channels[self.c.id],self.c)
         engine.toggle_envelopes(False);self.assertFalse(engine.overlays)

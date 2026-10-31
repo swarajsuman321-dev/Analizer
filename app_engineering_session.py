@@ -47,12 +47,15 @@ def analyze_session(store,session,comparison=False,cancel=None,report_scope="who
             candidates={c.dataset_id for c in store.channels.values() if not c.attributes.get('engineering_projection')}
             if len(candidates)==1:dataset=next(iter(candidates))
             else:raise ValueError('Select '+role+' dataset in Engineering Setup; files are never combined implicitly')
-        anchor={**session['anchors'].get(role,{'mode':'recorded'}),'dataset_id':dataset}
+        anchor={**session['anchors'].get(role,{'mode':'program' if comparison else 'recorded'}),'dataset_id':dataset}
         offset=-anchor_seconds(store,anchor,session['mappings'],session['profile'])
         if comparison and anchor.get('mode')=='recorded' and base is not None and origins.get(role) is not None:offset=origins[role]-base
         result=analyze_run(store,session['profile'],session['mappings'],dataset,offset,cancel,session.get('source_units'))
         if comparison and anchor.get('mode')=='recorded' and (base is None or origins.get(role) is None):result['warnings'].append('Absolute recorded clock unavailable; existing numeric coordinates preserved without an additional shift')
         result['role']=role;runs.append(result)
+        if anchor.get('mode')=='program':
+            from app_program_alignment import program_start
+            result['program_start']=program_start(store,dataset)
     comp=compare_runs(runs[0],runs[1],session['profile'],runs[2] if len(runs)>2 else None,cancel) if comparison else None
     interval_comp=None
     if report_scope!='whole_recording':

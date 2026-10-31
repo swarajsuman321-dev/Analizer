@@ -67,6 +67,9 @@ class SignalComparisonDialog(ContentDialog):
         notes.clicked.connect(lambda: controls.window.guard(controls.window.edit_report_details))
         notes.setVisible(callable(getattr(controls.window, 'edit_report_details', None)))
         buttons.addWidget(notes)
+        more=QtWidgets.QPushButton('Compare more signals…')
+        more.clicked.connect(lambda:(self.reject(),controls.show_multi_dialog([id for id in (self.reference.currentData(),self.candidate.currentData()) if id])))
+        buttons.addWidget(more)
         buttons.addStretch()
         self.compare_button = QtWidgets.QPushButton('Compare and Prepare Report')
         self.compare_button.setDefault(True)
@@ -215,7 +218,7 @@ class SignalComparisonControls(QtCore.QObject):
         self.result_dialog = None
         self.last_result = None
         self.last_bundle = None
-        self.action = QtGui.QAction('Compare Two Signals', self)
+        self.action = QtGui.QAction('Compare Signals', self)
         self.action.setObjectName('compareTwoSignals')
         self.action.setToolTip('Select parameters with confirmed program starts and prepare PDF, Excel and JSON evidence')
         self.action.triggered.connect(lambda: window.guard(self.compare_selected))
@@ -236,6 +239,7 @@ class SignalComparisonControls(QtCore.QObject):
     def compare_selected(self):
         self.window.mutate()
         selected = list(dict.fromkeys(id for id in self.window.portal.selected() if id in self.window.store.channels))
+        if len(selected)>2:return self.show_multi_dialog(selected)
         pair = selected if len(selected) == 2 else []
         if len(selected) < 2:
             visible = list(dict.fromkeys(id for pane in self.window.active_workspace.visible_panes()
@@ -262,6 +266,35 @@ class SignalComparisonControls(QtCore.QObject):
         dialog.finished.connect(lambda _result, current=dialog: self._dialog_finished(current))
         dialog.show()
         return dialog
+
+    def show_multi_dialog(self,selected=()):
+        from app_multi_comparison_controls import MultiComparisonDialog
+        self.window.mutate()
+        if self.dialog is not None:self.dialog.close()
+        dialog=MultiComparisonDialog(self,selected);self.dialog=dialog
+        dialog.finished.connect(lambda _result,current=dialog:self._dialog_finished(current))
+        dialog.show();return dialog
+
+    def start_multi(self,reference_id,candidate_ids):
+        from app_program_alignment import program_start
+        self.window.mutate()
+        ids=list(dict.fromkeys([reference_id,*candidate_ids]))
+        if len(ids)<2:raise ValueError('Choose a reference and at least one other signal.')
+        for id in ids:
+            channel=self.window.store.channels.get(id)
+            if channel is None:raise ValueError('Choose available signals.')
+            program_start(self.window.store,channel.dataset_id)
+        store=self.window.store;metadata=deepcopy(self.window.report_metadata())
+        directory=Path(start_directory('SignalComparisonReport',output_path('Signal comparison.pdf','reports').parent))
+        destination=directory/('Program comparison-'+datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S%fZ')+'-'+uuid4().hex[:8]+'.pdf')
+        self.action.setEnabled(False)
+        def work():
+            from app_multi_comparison import compare_many,export_multi_bundle
+            result=compare_many(store,reference_id,ids[1:])
+            return {'result':result,'bundle':export_multi_bundle(destination,result,metadata)}
+        try:self.window.background(work,self._complete,title='Comparing selected signals',on_finished=lambda _error:self.action.setEnabled(True))
+        except Exception:self.action.setEnabled(True);raise
+        return True
 
     def _dialog_finished(self, current):
         if self.dialog is current:
@@ -330,7 +363,10 @@ class SignalComparisonControls(QtCore.QObject):
         self.last_bundle = value['bundle']
         if self.result_dialog is not None:
             self.result_dialog.close()
-        self.result_dialog = SignalComparisonResults(self.window, self.last_result, self.last_bundle)
+        if 'pairs' in self.last_result:
+            from app_multi_comparison_controls import MultiComparisonResults
+            self.result_dialog=MultiComparisonResults(self.window,self.last_result,self.last_bundle)
+        else:self.result_dialog = SignalComparisonResults(self.window, self.last_result, self.last_bundle)
         self.result_dialog.finished.connect(lambda _result, current=self.result_dialog: self._results_finished(current))
         self.result_dialog.show()
         if self.last_bundle:

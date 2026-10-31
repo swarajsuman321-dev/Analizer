@@ -63,6 +63,32 @@ negative pre-program time.
   4 program-origin regressions and 10 comparison-control tests passed. Full
   integration validation remains pending for this checkpoint.
 
+### Flexible graphs, shared hover and multiple-signal comparison
+
+- Add Graph creates a blank active graph without exposing hidden-layout channels.
+  Arrange Graphs in the chart menu moves, resizes or removes graphs. Layouts retain
+  bindings, proportions and order and support up to 32 retained graphs.
+- Shared hover adds a marker on every compatible trace's own value axis, with
+  sample coordinates/values in the readout tooltip, without changing A/B.
+- Compare Signals supports an explicit reference and multiple candidates (select
+  three or more rows, or use Compare more signals in the two-source chooser).
+  Every candidate uses the established typed, gap-aware pair engine. Incompatible
+  pairs remain visible as blocked with reasons. Same-run signal comparisons are
+  supported through the multiple-signal chooser.
+- Confirmed actuators receive pairwise simultaneous-ON calculations with separate
+  gap limits for each acquisition clock. Cross-run overlap is explicitly timing
+  similarity on program time, not physical simultaneous operation.
+- Multiple-signal PDF/Excel/JSON bundles share the same computed result. Workbook
+  and JSON retain source samples, full difference intervals and events; PDF
+  includes program-time plots, summaries, overlap, notes and limitations.
+- Engineering comparisons also default to confirmed program origins; advanced
+  anchor overrides remain explicit. Ordinary new sessions show Data Portal and
+  fold Engineering Controls; saved layouts retain their existing state.
+- Focused checks passed: 2 flexible-graph regressions, 5 shared-cursor/hover tests,
+  9 existing header/hover tests, 4 multi-comparison tests, 10 comparison-control
+  tests, 5 program-origin tests and 33 engineering analytics tests. Full suite,
+  source smoke and real-recording acceptance are the next integration gates.
+
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
 hover, overlap UI integration and broader comparison requirements remain open.

@@ -92,10 +92,11 @@ def analyse_binary(times, states, *, max_gap_s):
                            'Edges reported at first observed new state; bracket retained']}
 
 
-def simultaneous_on(times_a, states_a, times_b, states_b, *, max_gap_s):
+def simultaneous_on(times_a, states_a, times_b, states_b, *, max_gap_s, max_gap_b_s=None):
     """Compute overlap only on intervals supported by both held-state clocks."""
     a = _prepare(times_a,states_a,max_gap_s)
-    b = _prepare(times_b,states_b,max_gap_s)
+    max_gap_b_s=max_gap_s if max_gap_b_s is None else max_gap_b_s
+    b = _prepare(times_b,states_b,max_gap_b_s)
     if len(a)<2 or len(b)<2:
         return {'common_known_s':0.,'simultaneous_on_s':0.,'fraction':None}
     knots = sorted(set(t for t,_ in a) | set(t for t,_ in b))
@@ -108,7 +109,7 @@ def simultaneous_on(times_a, states_a, times_b, states_b, *, max_gap_s):
             continue
         if right>ta[ia+1] or right>tb[ib+1]:
             continue
-        if ta[ia+1]-ta[ia]>max_gap_s or tb[ib+1]-tb[ib]>max_gap_s:
+        if ta[ia+1]-ta[ia]>max_gap_s or tb[ib+1]-tb[ib]>max_gap_b_s:
             continue
         if None in (sa[ia],sa[ia+1],sb[ib],sb[ib+1]):
             continue

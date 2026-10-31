@@ -162,7 +162,10 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             menu=QtWidgets.QMenu(button);menu.addAction(self.workspace_fullscreen.action);menu.addAction(self.graph_fullscreen.action)
             button.setMenu(menu);button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
             self.fullscreen_menus.append(menu)
-        self.panel_folding.apply_defaults(['Properties','Channel Math','Channel Table','Interval Measurements'])
+        self.panel_folding.apply_defaults(['Properties','Channel Math','Channel Table','Interval Measurements','Engineering Controls'])
+        self.docks['Data Portal'].raise_()
+        self.tabs.setTabToolTip(0,'Analysis: plot and inspect selected channels using their preserved source timing.')
+        self.tabs.setTabToolTip(1,'Comparison: overlay runs on confirmed program time; use Compare Signals for numerical differences and actuator overlap.')
 
     def exit_graph_fullscreen(self):
         if hasattr(self,'workspace_fullscreen'):self.workspace_fullscreen.exit()
@@ -372,6 +375,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         action('Calculate Channel',lambda:self.show_dock('Channel Math'),'Ctrl+M')
         self.layout_combo=QtWidgets.QComboBox();self.layout_combo.setToolTip('Choose the graph panel layout');self.layout_combo.addItems(LAYOUTS);toolbar.addWidget(self.layout_combo)
         self.layout_combo.currentTextChanged.connect(lambda text:self.guard(lambda:self.set_graph_layout(text)))
+        self.add_graph_action=toolbar.addAction('Add Graph',lambda:self.guard(self.add_graph))
+        self.add_graph_action.setToolTip('Add a blank graph, then choose its channels in Data Portal. Right-click a graph to move, resize or remove it.')
         self.cursor_combo=QtWidgets.QComboBox();self.cursor_combo.setToolTip('Show two cursors, one cursor or hide cursors');[self.cursor_combo.addItem(label,mode) for label,mode in [('Two Cursors','dual'),('One Cursor','point'),('Hide Cursors','off')]];toolbar.addWidget(self.cursor_combo)
         self.cursor_combo.currentIndexChanged.connect(lambda index:[p.set_cursor_mode(self.cursor_combo.currentData()) for p in self.active_workspace.visible_panes()])
         self.snap_checkbox=QtWidgets.QCheckBox('Snap to Samples');self.snap_checkbox.setChecked(True);self.snap_checkbox.setToolTip('Snap cursors to recorded sample timestamps');toolbar.addWidget(self.snap_checkbox);self.snap_checkbox.toggled.connect(self.set_snap)
@@ -399,6 +404,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             bar.addSeparator();lock=bar.addAction('Lock Cursors…');lock.setToolTip('Lock Cursor A or B to a chosen channel sample (Ctrl+L)')
             lock.triggered.connect(lambda:self.guard(self.studio.cursor_lock_dialog))
             workspace.contextRequested.connect(lambda command,pane:self.guard(lambda:self.plot_context(command,pane)))
+            workspace.graphStructureChanging.connect(self.exit_graph_fullscreen)
         from app_plot_workspace import install_graph_navigation
         install_graph_navigation(self.tabs,self.workspaces)
 
@@ -438,6 +444,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def set_graph_layout(self,name):
         self.exit_graph_fullscreen()
         self.active_workspace.set_layout(name)
+
+    def add_graph(self):
+        self.mutate();self.exit_graph_fullscreen()
+        pane=self.active_workspace.add_graph()
+        self.show_dock('Data Portal')
+        return pane
 
     def align_programs(self):
         from app_program_alignment_controls import ProgramAlignmentDialog

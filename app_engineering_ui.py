@@ -96,7 +96,7 @@ class EngineeringTools(QtCore.QObject):
         def change_profile(name):editor.setPlainText(json.dumps(load_profile(name),indent=2,ensure_ascii=False));w.guard(populate)
         profile.currentTextChanged.connect(lambda name:w.guard(lambda:change_profile(name)))
         anchors=QtWidgets.QPlainTextEdit(json.dumps(self.session['anchors'],indent=2));tabs.addTab(anchors,'Timeline Anchors')
-        anchors.setToolTip('JSON per role: {"reference":{"mode":"actuator","channel_id":"..."}}. Modes: recorded, actuator, phase, cursor/event/manual with time_s. Native heater/drum alignment remains in Engineering Controls.')
+        anchors.setToolTip('Comparison defaults to confirmed program starts from Align Program Starts. Explicit advanced overrides: program, recorded, actuator, phase, cursor/event/manual with time_s. Review the evidence before choosing another event.')
         metadata=QtWidgets.QPlainTextEdit(json.dumps(self.session['metadata'],indent=2));tabs.addTab(metadata,'Advanced Report Metadata')
         identity_widget=QtWidgets.QWidget();identity_form=QtWidgets.QFormLayout(identity_widget);identity_fields={}
         for field in ('Test ID','Operator','Manufacturer','Model','Program / Settings','Intended load','Ambient conditions','Inlet conditions','Instrumentation / Calibration','Acceptance plan revision'):
@@ -159,7 +159,7 @@ class EngineeringTools(QtCore.QObject):
             for kpi in profile['kpis']:channel.addItem(kpi['name']+' ['+kpi['unit']+']',kpi['id'])
             form.addRow('KPI',channel);method.addItems(['Maximum','Minimum']);form.addRow('Acceptance bound',method);form.addRow('Confirmed engineering limit',value)
         else:
-            form.addRow('Run role',role);method.addItems(['recorded','actuator','phase','cursor','event','manual']);form.addRow('Anchor method',method)
+            form.addRow('Run role',role);method.addItems(['program','recorded','actuator','phase','cursor','event','manual']);form.addRow('Anchor method',method)
             channel.clear()
             from app_channel_identity import channel_label,channel_details
             for c in self.w.store.channels.values():channel.addItem(channel_label(self.w.store,c),c.id,channel_details(self.w.store,c))

@@ -150,14 +150,15 @@ class SignalComparisonControlsTests(unittest.TestCase):
         self.assertEqual(self.calls[0][1:3], (self.reference.id, self.candidate.id))
         self.assertIsNone(self.controls.dialog)
 
-    def test_more_than_two_selected_channels_requires_explicit_pair_and_cancel_starts_nothing(self):
+    def test_more_than_two_selected_channels_opens_multi_signal_review_and_cancel_starts_nothing(self):
         extra = self.channel(self.a, name='Speed feedback')
         with patch.object(self.window.portal, 'selected', return_value=[self.reference.id, self.candidate.id, extra.id]):
             dialog = self.controls.compare_selected()
-        self.assertIsInstance(dialog, SignalComparisonDialog)
-        self.assertIsNone(dialog.reference.currentData())
-        self.assertIsNone(dialog.candidate.currentData())
-        self.assertFalse(dialog.compare_button.isEnabled())
+        from app_multi_comparison_controls import MultiComparisonDialog
+        self.assertIsInstance(dialog, MultiComparisonDialog)
+        self.assertEqual(dialog.reference.currentData(),self.reference.id)
+        self.assertEqual(set(dialog.selected()),{self.candidate.id,extra.id})
+        self.assertTrue(dialog.compare_button.isEnabled())
         dialog.reject()
         self.app.processEvents()
         self.assertFalse(self.window.busy)

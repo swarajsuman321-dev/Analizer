@@ -13,6 +13,7 @@ from app_channel_identity import channel_label, channel_details
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
 COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
 LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
+LAYOUTS.update({f'{count} graphs':(count,1) for count in range(1,33)})
 
 
 class GraphHeaderNavigation(QtWidgets.QStackedWidget):
@@ -248,9 +249,34 @@ class PlotPane(pg.PlotWidget):
         had_state=getattr(self,'hover_state',None) is not None
         self.hover_state=None;self.hover_text=''
         if not hasattr(self,'hover_marker'):return
+        for _,marker in getattr(self,'inspection_markers',{}).values():marker.hide()
         self.hover_marker.hide()
         for line in self.hover_lines:line.hide()
         if had_state:self.hoverChanged.emit(None)
+
+    def inspect_time(self,point):
+        """Mark each trace on its own value axis at a common temporal position."""
+        from app_presentation import cursor_sample
+        if not hasattr(self,'inspection_markers'):self.inspection_markers={}
+        rows=[]
+        for id,(view,curve) in self.curves.items():
+            c=self.store.channels[id];x,y=c.values()
+            value=cursor_sample(c,point,True)
+            sample=nearest_index(x,point) if len(x) and x[0]<=point<=x[-1] else None
+            if id not in self.inspection_markers:
+                marker=pg.ScatterPlotItem(size=9,brush=None,pen=pg.mkPen(curve.pen.color(),width=2))
+                marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);marker.setZValue(902)
+                view.addItem(marker,ignoreBounds=True);self.inspection_markers[id]=(view,marker)
+            marker=self.inspection_markers[id][1]
+            if sample is not None and np.isfinite(value):
+                display=value
+                if id in self._normalization:
+                    low,high,offset=self._normalization[id];display=((value-low)/(high-low) if high>low else .5)+offset
+                marker.setData([float(x[sample])],[display]);marker.show()
+            else:marker.hide()
+            rows.append({'channel':id,'name':channel_label(self.store,id),'value':float(value),
+                         'sample_time':float(x[sample]) if sample is not None else None,'unit':c.unit})
+        return rows
 
     def leaveEvent(self,event):
         self.clear_hover();super().leaveEvent(event)
@@ -465,6 +491,13 @@ class PlotPane(pg.PlotWidget):
         if workspace:
             for command in ('pan','cursor','xy','x','y'):
                 menu.addAction(workspace.navigation_actions[command])
+            graphs=menu.addMenu('Arrange Graphs');menu._submenus.append(graphs)
+            graphs.addAction('Add Blank Graph',workspace.add_graph)
+            graphs.addAction('Move Graph Up',lambda:workspace.move_graph(self,-1))
+            graphs.addAction('Move Graph Down',lambda:workspace.move_graph(self,1))
+            graphs.addAction('Graph Height…',lambda:workspace.resize_graph(self))
+            remove=graphs.addAction('Remove Graph',lambda:workspace.remove_graph(self))
+            remove.setEnabled(len(workspace.visible_panes())>1)
         menu.addSeparator()
         expand_all=menu.addAction('Full Screen Workspace')
         expand_all.setToolTip('Expand every graph in the current split layout (F11)')
@@ -550,6 +583,8 @@ class PlotPane(pg.PlotWidget):
 
     def bind(self, ids, assignments=None, fit=True):
         self.clear_hover()
+        for view,marker in getattr(self,'inspection_markers',{}).values():view.removeItem(marker)
+        self.inspection_markers={}
         workspace=getattr(self,'workspace',None)
         shared_source=next((p for p in workspace.visible_panes() if p is not self and p.ids
             and p.coordinate in {(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids}),None) if workspace else None
@@ -930,6 +965,7 @@ class PlotPane(pg.PlotWidget):
 
 
 class PlotWorkspace(QtWidgets.QWidget):
+    graphStructureChanging=QtCore.Signal()
     activeChanged=QtCore.Signal(object)
     measurementsChanged=QtCore.Signal()
     contextRequested=QtCore.Signal(str,object)
@@ -991,6 +1027,18 @@ class PlotWorkspace(QtWidgets.QWidget):
         if state is None and pane is not self._hover_pane:return
         self._hover_pane=pane if state else None
         text=pane.hover_text if state else 'Mouse X/Y · Move over a graph to inspect values'
+        if state and self._temporal_group(pane) is not None:
+            values=[]
+            for target in self.visible_panes():
+                if target.coordinate!=pane.coordinate:continue
+                for row in target.inspect_time(state['x']):
+                    reading=f"{row['value']:.6g} {row['unit']}" if np.isfinite(row['value']) else 'Unknown'
+                    if row['sample_time'] is not None:reading+=f" @ {row['sample_time']:.6g} {state['coordinate_unit']}"
+                    values.append(row['name']+': '+reading)
+            if values:text+='\n'+' | '.join(values)
+        elif state is None:
+            for target in self.visible_panes():
+                for _,marker in getattr(target,'inspection_markers',{}).values():marker.hide()
         self.hover_readout.setToolTip(text)
         width=max(0,self.hover_readout.contentsRect().width())
         lines=text.splitlines()
@@ -1135,13 +1183,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         previous=self.active
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
-            pane=PlotPane(self.store);pane.installEventFilter(self)
-            pane.workspace=self
-            pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
-            pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
-            pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
-            pane.contextRequested.connect(self.contextRequested)
-            self.panes.append(pane)
+            self.panes.append(self._new_pane())
         for i,pane in enumerate(self.panes):
             pane.dark=self.panes[0].dark;pane.setBackground(self.panes[0].backgroundBrush())
             pane.snap=self.active.snap if self.active else True
@@ -1154,6 +1196,48 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.layout_name=name;self._apply_proportions();self.active=previous if previous in self.visible_panes() else self.panes[0];self.activeChanged.emit(self.active)
         self.navigate(self.navigation_mode);self.link()
         self.queue_canvas_alignment()
+
+    def _new_pane(self):
+        pane=PlotPane(self.store);pane.installEventFilter(self);pane.workspace=self
+        pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
+        pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
+        pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
+        pane.contextRequested.connect(self.contextRequested)
+        return pane
+
+    def add_graph(self):
+        count=len(self.visible_panes())
+        if len(self.panes)>=32:raise ValueError('This workspace supports up to 32 graphs including retained layouts; use another workspace for more.')
+        self.graphStructureChanging.emit()
+        pane=self._new_pane();self.panes.insert(count,pane)
+        self.set_layout(f'{count+1} graphs');self.set_active(pane)
+        self.measurementsChanged.emit()
+        return pane
+
+    def remove_graph(self,pane=None):
+        pane=pane or self.active;count=len(self.visible_panes())
+        if pane not in self.visible_panes() or count<=1:return
+        self.graphStructureChanging.emit()
+        self.grid.removeWidget(pane);self.panes.remove(pane)
+        pane.close();pane.deleteLater()
+        self.set_layout(f'{count-1} graphs');self.measurementsChanged.emit()
+
+    def move_graph(self,pane,step):
+        if pane not in self.visible_panes():return
+        index=self.panes.index(pane);target=index+step
+        if not 0<=target<len(self.visible_panes()):return
+        self.graphStructureChanging.emit()
+        self.panes[index],self.panes[target]=self.panes[target],self.panes[index]
+        self.set_layout(self.layout_name);self.set_active(pane)
+
+    def resize_graph(self,pane):
+        if pane not in self.visible_panes():return
+        rows,cols=LAYOUTS[self.layout_name]
+        weights=list(self.layout_proportions.get(self.layout_name,{}).get('rows',[1.]*rows))
+        row=self.panes.index(pane)//cols
+        value,accepted=QtWidgets.QInputDialog.getDouble(self,'Graph Height','Relative height for this graph row',weights[row],.1,20.,2)
+        if accepted:
+            weights[row]=value;self.set_pane_proportions(rows=weights)
 
     def eventFilter(self,obj,event):
         if event.type()==QtCore.QEvent.Type.FocusIn and obj in self.panes:
@@ -1275,7 +1359,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         # Restoring into fresh panes avoids stale channel bindings.
         for pane in self.panes:self.grid.removeWidget(pane);pane.deleteLater()
         self.panes=[]
-        if len(state['panes'])>LAYOUTS[state['layout']][0]*LAYOUTS[state['layout']][1]:self.set_layout('10 panels' if len(state['panes'])>4 else '2×2')
+        required=max(len(state['panes']),LAYOUTS[state['layout']][0]*LAYOUTS[state['layout']][1])
+        if required>32:raise ValueError('Workspace exceeds the 32 graph limit')
+        if required>LAYOUTS[state['layout']][0]*LAYOUTS[state['layout']][1]:self.set_layout(f'{required} graphs')
         self.set_layout(state['layout'])
         for pane,saved in zip(self.panes,state['panes']):pane.restore(saved)
         self.active=self.panes[min(state.get('active',0),len(self.visible_panes())-1)]

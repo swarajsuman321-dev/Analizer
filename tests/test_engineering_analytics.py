@@ -135,6 +135,7 @@ class EngineeringTests(unittest.TestCase):
     def test_session_isolation_and_role_persistence(self):
         a=self.add('Power',[100]*3,'W');ds=Dataset('Candidate',pd.DataFrame(),'');self.store.datasets[ds.id]=ds;b=self.add('Power',[110]*3,'W',dataset=ds.id)
         session=default_session();session['runs'].update(reference=a.dataset_id,candidate=b.dataset_id)
+        for id in (a.dataset_id,b.dataset_id):self.store.datasets[id].frame.attrs['program_start']={'source_min':0.,'confirmed':True,'evidence':'Reviewed fixture program start'}
         result=analyze_session(self.store,session,True);row=next(r for r in result['comparison']['kpis'] if r['id']=='peak_power')
         self.assertAlmostEqual(row['percent'],10);self.assertAlmostEqual(row['delta'],10);self.assertEqual(len(self.store.channels),2)
 
@@ -195,6 +196,7 @@ class EngineeringTests(unittest.TestCase):
         a=self.add('Power',[100]*3,'W',time_origin='2026-01-01T00:00:00+00:00');ds=Dataset('B',pd.DataFrame(),'');self.store.datasets[ds.id]=ds
         b=self.add('Power',[110]*3,'W',dataset=ds.id,time_origin='2026-01-01T00:01:00+00:00')
         session=default_session();session['runs'].update(reference=a.dataset_id,candidate=b.dataset_id)
+        session['anchors']={role:{'mode':'recorded'} for role in ('reference','candidate')}
         result=analyze_session(self.store,session,True);self.assertEqual(result['runs'][1]['offset_s'],60)
         from app_engineering_compare import recording_origin
         b.attributes['time_origin']='2026-01-01T00:01:00'

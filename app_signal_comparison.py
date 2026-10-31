@@ -294,7 +294,7 @@ def _record(store, original, trace, role, start, end, origin):
 
 
 def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offset_min=0,
-                    interval=None, tolerance=None, max_gap_seconds=None):
+                    interval=None, tolerance=None, max_gap_seconds=None,allow_same_recording=False):
     """Compare an explicit pair; user-data blockers are returned, never guessed.
 
     ``offset_min`` shifts only the candidate's comparison projection. ``interval``
@@ -309,7 +309,7 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
         reference, candidate = store.channels.get(reference_id), store.channels.get(candidate_id)
         if reference is None or candidate is None:
             raise ValueError('Select two available channels from different recordings.')
-        if reference_id == candidate_id or reference.dataset_id == candidate.dataset_id:
+        if reference_id == candidate_id or (reference.dataset_id == candidate.dataset_id and not allow_same_recording):
             raise ValueError('Select one parameter from each of two different recordings.')
         if reference.coordinate_kind != 'time' or candidate.coordinate_kind != 'time':
             raise ValueError('Two-signal activity comparison requires time-based recordings; frequency and sample-index plots retain their own units.')

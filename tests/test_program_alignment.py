@@ -66,5 +66,16 @@ class ProgramAlignmentTests(unittest.TestCase):
         self.assertEqual(store.channels[c.id].shift,0)
         self.assertNotIn('program_start',store.datasets[c.dataset_id].frame.attrs)
 
+    def test_engineering_comparison_defaults_to_confirmed_program_start(self):
+        from app_engineering_session import default_session,analyze_session
+        store,ids=self.fixture();a,b=[store.channels[id] for id in ids]
+        session=default_session();session['runs'].update(reference=a.dataset_id,candidate=b.dataset_id)
+        with self.assertRaisesRegex(ValueError,'Confirm program start'):analyze_session(store,session,True)
+        align_program_start(store,a.dataset_id,2,'Reviewed program start')
+        align_program_start(store,b.dataset_id,7,'Reviewed program start')
+        result=analyze_session(store,session,True)
+        self.assertEqual([run['program_start']['source_min'] for run in result['runs']],[2.,7.])
+        self.assertEqual([run['offset_s'] for run in result['runs']],[0.,0.])
+
 
 if __name__=='__main__':unittest.main()

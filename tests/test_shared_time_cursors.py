@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 import pandas as pd
-from PySide6 import QtWidgets
+from PySide6 import QtCore,QtWidgets
 from app_channel_store import Channel, Dataset
 from app_workbench import AdvancedStudioWindow
 
@@ -65,6 +65,21 @@ class SharedTimeCursorTests(unittest.TestCase):
         self.workspace.set_active(q);self.window._readouts()
         self.assertEqual(self.window.readout.rowCount(),1)
         self.assertIn('Spectrum',self.window.readout.item(0,0).text())
+
+    def test_hover_marks_each_trace_on_its_axis_without_moving_cursors(self):
+        p,q=self.workspace.visible_panes()
+        before=[[line.value() for line in pane.cursor_lines] for pane in (p,q)]
+        point=p.getViewBox().mapViewToScene(QtCore.QPointF(2.,2.))
+        p._mouse_hover((point,))
+        self.assertIn('Long',self.workspace.hover_readout.toolTip())
+        self.assertIn('Short',self.workspace.hover_readout.toolTip())
+        for pane,id,value in ((p,self.long.id,2.),(q,self.short.id,22.)):
+            marker=pane.inspection_markers[id][1]
+            self.assertTrue(marker.isVisible())
+            x,y=marker.getData();np.testing.assert_allclose(x,[2.]);np.testing.assert_allclose(y,[value])
+        self.assertEqual([[line.value() for line in pane.cursor_lines] for pane in (p,q)],before)
+        p.clear_hover()
+        self.assertTrue(all(not marker.isVisible() for pane in (p,q) for _,marker in pane.inspection_markers.values()))
 
 
 if __name__=='__main__':unittest.main()
