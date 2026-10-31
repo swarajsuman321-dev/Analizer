@@ -114,5 +114,5 @@ def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis r
                             cell=sheet.cell(row,column);color=match_color(cell.value)
                             if color:cell.fill=PatternFill('solid',fgColor=color.lstrip('#'));cell.number_format='0.0"%"'
                 literal_workbook_text(writer.book)
-        else:render_report(temporary,store,workspace,title=title,scorecard=scorecard)
+        else:render_report(temporary,store,workspace,title=title,scorecard=scorecard,metadata=metadata)
     return data,summary

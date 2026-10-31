@@ -129,7 +129,7 @@ def export_processed(path,channels):
     return data
 
 
-def render_report(path,store,workspace,title='Signal analysis report',scorecard=None):
+def render_report(path,store,workspace,title='Signal analysis report',scorecard=None,metadata=None):
     """Render the visible axes, cursor positions and interval summary from view state."""
     import matplotlib
     matplotlib.use('Agg')
@@ -142,6 +142,8 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
     colors=channel_colors(store)
     from app_presentation import CURSOR_COLORS,match_color
     from app_reporting import interval_tables
+    from app_report_appearance import show_cursor_guides
+    guides=show_cursor_guides(metadata)
     path=Path(path);rows,cols=LAYOUTS[workspace['layout']]
     _,summary=interval_tables(store,workspace)
     statistics=summary.to_dict('records')
@@ -175,7 +177,7 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
                 finite=y[np.isfinite(y)];low,high=(float(finite.min()),float(finite.max())) if len(finite) else (0.,1.)
                 dy=np.where(np.isfinite(dy),(dy-low)/(high-low) if high>low else .5,np.nan)+view['ids'].index(id)
             axes[key].plot(dx,dy,label=channel_label(store,c),color=color,drawstyle='steps-post' if c.attributes.get('actuator_binary') else 'default',linewidth=float(style.get('width',.8)),linestyle={'solid':'-','dash':'--','dot':':','dashdot':'-.'}.get(style.get('style'),'-'))
-            for cursor_index,lock in enumerate(view.get('cursor_locks',[])):
+            for cursor_index,lock in enumerate(view.get('cursor_locks',[]) if guides else []):
                 if not lock or lock.get('channel')!=id or not len(x) or view.get('cursor_mode')=='off':continue
                 if cursor_index==1 and view.get('cursor_mode','dual')!='dual':continue
                 sample=int(np.clip(lock['index'],0,len(x)-1));value=y[sample]
@@ -184,7 +186,8 @@ def render_report(path,store,workspace,title='Signal analysis report',scorecard=
                 axes[key].scatter([x[sample]],[value],s=45,c=[CURSOR_COLORS[cursor_index]],edgecolors='#182033',zorder=6)
             axis.set_xlabel(f'{c.coordinate_kind} ({c.coordinate_unit})');axis.set_xlim(left,right)
         if not view['ids']:axis.text(.5,.5,'No channels selected',ha='center',va='center',transform=axis.transAxes)
-        for name,position,color in zip(('A','B'),view.get('cursors',[]),CURSOR_COLORS):
+        positions=view.get('cursors',[])[:1 if view.get('cursor_mode')=='point' else 2] if guides and view.get('cursor_mode','dual')!='off' else []
+        for name,position,color in zip(('A','B'),positions,CURSOR_COLORS):
             axis.axvline(position,color=color,linestyle='--',linewidth=1.4)
             axis.text(position,.98,f'{name} {position:.6g}',color=color,backgroundcolor='#182033',transform=axis.get_xaxis_transform(),va='top',fontsize=8)
         for annotation in view.get('annotations',[]):

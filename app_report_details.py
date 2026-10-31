@@ -24,6 +24,11 @@ class ReportDetailsDialog(QtWidgets.QDialog):
             'results, configured limits or Pass/Fail decisions.')
         help_text.setWordWrap(True)
         layout.addWidget(help_text)
+        from app_report_appearance import show_cursor_guides
+        self.cursor_guides = QtWidgets.QCheckBox('Include cursor lines and markers in exported plots')
+        self.cursor_guides.setChecked(show_cursor_guides(metadata))
+        self.cursor_guides.setToolTip('Cursor times and statistics are always retained. On-screen cursors stay unchanged.')
+        layout.addWidget(self.cursor_guides)
         identity = QtWidgets.QFormLayout()
         layout.addLayout(identity)
         for name in REPORT_FIELDS[:3]:
@@ -53,14 +58,18 @@ class ReportDetailsDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
     def values(self):
-        return {name: (field.text() if isinstance(field, QtWidgets.QLineEdit)
+        return {'show_cursor_guides': self.cursor_guides.isChecked(), **{name: (field.text() if isinstance(field, QtWidgets.QLineEdit)
                        else field.toPlainText()).strip()
-                for name, field in self.fields.items()}
+                for name, field in self.fields.items()}}
 
 
 def update_report_details(metadata, values):
     """Apply an accepted edit, retaining unrelated legacy/custom metadata."""
     result = dict(metadata)
+    if 'show_cursor_guides' in values:
+        if not isinstance(values['show_cursor_guides'], bool):
+            raise ValueError('Cursor guide preference must be a boolean')
+        result['show_cursor_guides'] = values['show_cursor_guides']
     for name in REPORT_FIELDS:
         value = values.get(name, '')
         if not isinstance(value, str):

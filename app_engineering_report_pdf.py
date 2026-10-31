@@ -99,6 +99,7 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
     from app_engineering_reports import report_preview,report_traces
     from app_engineering_report_summary import summarize_events,reviewed_note_pages,COMPARISON_ROWS_PER_PAGE,CURSOR_ROWS_PER_PAGE
     from app_presentation import CURSOR_COLORS
+    from app_report_appearance import show_cursor_guides
     plan=plan or report_preview(runs,info.get('Report scope','whole_recording'),view,comparison,selected_ids,metadata=info,store=store)
     groups=groups if groups is not None else summarize_events(tables['Fault & Anomaly Log'].to_dict('records'))
     report_id=info['Report ID'];page=0;figures=[]
@@ -272,7 +273,7 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
                     ax.fill_between(trace.t/60,0,.035,where=np.r_[unsupported,False],step='post',transform=ax.get_xaxis_transform(),color='#64748b',alpha=.55,label='Unsupported time')
                 for phase in run['phases'][:12]:ax.axvspan(phase['start_s']/60,phase['end_s']/60,alpha=.05,color='#0369a1')
                 if a is not None and b is not None and a<b:ax.set_xlim(a/60,b/60)
-            for name,position,color in zip(('A','B'),(view or {}).get('cursors',[]),CURSOR_COLORS):
+            for name,position,color in zip(('A','B'),(view or {}).get('cursors',[]) if show_cursor_guides(info) else [],CURSOR_COLORS):
                 ax.axvline(position,color=color,lw=1.2,ls='--');ax.text(position,.98,f'{name} {position:.6g} min',transform=ax.get_xaxis_transform(),fontsize=6,ha='right',va='top',color=INK,bbox={'facecolor':'white','alpha':.85,'edgecolor':color,'linewidth':.5})
             ax.set_ylabel(next((run['traces'][key].unit for run in visual_runs if key in run['traces']),''),fontsize=8)
             ax.tick_params(labelsize=7);ax.grid(alpha=.15);ax.legend(fontsize=6,loc='lower right',framealpha=.75,ncol=2)

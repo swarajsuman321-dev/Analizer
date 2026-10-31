@@ -508,7 +508,7 @@ def _paired_plot(pages, pair,store,colors):
                       fontsize=8, color=MUTED, parse_math=False)
 
 
-def _workspace_plots(pages, store, workspace, colors):
+def _workspace_plots(pages, store, workspace, colors, show_cursors=False):
     from app_fast_plot import EnvelopeCache
     from app_time_units import minute_factor
     for pane_number, view in enumerate(visible_views(workspace), 1):
@@ -560,7 +560,7 @@ def _workspace_plots(pages, store, workspace, colors):
                 axis.set_xlim(bounds[0]*factor,bounds[1]*factor)
                 axis.set_xlabel('Time (min)' if channel.coordinate_kind=='time' else
                                f'{channel.coordinate_kind} ({channel.coordinate_unit})',parse_math=False)
-                if view.get('cursor_mode','dual')!='off':
+                if show_cursors and view.get('cursor_mode','dual')!='off':
                     for index, lock in enumerate(view.get('cursor_locks', [])[:2]):
                         if lock and lock.get('channel')==id and len(x):
                             sample=int(np.clip(lock['index'],0,len(x)-1))
@@ -570,7 +570,7 @@ def _workspace_plots(pages, store, workspace, colors):
                             axes[key].scatter([x[sample]*factor],[value], c=[CURSOR_COLORS[index]], s=35, zorder=6)
             primary=store.channels[ids[0]]
             factor=minute_factor(primary.coordinate_unit) if primary.coordinate_kind=='time' else 1
-            if view.get('cursor_mode','dual')!='off':
+            if show_cursors and view.get('cursor_mode','dual')!='off':
                 for index, position in enumerate(view.get('cursors', [])[:1 if view.get('cursor_mode')=='point' else 2]):
                     color=CURSOR_COLORS[index]
                     axis.axvline(position*factor,color=color,linestyle='--',linewidth=1.3)
@@ -629,7 +629,8 @@ def render_comparison_pdf(path, store, workspace, evidence, summary, scorecard=N
             pages.paragraph(row['fingerprint_method'],size=8)
             pages.paragraph(row.get('source_sha256') or 'Source file SHA-256 not available',size=8)
         if pair and pair.get('status')=='compared':_paired_plot(pages,pair,store,colors)
-        _workspace_plots(pages,store,workspace,colors)
+        from app_report_appearance import show_cursor_guides
+        _workspace_plots(pages,store,workspace,colors,show_cursor_guides(metadata))
         pages.page('3. Measurements and differences','All selected channel intervals')
         pages.paragraph('A/B and B−A follow each pane’s actual cursor positions and original sample locks. Min/Max/Average scope follows the selected statistics scope. Coverage and RMS retain the active-interval calculation policy; timing quality is listed separately.',size=8)
         for row in summary.to_dict('records'):

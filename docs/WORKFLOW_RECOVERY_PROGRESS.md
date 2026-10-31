@@ -26,7 +26,14 @@ context, not verified current behavior.
 - Baseline: 578 tests ran, 573 passed, 5 skipped; source workbench self-test passed.
 - Timestamp fix completed: direct and engineering imports unwrap complete Excel text literals without evaluating formulas or changing source tables. Direct datetime imports now reuse the engineering clock parser, including midnight rollover.
 - Validation: four new timestamp regressions passed; all seven existing minute-coordinate tests passed. Original user CSV is unavailable; fixtures reproduce the exact wrapper format and 8.85127-minute span from the handoff.
-- Cursor-free report defaults are being integrated across analysis, comparison and engineering renderers.
+- Cursor-free report defaults completed across analysis PDF/PNG/SVG, comparison PDF and engineering PDF renderers. Report Details has an opt-in checkbox for cursor lines and lock markers; saved report metadata retains it. Cursor times, values, statistics and original screen state are preserved.
+- Validation: three new export tests passed (including actual rendered artists, retained evidence and preference edits); existing report-details tests passed. Full regression run pending at this checkpoint.
+
+## Next checkpoint
+
+Repair shared cursor normalization across unequal-duration splits and combine their
+readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
+hover, overlap UI integration and broader comparison requirements remain open.
 
 ## Continuation policy
 
