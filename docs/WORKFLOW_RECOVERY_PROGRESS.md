@@ -27,13 +27,32 @@ context, not verified current behavior.
 - Timestamp fix completed: direct and engineering imports unwrap complete Excel text literals without evaluating formulas or changing source tables. Direct datetime imports now reuse the engineering clock parser, including midnight rollover.
 - Validation: four new timestamp regressions passed; all seven existing minute-coordinate tests passed. Original user CSV is unavailable; fixtures reproduce the exact wrapper format and 8.85127-minute span from the handoff.
 - Cursor-free report defaults completed across analysis PDF/PNG/SVG, comparison PDF and engineering PDF renderers. Report Details has an opt-in checkbox for cursor lines and lock markers; saved report metadata retains it. Cursor times, values, statistics and original screen state are preserved.
-- Validation: three new export tests passed (including actual rendered artists, retained evidence and preference edits); existing report-details tests passed. Full regression run pending at this checkpoint.
+- Validation: three new export tests passed (including actual rendered artists, retained evidence and preference edits); existing report-details tests passed.
+- Final checkpoint validation on the implementation in `f42c205`: full unittest discovery ran 585 tests in 261.364 seconds, 580 passed and 5 skipped, with no failures or errors. The source workbench self-test returned `ok: true`, exercising imports, FFT, workspace save/restore and report exports. The new version remains unreleased; native Windows validation has not been run for these changes.
+- The GitHub checkpoint rule is saved in root `AGENTS.md`. All completed source and tests are committed on the development branch.
+
+To include cursor guides in an export, open Report Details & Conclusions and
+enable **Include cursor lines and markers in exported plots**, then save the
+details. Save the workspace to retain this preference across sessions. Leaving it
+unchecked keeps cursor times and statistics while exporting clean plots.
 
 ## Next checkpoint
 
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
 hover, overlap UI integration and broader comparison requirements remain open.
+
+Confirmed cursor reproducer: create vertical splits with minute-based channels
+covering 0–10 and 0–3, bind one to each pane, then set the long pane's A/B to 8/9.
+After Qt events, both panes read 3/3. Pane-local normalization and range callbacks
+must not overwrite the shared pair; the short channel should read Unknown at 8/9.
+The active-pane-only readout and interval-card lookup also need a common
+channel-to-pane mapping when combining measurements.
+
+GitHub pushes work with the existing platform authentication. GitHub GraphQL API
+access returned Forbidden, so automatic pull-request creation is unavailable in
+this environment. The development branch is pushed; main and published packages
+remain unchanged.
 
 ## Continuation policy
 
