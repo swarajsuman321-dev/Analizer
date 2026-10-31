@@ -44,6 +44,10 @@ class ProgramAlignmentTests(unittest.TestCase):
         self.assertEqual(result['status'],'compared',result.get('reason'))
         self.assertAlmostEqual(result['metrics']['rmse'],0.)
         self.assertEqual(result['alignment']['mode'],'program')
+        self.assertEqual(result['reference']['program_origin_min'],2.)
+        self.assertEqual(result['reference']['recording_origin_min'],0.)
+        self.assertEqual(result['candidate']['program_origin_min'],7.)
+        self.assertEqual(result['candidate']['recording_origin_min'],5.)
         self.assertEqual(result['scope']['start_min'],-2.)
         # Reapplying the same start does not compound shifts or move masks.
         align_program_start(store,a.dataset_id,2,'Reviewed controller start')

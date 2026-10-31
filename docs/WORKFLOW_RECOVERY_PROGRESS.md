@@ -36,7 +36,7 @@ enable **Include cursor lines and markers in exported plots**, then save the
 details. Save the workspace to retain this preference across sessions. Leaving it
 unchecked keeps cursor times and statistics while exporting clean plots.
 
-## Next checkpoint
+## Implementation checkpoints and remaining release gates
 
 ### Confirmed additional timing requirements
 
@@ -140,10 +140,29 @@ negative pre-program time.
 - Earlier in-flight runs were stopped after these corrections so the final
   checks use one frozen source revision. They are retained as diagnostic output,
   not reported as passing final validations.
+- Final local full discovery at `e8fbd37` ran 604 tests in 363.044 seconds:
+  599 passed, five platform skips, zero failures/errors. The expected broken-plugin
+  rejection logs its intentional TypeError; it is not an application callback error.
+- All 53 supplied-recording acceptance checks passed with zero runner errors,
+  zero application callbacks, seven expected safety rejections and five manual
+  platform checks unrun. The separate-run synthetic fixture now retains actual
+  source time/value rows, so exact table/index roundtrip is exercised meaningfully.
+- Visual review of three synthetic program-aligned runs found pale time-axis
+  labels on graphs added after light-theme activation. New graphs now inherit
+  the active text color; six shared-time/theme checks and nine header/hover checks
+  passed afterward. Six origin checks and four multi-comparison checks also passed
+  after distinguishing recording origin from program origin in JSON evidence.
+- These final focused changes add one theme regression beyond the 604-test full
+  run. Native CI will run the complete current suite; do not report an unexecuted
+  605-test local run. The 2.5.0 source workbench self-test passed as well.
 
-Repair shared cursor normalization across unequal-duration splits and combine their
-readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
-hover, overlap UI integration and broader comparison requirements remain open.
+The core timing/usability requirements above are implemented. Remaining release
+gates are native Windows validation and review of the generated packages. The
+broader extensible-comparison architecture remains a roadmap: full field inventory,
+reviewed semantic/scaling mappings for unfamiliar channels, categorical metrics and
+stage-sequence matching are not claimed complete by this regression-focused build.
+The original newly supplied CSV/video from the prior account remain unavailable;
+its exact CSV wrapper is covered with synthetic regressions.
 
 Confirmed cursor reproducer: create vertical splits with minute-based channels
 covering 0–10 and 0–3, bind one to each pane, then set the long pane's A/B to 8/9.

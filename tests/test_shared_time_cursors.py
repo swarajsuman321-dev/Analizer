@@ -81,5 +81,11 @@ class SharedTimeCursorTests(unittest.TestCase):
         p.clear_hover()
         self.assertTrue(all(not marker.isVisible() for pane in (p,q) for _,marker in pane.inspection_markers.values()))
 
+    def test_new_graph_inherits_legible_time_axis_in_light_and_dark_themes(self):
+        for theme,color in (('Light','#182033'),('Dark','#e3eaf5')):
+            self.window.theme.apply(theme)
+            pane=self.workspace.add_graph()
+            self.assertEqual(pane.getAxis('bottom').textPen().color().name(),color)
+
 
 if __name__=='__main__':unittest.main()

@@ -1187,6 +1187,7 @@ class PlotWorkspace(QtWidgets.QWidget):
             self.panes.append(self._new_pane())
         for i,pane in enumerate(self.panes):
             pane.dark=self.panes[0].dark;pane.setBackground(self.panes[0].backgroundBrush())
+            pane.getAxis('bottom').setTextPen('#e3eaf5' if pane.dark else '#182033')
             pane.snap=self.active.snap if self.active else True
             pane.set_cursor_mode(self.active.cursor_mode if self.active else 'dual')
             pane.setMinimumHeight(230)

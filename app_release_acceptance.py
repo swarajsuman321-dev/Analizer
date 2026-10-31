@@ -1434,7 +1434,7 @@ def _run_workbench(recorder, samples, output):
             np.testing.assert_allclose(pane.getViewBox().viewRange()[0],other.getViewBox().viewRange()[0])
             from app_channel_store import Dataset,identity
             from dataclasses import replace
-            separate=Dataset('Independent synthetic run',pd.DataFrame());store.datasets[separate.id]=separate
+            separate=Dataset('Independent synthetic run',pd.DataFrame({'time':synthetic[2].x,'value':synthetic[2].y}));store.datasets[separate.id]=separate
             separate_channel=store.add(replace(synthetic[2],id=identity(),dataset_id=separate.id))
             other.bind([separate_channel.id]);pane.setXRange(.1,.6,padding=0);other.setXRange(1.1,1.8,padding=0)
             events()

@@ -378,6 +378,10 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
         result['reference'], left_events = _record(store, reference, left, 'Reference', start, end, origins[0])
         checkpoint('Measuring candidate signal')
         result['candidate'], right_events = _record(store, candidate, right, 'Candidate', start, end, origins[1])
+        if alignment=='program':
+            for record,channel,origin in zip((result['reference'],result['candidate']),(reference,candidate),origins):
+                record['program_origin_min']=origin/60
+                record['recording_origin_min']=_origin(store,channel)[0]/60
         result['events'] = sorted(left_events+right_events, key=lambda row: (row['time_min'], row['role']))
         grid = np.unique(np.r_[start, left.t[(left.t > start) & (left.t < end)],
                                right.t[(right.t > start) & (right.t < end)], end])
