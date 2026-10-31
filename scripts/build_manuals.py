@@ -25,7 +25,7 @@ NOTES={'2.4.3':'F11 expands every graph in the current split workspace; selected
        '2.2.3':'Quick zoom controls beside Analysis/Comparison, distinct stable channel colors and visible legends, and About menu access to User Manual and Updates.'}
 
 
-NOTES['2.5.0']='Development build: source-wide program-start alignment, stable shared time cursors and combined readouts, freely added/reordered/resized graphs, shared per-trace hover markers, multi-signal comparison and confirmed-actuator overlap. CSV Excel text-literal timestamps retain fractional precision. Exported cursor guides are hidden by default with an opt-in setting. Program starts require explicit evidence; no recording-start fallback is used by the comparison UI. Windows build and release readiness must be checked separately.'
+NOTES['2.5.0']='Source-wide program-start alignment, stable shared time cursors and combined readouts, freely added/reordered/resized graphs, shared per-trace hover markers, multi-signal comparison and confirmed-actuator overlap. CSV Excel text-literal timestamps retain fractional precision. Exported cursor guides are hidden by default with an opt-in setting. Program starts require explicit evidence; no recording-start fallback is used by the comparison UI. Graph restoration and fullscreen transitions stop obsolete callbacks and avoid the unused native chart menu that caused a packaged Windows crash. Installed Setup, standalone EXE and portable ZIP retain matching update and workspace-recovery support.'
 
 
 def generate(versions=None):

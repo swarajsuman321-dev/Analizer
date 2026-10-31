@@ -1,22 +1,22 @@
 # Appliance Signal Studio
 
-Development branch: **2.5.0, unreleased**. This build adds confirmed program-start
+Release candidate: **2.5.0, publication in progress**. This version adds confirmed program-start
 alignment, shared time cursors/readout, user-added graphs, shared hover,
 multi-signal comparison and actuator overlap, and clean report plots. See the
-[development progress](docs/WORKFLOW_RECOVERY_PROGRESS.md) and
-[2.5.0 manual](manuals/v2.5.0.md). Windows packages require native validation;
-the published downloads below remain **2.4.3**.
+[release record](docs/RELEASE_2.5.0.md) and [2.5.0 manual](manuals/v2.5.0.md).
+Downloads below become available after the main-branch Windows release gates pass.
+Until then, the [previous 2.4.3 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.3) remains available.
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
-**Windows installer: [Download Setup v2.4.3](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.3/ApplianceSignalStudio-Setup-2.4.3.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.3/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.4.3/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.4.3.md).
+**Windows installer: [Download Setup v2.5.0](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio-Setup-2.5.0.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.5.0.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Version **2.4.3 is published** from the same tested source for all three forms. Native Windows validation passed **573 of 574 regression tests (one non-Windows-only test skipped; zero expected failures)**, **49 real-recording checks in each form**, 7 installer lifecycle checks and 13 actual application update/recovery/visibility checks. See the [release record](docs/RELEASE_2.4.3.md) and [permanent verification evidence](docs/validation/release-v2.4.3.json), including remaining human/platform checks.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. The 2.5.0 development packages passed native Windows tests, recording acceptance in all three forms, installer lifecycle and actual application update/recovery checks. Final publication is gated on the main-branch workflow. See the [release record](docs/RELEASE_2.5.0.md), including the remaining manual Windows checks.
 
 Stacked panes align their actual drawing edges without changing numerical time ranges. Data Portal shows **Channel** and **Unit**; right-click a file header for file-wide/filtered selection and **Close Dataset**. Kind metadata remains in Properties, and the main About menu retains User Manual and About / Updates.
 
-**F11** expands every graph in the active split workspace with shared zoom/pan and live cursor values; **Shift+F11** retains selected-graph fullscreen. The fixed-height Mouse X/Y strip keeps hover from shifting the canvas. Open two recordings, select one channel row from each and click **Compare Two Signals** for elapsed-time comparison, concise results and a complete PDF/Excel/JSON bundle. **Comparison → Export Report** and engineering reports include fuller sources, intervals, plots, statistics, differences and quality evidence; **Report Details & Conclusions…** adds optional notes that persist with the workspace.
+**F11** expands every graph in the active split workspace with shared zoom/pan and live cursor values; **Shift+F11** retains selected-graph fullscreen. The fixed-height Mouse X/Y strip keeps hover from shifting the canvas. Use **Align Program Starts** to confirm time zero for every recording, select channels, and choose **Compare Signals** for program-time comparison and a complete PDF/Excel/JSON bundle. Three or more selections open an explicit reference/candidate review. **Comparison → Export Report** and engineering reports include sources, intervals, plots, statistics, differences and quality evidence; **Report Details & Conclusions…** adds optional notes that persist with the workspace.
 
 Future development supports **Installed and Standalone together**, with the same features/version and updates appropriate to each package. See the [distribution policy](docs/DUAL_DISTRIBUTION_POLICY.md) and the [approved audit checklist](docs/IMPROVEMENT_APPROVAL_CHECKLIST.md).
 
@@ -48,24 +48,24 @@ On Windows use `.venv\Scripts\python.exe`, or build a portable executable with
    coordinates from the first nonempty plotted channel. Other channels report
    their nearest original sample, preserving missing values and each channel's
    sampling rate. Turn Snap off for interpolated analog readouts. Cursor positions
-   stay within the visible data extent; inverted cursors are supported with a
+   share the compatible channels' complete data extent; shorter channels show Unknown outside their coverage. Inverted cursors are supported with a
    positive ΔX and signed B−A ΔY. Select a readout row for its compact interval card.
 4. Click **Export Report** and save a PDF summary, high-resolution PNG, Excel
    workbook or CSV. PDF/PNG include visible traces, independent axes, cursor
-   positions and interval statistics. Excel includes original samples inside each
+   times and interval statistics; cursor guides are hidden by default and can be enabled in Report Details. Excel includes original samples inside each
    pane's A/B interval plus a cursor-summary sheet. CSV contains interval samples
    and cursor coordinates. Each channel keeps its own clock; exports do not
    fabricate a shared sampling rate. Missing or masked values stay missing.
 
 Different units use independent Y axes, with tick/label colors matching their
 traces. Compatible viewports share panning and cursor coordinates. Time is displayed in **min**. Time and
-frequency coordinates use separate panes; frequency analysis retains Hz. R fits the active plot; C toggles
+frequency coordinates use separate panes; channels from the same recording retain linked time navigation even when the general axis lock is off. Frequency analysis retains Hz. R fits the active plot; C toggles
 cursors; Space enables panning.
 
 See [FEATURE_PARITY.md](FEATURE_PARITY.md) for the earlier-feature audit and the location
 of every restored capability.
 
-**Panels** expands or folds **Properties**, **Channel Math**, **Channel Table** and **Interval Measurements**, which start folded in a new workspace. Engineering Controls is the default tab in its existing dock group; Readout and Data Portal remain available. Explicit saved layouts take precedence. Existing **View** actions and **Show all panels** remain available. Channel Kind metadata remains in Properties. Choose **Change Trace Color…** from Channel, Properties or channel/trace context menus; **Compare Data…** adds channels from any loaded recordings to Comparison. **F11** enlarges the full split workspace; **Shift+F11** enlarges only the selected graph. Both retain shared navigation, Mouse X/Y, live A/B values and statistics; **Esc** returns. Open/save dialogs remember folders by purpose across restarts, retaining configured output folders for first saves. Advanced tools, presets, extensions and existing styling remain available through **Tools** or **More**. Save workspace writes a JSON manifest plus an adjacent generation-named NPZ; keep both together when sharing/restoring.
+**Panels** expands or folds supporting panels. New workspaces prioritize Data Portal and Readout; **Engineering Controls**, **Properties**, **Channel Math**, **Channel Table** and **Interval Measurements** start folded. Explicit saved layouts take precedence. Existing **View** actions and **Show all panels** remain available. Channel Kind metadata remains in Properties. Choose **Change Trace Color…** from Channel, Properties or channel/trace context menus; **Compare Data…** adds channels from any loaded recordings to Comparison. **F11** enlarges the full split workspace; **Shift+F11** enlarges only the selected graph. Both retain shared navigation, Mouse X/Y, live A/B values and statistics; **Esc** returns. Open/save dialogs remember folders by purpose across restarts, retaining configured output folders for first saves. Advanced tools, presets, extensions and existing styling remain available through **Tools** or **More**. Save workspace writes a JSON manifest plus an adjacent generation-named NPZ; keep both together when sharing/restoring.
 
 ## Engineering comparison
 
@@ -89,13 +89,13 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.4.3**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.4.3**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.5.0**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.5.0**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
 ## Feature history
 
-The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.4.3 manual](manuals/v2.4.3.md) and [release record](docs/RELEASE_2.4.3.md).
+The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.5.0 manual](manuals/v2.5.0.md) and [release record](docs/RELEASE_2.5.0.md).
 
 ### Navigation and locked cursors (2.1.1)
 
@@ -168,7 +168,7 @@ Windows taskbar identity, in addition to being embedded in the executable.
 
 Open **About → About / Updates** and choose **Check for updates → Download update → Install update & restart**. Installed Setup, standalone EXE and complete standalone ZIP use matching verified feeds. Preparation saves independent recovery JSON/NPZ, stages the correct package in a worker and verifies the actual restored new startup; recovery runtimes remain available. Cancellation/failed preparation preserves the current app. Update checks never upload recordings. Use **About → User Manual** or F1 for the separate searchable version manual. Source users update their checkout as usual.
 
-ZIP builds older than v2.4.0 need one full v2.4.0-or-later ZIP download/extraction to gain folder-preserving updates; use the current v2.4.3 ZIP and retain the old folder/outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.4.3.md).
+ZIP builds older than v2.4.0 need one full v2.4.0-or-later ZIP download/extraction to gain folder-preserving updates; use the current v2.5.0 ZIP and retain the old folder/outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.5.0.md).
 
 Installed updates launched by **v2.4.2 or later** run Setup quietly, then reopen the app and restore the workspace after verified startup. A downloaded Setup opened manually keeps its normal wizard. An installed **v2.4.1-or-earlier** copy can show Setup progress once while first installing v2.4.2 or later because the already-running old app owns that updater. Subsequent installed updates launched from v2.4.2 or later use the quiet path. Setup logs, startup checks, recovery snapshots and the previous runtime remain available; Windows security or organizational prompts remain outside this guarantee.
 
@@ -184,13 +184,13 @@ TDMS also works in recording alignment and bench comparison. Those workflows use
 
 **Info & manual** is now in the main top toolbar and opens a separate manual/update window. Only Analysis and Comparison remain in the graph-tab area. The offline version selector, topic navigation and Find next search provide a complete feature reference, including every processing operation, View panel, engineering/comparison workflow, export, shortcut, preset and extension facility. Archived manuals include only the features supported by their app version.
 
-In **v2.1.7**, every View panel and Show channel kind started enabled, including a one-time pre-2.1.7 update migration. This is historical behavior: current v2.4.3 fresh workspaces use the four approved folded supporting panels described above, and Kind remains in Properties. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens panels without clearing data.
+In **v2.1.7**, every View panel and Show channel kind started enabled, including a one-time pre-2.1.7 update migration. This is historical behavior: current v2.5.0 fresh workspaces use the folded supporting panels described above, and Kind remains in Properties. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens panels without clearing data.
 
 Maintain the manuals in `manuals/feature-guide.md` (each topic includes its first supported version), add release notes in `scripts/build_manuals.py`, then run `python scripts/build_manuals.py`. Only generated version manuals are bundled in the EXE.
 
 ### Current status and future reference
 
-See the [current v2.4.3 implementation/verification record](docs/RELEASE_2.4.3.md), [full manual](manuals/v2.4.3.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
+See the [current v2.5.0 implementation/verification record](docs/RELEASE_2.5.0.md), [full manual](manuals/v2.5.0.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
 
 ### Desktop finalization (v2.2.0)
 
