@@ -3,6 +3,37 @@
 Target: next development release; current published version remains 2.4.3.
 Working branch: `feature/recover-analysis-workflow`.
 
+## Current status: paused at the user's request
+
+The user requested completion of the validation in progress, then a pause until
+they explicitly ask to resume. Do not start further implementation or builds.
+
+Application source checkpoint: `596b6766b9d52185579c1edd91a2cfab254a0dfd`.
+The complete fault-enabled local suite finished successfully: **607 tests in
+401.977 seconds, 602 passed, 5 platform skips, zero failures/errors**. The
+supplied-recording acceptance run passed **53/53**, with zero runner errors,
+zero application-callback errors, seven expected safety rejections and five
+manual platform checks unrun. The lifecycle-corrected 2.5.0 workbench self-test
+also passed. Repeated graph/fullscreen lifecycle validation passed 84 checks.
+
+The already-submitted [Windows run 41169411523](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41169411523)
+for source `596b676` was **In progress** when paused. It may finish independently
+on GitHub. Its installer/EXE/ZIP artifacts and native test results have **not**
+been verified here. No release was published or merge to main performed. This
+documentation-only checkpoint does not restart that job.
+
+When asked to resume: first read that run's actual conclusion and diagnostics,
+verify its native regression, installer, packaged-recording and update/recovery
+gates, then inspect the package artifacts. Diagnose any failure before starting
+another build. GitHub API access was previously Forbidden in this environment;
+public Actions pages expose run status, while detailed logs require sign-in/API
+access. Do not infer success from an in-progress run or the existence of a PID.
+
+Local evidence is under `/workspace/analizer-environment/reports/`:
+`v250-lifecycle-full-tests.log`, `v250-lifecycle-acceptance/acceptance.json`,
+`v250-lifecycle-self-test.json`, and `v250-safe-close-fullscreen-tests.log`.
+The broader comparison architecture roadmap below remains unfinished and paused.
+
 ## Requirements compared with the current implementation
 
 | Requirement | Existing behavior at 02f0ffa | Remaining work |
