@@ -24,7 +24,9 @@ context, not verified current behavior.
 ## Checkpoints
 
 - Baseline: 578 tests ran, 573 passed, 5 skipped; source workbench self-test passed.
-- Recovery assessment recorded; implementation in progress.
+- Timestamp fix completed: direct and engineering imports unwrap complete Excel text literals without evaluating formulas or changing source tables. Direct datetime imports now reuse the engineering clock parser, including midnight rollover.
+- Validation: four new timestamp regressions passed; all seven existing minute-coordinate tests passed. Original user CSV is unavailable; fixtures reproduce the exact wrapper format and 8.85127-minute span from the handoff.
+- Cursor-free report defaults are being integrated across analysis, comparison and engineering renderers.
 
 ## Continuation policy
 

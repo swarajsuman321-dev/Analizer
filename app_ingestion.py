@@ -56,7 +56,8 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
             unit = coordinate_unit or ('s' if clock else 'sample')
             kind = 'time' if clock and unit!='sample' else 'sample'
             if clock:
-                numeric = pd.to_numeric(frame[clock], errors='coerce')
+                from app_data import timestamp_text, _parse_timestamp_column
+                numeric = pd.to_numeric(timestamp_text(frame[clock]), errors='coerce')
                 if numeric.notna().sum() >= max(1, len(frame)*.8):
                     x = numeric.to_numpy(dtype=float)
                     if not coordinate_unit:
@@ -79,7 +80,9 @@ def ingest(store, path, time_column=None, coordinate_unit=None,force_sample=Fals
                     if not time_column and 'date' in names and 'time' in names:
                         from app_data import extract_datetime_series
                         parsed=extract_datetime_series(frame,fallback=False);clock_columns.update([names['date'],names['time']])
-                    else:parsed = pd.to_datetime(frame[clock], errors='coerce')
+                    else:parsed = _parse_timestamp_column(frame[clock],clock,
+                        frame.attrs.get('column_units',{}).get(clock,''),
+                        excel=Path(path).suffix.lower() in ('.xls','.xlsx'))
                     valid = parsed.dropna()
                     if valid.empty:
                         raise ValueError(f'Cannot interpret coordinate column {clock}')
