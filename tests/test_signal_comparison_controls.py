@@ -44,6 +44,8 @@ class SignalComparisonControlsTests(unittest.TestCase):
         self.b = self.dataset('Candidate appliance.csv')
         self.reference = self.channel(self.a, x=[4, 5, 6], y=[0, 120, 0])
         self.candidate = self.channel(self.b, x=[20, 21, 22], y=[0, 100, 0])
+        for dataset,point in ((self.a,4.),(self.b,20.)):
+            dataset.frame.attrs['program_start']={'source_min':point,'confirmed':True,'evidence':'Reviewed fixture program start'}
         self.calls = []
         self.gui_thread = threading.get_ident()
 
@@ -121,7 +123,7 @@ class SignalComparisonControlsTests(unittest.TestCase):
             self.finish()
         self.assertEqual(self.errors, [])
         engine, export = self.calls
-        self.assertEqual(engine[1:4], (self.reference.id, self.candidate.id, {'alignment': 'elapsed'}))
+        self.assertEqual(engine[1:4], (self.reference.id, self.candidate.id, {'alignment': 'program'}))
         self.assertNotEqual(engine[-1], self.gui_thread)
         self.assertNotEqual(export[-1], self.gui_thread)
         self.assertEqual(export[2]['layout'], 'Horizontal split')

@@ -40,8 +40,8 @@ class SignalComparisonDialog(ContentDialog):
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         layout = QtWidgets.QVBoxLayout(self)
         explanation = QtWidgets.QLabel(
-            'Choose one parameter from each recording. Comparison uses elapsed '
-            'time from each recording’s start and retains later channel starts. '
+            'Choose one parameter from each recording. Comparison uses confirmed '
+            'program starts as time zero and retains later channel starts. '
             'The original measurements and plotted views stay unchanged.')
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
@@ -217,7 +217,7 @@ class SignalComparisonControls(QtCore.QObject):
         self.last_bundle = None
         self.action = QtGui.QAction('Compare Two Signals', self)
         self.action.setObjectName('compareTwoSignals')
-        self.action.setToolTip('Select one parameter from each recording, compare elapsed timelines, and prepare PDF, Excel and JSON evidence')
+        self.action.setToolTip('Select parameters with confirmed program starts and prepare PDF, Excel and JSON evidence')
         self.action.triggered.connect(lambda: window.guard(self.compare_selected))
 
     def validate_pair(self, reference, candidate):
@@ -289,6 +289,8 @@ class SignalComparisonControls(QtCore.QObject):
     def start(self, reference_id, candidate_id):
         self.window.mutate()
         pair = self.validate_pair(reference_id, candidate_id)
+        from app_program_alignment import program_start
+        for channel in pair:program_start(self.window.store,channel.dataset_id)
         store = self.window.store
         snapshot = self._report_snapshot(pair)
         metadata = deepcopy(self.window.report_metadata() if callable(getattr(self.window, 'report_metadata', None)) else {})
@@ -302,7 +304,7 @@ class SignalComparisonControls(QtCore.QObject):
             from app_signal_comparison import compare_signals
             from app_comparison_report import export_comparison_bundle
             checkpoint('Comparing the selected parameters')
-            result = compare_signals(store, reference_id, candidate_id, alignment='elapsed')
+            result = compare_signals(store, reference_id, candidate_id, alignment='program')
             if result.get('status') != 'compared':
                 return {'result': result, 'bundle': None}
             report_metadata = {**metadata, 'Signal comparison': result}

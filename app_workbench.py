@@ -274,11 +274,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def update_interval_card(self):
         import html
         pane=self.active_workspace.active
-        measurements=pane.measurements()
+        measurements=self.active_workspace.measurement_rows()
         keys=list(measurements);row=self.readout.currentRow()
         if not keys:
             self.interval_card.setText('No channels selected');self.interval_card.setToolTip('');return
-        channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurements[channel_id])
+        channel_id=keys[row if 0<=row<len(keys) else 0];pane,measurement=measurements[channel_id]
+        c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurement)
         def number(key):return f"{abs(stats[key]) if key in ('ΔX','ΔY') else stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
         anchors=self.locked_cursor_texts(pane)
         from app_channel_identity import channel_label,channel_details
@@ -384,6 +385,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.help_action=QtGui.QAction('User Manual',self);self.help_action.setShortcut('F1');self.help_action.triggered.connect(self.show_help)
         self.info_action=QtGui.QAction('About / Updates',self);self.info_action.triggered.connect(self.show_info)
         channel.addSeparator();channel.addAction('Review TDMS parameters…',lambda:self.guard(self.review_loaded_tdms))
+        self.program_alignment_action=channel.addAction('Align Program Starts…',lambda:self.guard(self.align_programs))
+        toolbar.addAction(self.program_alignment_action)
         channel.addAction('Remove recording…',lambda:self.guard(self.remove_recording));channel.addAction('Clear workspace',lambda:self.guard(self.clear_recordings))
         self.undo_removal_action=QtGui.QAction('Undo Dataset Removal',self);channel.addAction(self.undo_removal_action)
         self.undo_removal_action.triggered.connect(lambda:self.guard(self.undo_recording_removal));self.undo_removal_action.setShortcut('Ctrl+Alt+Z');self.undo_removal_action.setEnabled(False)
@@ -435,6 +438,12 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
     def set_graph_layout(self,name):
         self.exit_graph_fullscreen()
         self.active_workspace.set_layout(name)
+
+    def align_programs(self):
+        from app_program_alignment_controls import ProgramAlignmentDialog
+        self.mutate()
+        dialog=ProgramAlignmentDialog(self)
+        dialog.exec()
 
     def enable_all_panels(self):
         for dock in self.docks.values():dock.show()
@@ -913,13 +922,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         if hasattr(self,'studio'):
             live=self.studio.live_readout(pane,a)
             if live:self.cursor_caption.setText(self.cursor_caption.text()+' &nbsp; '+live)
-        try:measurements=pane.measurements()
+        try:measurements=self.active_workspace.measurement_rows()
         except KeyError:return
         self.readout.setRowCount(len(measurements));self.intervals.setRowCount(len(measurements))
         self.readout.setColumnHidden(4,not any(match_color(self.store.channels[id].attributes.get('match_percent')) for id in measurements))
         def display(value):return f'{value:.6g}' if np.isfinite(value) else 'Unknown'
-        for row,(id,interval_stats) in enumerate(measurements.items()):
-            stats=self.statistics_for_display(pane,id,interval_stats)
+        for row,(id,(owner,interval_stats)) in enumerate(measurements.items()):
+            stats=self.statistics_for_display(owner,id,interval_stats)
             c=self.store.channels[id]
             from app_channel_identity import channel_label,channel_details
             label=channel_label(self.store,c)

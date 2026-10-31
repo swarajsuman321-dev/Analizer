@@ -316,16 +316,23 @@ class PlotPane(pg.PlotWidget):
             self._normalizing=True
             try:
                 channels=[self.store.channels[id] for id in self.ids if id in self.store.channels and len(self.store.channels[id].x)]
+                workspace=getattr(self,'workspace',None)
+                shared=workspace is not None and workspace._temporal_group(self) is not None
+                if shared:
+                    channels=list({c.id:c for pane in workspace.visible_panes() if pane.coordinate==self.coordinate
+                        for id in pane.ids if (c:=self.store.channels.get(id)) is not None and len(c.x)}.values())
                 if channels:
                     left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
                     vl,vr=self.getViewBox().viewRange()[0]
                     low,high=max(left,vl),min(right,vr)
+                    if shared:low,high=left,right
                     if low>high:low,high=left,right
                     reference=channels[0].values()[0]
                     begin,end=np.searchsorted(reference,[low,high],side='left');end=np.searchsorted(reference,high,side='right')
                     candidates=reference[begin:end]
                     sender=self.sender()
                     for index,line in enumerate(self.cursor_lines):
+                        if shared and sender in self.cursor_lines and sender is not line:continue
                         lock=self.cursor_locks[index]
                         if lock and lock['channel'] in self.store.channels:
                             x=self.store.channels[lock['channel']].values()[0]
@@ -341,9 +348,16 @@ class PlotPane(pg.PlotWidget):
                             choices=boundaries[(boundaries>=low)&(boundaries<=high)]
                             if len(choices):
                                 line.setValue(float(choices[np.argmin(np.abs(choices-value))]));continue
-                        if self.snap and len(candidates):
-                            i=min(len(candidates)-1,int(np.searchsorted(candidates,value)));j=max(0,i-1)
-                            value=float(candidates[i] if abs(candidates[i]-value)<abs(candidates[j]-value) else candidates[j])
+                        choices=candidates
+                        if shared:
+                            reference_channel=next((self.store.channels[id] for id in self.ids
+                                if len(self.store.channels[id].x) and self.store.channels[id].values()[0][0]<=value<=self.store.channels[id].values()[0][-1]),None)
+                            if reference_channel is None:
+                                reference_channel=next((c for c in channels if c.values()[0][0]<=value<=c.values()[0][-1]),None)
+                            choices=reference_channel.values()[0] if reference_channel is not None else np.array([])
+                        if self.snap and len(choices):
+                            i=min(len(choices)-1,int(np.searchsorted(choices,value)));j=max(0,i-1)
+                            value=float(choices[i] if abs(choices[i]-value)<abs(choices[j]-value) else choices[j])
                         line.setValue(value)
             finally:self._normalizing=False
         self.update_cursor_markers()
@@ -536,6 +550,10 @@ class PlotPane(pg.PlotWidget):
 
     def bind(self, ids, assignments=None, fit=True):
         self.clear_hover()
+        workspace=getattr(self,'workspace',None)
+        shared_source=next((p for p in workspace.visible_panes() if p is not self and p.ids
+            and p.coordinate in {(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids}),None) if workspace else None
+        shared_state=shared_source.state() if shared_source is not None and shared_source.coordinate[0]=='time' else None
         for index,view in enumerate(self.marker_views):
             if view is not None:view.removeItem(self.cursor_markers[index]);self.marker_views[index]=None
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
@@ -619,6 +637,13 @@ class PlotPane(pg.PlotWidget):
             self.fit()
         else:
             self.restore_ranges(saved)
+        if shared_state is not None:
+            previous=self._synchronizing;self._synchronizing=True
+            try:
+                self.cursor_locks=[dict(lock) if lock else None for lock in shared_state.get('cursor_locks',[None,None])]
+                for line,value in zip(self.cursor_lines,shared_state['cursors']):line.setValue(value)
+            finally:self._synchronizing=previous
+            if workspace is not None:workspace._cursors(self)
         self._render()
         if hasattr(self,'legend'):
             self.legend.setLabelTextColor('#e3eaf5' if self.dark else '#182033')
@@ -761,7 +786,9 @@ class PlotPane(pg.PlotWidget):
         # Numerical copying avoids pyqtgraph's screen-edge offset when axes
         # have unequal widths. Independent Y viewboxes share the same clock.
         for _,view in self.axes.values():view.setXRange(*self.getViewBox().viewRange()[0],padding=0)
-        if self.ids and not getattr(self,'_restored_positions',False):self._cursor_changed()
+        workspace=getattr(self,'workspace',None)
+        if self.ids and not getattr(self,'_restored_positions',False) and not (workspace and workspace._temporal_group(self)):
+            self._cursor_changed()
         if not self.timer.isActive():
             self.timer.start(0)
 
@@ -787,6 +814,11 @@ class PlotPane(pg.PlotWidget):
             return
         self.remember_view()
         left=min(c.x[0]+c.shift for c in channels);right=max(c.x[-1]+c.shift for c in channels)
+        workspace=getattr(self,'workspace',None)
+        if workspace is not None and workspace._temporal_group(self) is not None:
+            peers=[self.store.channels[id] for pane in workspace.visible_panes() if pane.coordinate==self.coordinate
+                for id in pane.ids if len(self.store.channels[id].x)]
+            left=min(c.values()[0][0] for c in peers);right=max(c.values()[0][-1] for c in peers)
         self.setXRange(left,right if right>left else left+1,padding=.02)
         for unit in dict.fromkeys(self.bindings.values()):
             values=[]
@@ -1018,13 +1050,16 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def _time_range_changed(self,pane,bounds):
         """Synchronize numbers, never screen edges or source timestamps."""
-        if self._range_syncing or not self.time_axes_locked or pane not in self.visible_panes():return
+        if self._range_syncing or pane not in self.visible_panes():return
         group=self._temporal_group(pane)
         if group is None or not np.isfinite(bounds).all():return
         self._range_syncing=True
         try:
             for target in self.visible_panes():
                 if target is not pane and self._temporal_group(target)==group:
+                    source_datasets={self.store.channels[id].dataset_id for id in pane.ids if self.store.channels[id].dataset_id}
+                    target_datasets={self.store.channels[id].dataset_id for id in target.ids if self.store.channels[id].dataset_id}
+                    if not self.time_axes_locked and not source_datasets.intersection(target_datasets):continue
                     target.setXRange(float(bounds[0]),float(bounds[1]),padding=0)
         finally:self._range_syncing=False
 
@@ -1134,7 +1169,6 @@ class PlotWorkspace(QtWidgets.QWidget):
             pane.setXLink(None)
             group=self._temporal_group(pane)
             if group is not None:groups.setdefault(group,[]).append(pane)
-        if not self.time_axes_locked:return
         for panes in groups.values():
             source=self.active if self.active in panes else panes[0]
             self._time_range_changed(source,source.getViewBox().viewRange()[0])
@@ -1142,6 +1176,17 @@ class PlotWorkspace(QtWidgets.QWidget):
     def visible_panes(self):
         rows,cols=LAYOUTS[self.layout_name]
         return self.panes[:rows*cols]
+
+    def measurement_rows(self):
+        """A shared time readout with the owning pane retained for each channel."""
+        if self.active is None:return {}
+        panes=[self.active]
+        if self._temporal_group(self.active) is not None:
+            panes += [p for p in self.visible_panes() if p is not self.active and p.coordinate==self.active.coordinate]
+        result={}
+        for pane in panes:
+            for id,stats in pane.measurements().items():result.setdefault(id,(pane,stats))
+        return result
 
     def _cursors(self,pane):
         if self._syncing:return

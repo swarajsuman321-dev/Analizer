@@ -315,8 +315,8 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
             raise ValueError('Two-signal activity comparison requires time-based recordings; frequency and sample-index plots retain their own units.')
         if not len(reference.x) or not len(candidate.x):
             raise ValueError('Both selected channels need recorded samples.')
-        if alignment not in ('elapsed', 'recorded', 'manual'):
-            raise ValueError('Choose elapsed, recorded or manual timeline alignment.')
+        if alignment not in ('program', 'elapsed', 'recorded', 'manual'):
+            raise ValueError('Choose program, elapsed, recorded or manual timeline alignment.')
         offset_min = float(offset_min)
         if not math.isfinite(offset_min):
             raise ValueError('The candidate offset must be finite minutes.')
@@ -341,10 +341,16 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
         origin_records = [_origin(store, channel) if alignment == 'elapsed' else (0., True)
                           for channel in (reference, candidate)]
         origins = [record[0] for record in origin_records]
+        program_records=[]
+        if alignment=='program':
+            from app_program_alignment import program_start
+            program_records=[program_start(store,c.dataset_id) for c in (reference,candidate)]
+            origins=[record['source_min']*60 for record in program_records]
         if alignment == 'elapsed' and not all(record[1] for record in origin_records):
             result['limitations'].append('An original source clock is unavailable in at least one dataset; its elapsed origin uses the earliest remaining temporal projection.')
-        left = _trace(reference, target, -origins[0], max_gap_seconds)
-        right = _trace(candidate, target, -origins[1]+offset_min*60, max_gap_seconds)
+        shifts=[float(convert(c.shift,c.coordinate_unit,'s')) if alignment=='program' else 0 for c in (reference,candidate)]
+        left = _trace(reference, target, -origins[0]-shifts[0], max_gap_seconds)
+        right = _trace(candidate, target, -origins[1]-shifts[1]+offset_min*60, max_gap_seconds)
         start, end = min(left.t[0], right.t[0]), max(left.t[-1], right.t[-1])
         if interval is not None:
             if len(interval) != 2:
@@ -360,6 +366,9 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
                                'candidate_original_clock': origin_records[1][1],
                                'description': ('Elapsed time from each recording’s earliest original source timestamp; late-starting parameters and applied graph shifts retain their offset. Derived clocks do not rebase original recordings.' if alignment == 'elapsed' else
                                                'Recorded numeric time coordinates are preserved; no calendar origin is inferred.')}
+        if alignment=='program':
+            result['alignment'].update(program_starts=program_records,
+                description='Time zero is the confirmed program start of each recording. One source-wide offset preserves all channel timing; pre-program samples retain negative elapsed time.')
         overlap_start, overlap_end = max(start, left.t[0], right.t[0]), min(end, left.t[-1], right.t[-1])
         result['scope'] = {'start_min': start/60, 'end_min': end/60, 'span_min': (end-start)/60,
                            'overlap_start_min': overlap_start/60 if overlap_end >= overlap_start else None,

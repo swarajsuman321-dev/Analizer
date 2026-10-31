@@ -38,6 +38,31 @@ unchecked keeps cursor times and statistics while exporting clean plots.
 
 ## Next checkpoint
 
+### Confirmed additional timing requirements
+
+The user confirmed source-wide timing: channels from one recording must not move
+independently in time, and comparison time zero must be program start rather than
+recording start. When start cannot be established from reliable data, require a
+reviewed program-start point for each run; preserve original timestamps and
+negative pre-program time.
+
+### Shared cursors and program-start checkpoint
+
+- Shared cursor normalization uses the full compatible time-channel extent;
+  shorter panes and pan/refresh callbacks cannot clamp the pair. Readout and its
+  interval card combine all compatible time panes and retain each channel's owner.
+- Same-recording time axes remain linked even with the general axis lock off.
+- Align Program Starts provides a source-time point and required confirmation
+  evidence for each recording, including a Cursor A shortcut. Every time channel
+  receives the same physical offset; original arrays and source tables remain
+  unchanged. Masks retain their original samples. Origins survive workspace saves.
+- The direct comparison UI now requires those program origins and compares on
+  program elapsed time. Missing origins block explicitly. The numerical engine
+  retains explicit legacy elapsed/recorded/manual modes for compatibility.
+- Focused validation: 4 shared-time regressions, 12 existing navigation/lock tests,
+  4 program-origin regressions and 10 comparison-control tests passed. Full
+  integration validation remains pending for this checkpoint.
+
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared
 hover, overlap UI integration and broader comparison requirements remain open.
