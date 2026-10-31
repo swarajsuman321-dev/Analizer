@@ -1,18 +1,18 @@
 # Appliance Signal Studio
 
-Release candidate: **2.5.0, publication in progress**. This version adds confirmed program-start
+**Version 2.5.0 is published.** This version adds confirmed program-start
 alignment, shared time cursors/readout, user-added graphs, shared hover,
 multi-signal comparison and actuator overlap, and clean report plots. See the
 [release record](docs/RELEASE_2.5.0.md) and [2.5.0 manual](manuals/v2.5.0.md).
-Downloads below become available after the main-branch Windows release gates pass.
-Until then, the [previous 2.4.3 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.4.3) remains available.
+The downloads and matching update feeds below have been independently verified
+against the native Windows build evidence.
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
 **Windows installer: [Download Setup v2.5.0](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio-Setup-2.5.0.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.5.0.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. The 2.5.0 development packages passed native Windows tests, recording acceptance in all three forms, installer lifecycle and actual application update/recovery checks. Final publication is gated on the main-branch workflow. See the [release record](docs/RELEASE_2.5.0.md), including the remaining manual Windows checks.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Native Windows validation passed **608 of 609 regression tests (one test skipped)**, **53 recording checks in each package form**, 7 installer lifecycle checks and 13 actual application update/recovery checks. Public downloads, update feeds, ZIP integrity, manual and release source were independently verified. See the [release record](docs/RELEASE_2.5.0.md) and [permanent evidence](docs/validation/release-v2.5.0.json), including the remaining manual Windows checks.
 
 Stacked panes align their actual drawing edges without changing numerical time ranges. Data Portal shows **Channel** and **Unit**; right-click a file header for file-wide/filtered selection and **Close Dataset**. Kind metadata remains in Properties, and the main About menu retains User Manual and About / Updates.
 

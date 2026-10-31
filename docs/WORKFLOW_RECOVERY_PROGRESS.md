@@ -1,10 +1,10 @@
 # Analysis workflow recovery
 
-Target: publish 2.5.0; current published version remains 2.4.3 until CI completes.
+Published release: **2.5.0**, independently verified on 31 October 2026.
 Release branch: `release/2.5.0`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: 2.5.0 main-branch release workflow running
+## Current status: 2.5.0 published and public downloads verified
 
 The user explicitly authorized release on 31 October 2026. Release preparation
 updates the current manual/release summary and download documentation without
@@ -13,10 +13,24 @@ changing the validated application behavior. All 7 release/evidence checks and
 historical manuals are unchanged. Main was fast-forwarded to release source
 `da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb` and pushed. The
 [release workflow 41186819267](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267)
-is running to validate all packages, generate matching update feeds, and publish
-the immutable v2.5.0 release. Verify the actual workflow outcome and public assets before
-recording publication. The five manual Windows checks remain unrun and disclosed;
-the user authorized publication with those limitations already documented.
+finished with **Success in 40m 25s** and published the immutable
+[v2.5.0 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.5.0).
+Native discovery ran **609 tests: 608 passed, 1 platform skip, zero expected
+failures**. All **53 recording checks passed in each of the three package forms**;
+the installer lifecycle passed 7 checks and actual application update/recovery
+passed 13 checks.
+
+All three public binaries were downloaded and their sizes/SHA-256 hashes matched
+the native evidence and update manifests. Latest and immutable versioned feeds
+agree for all editions. The public ZIP passed CRC/inventory checks; its bundled
+2.5.0 manual matches the published manual byte-for-byte, and source content
+matches after line-ending normalization. The public release tag resolves to the
+exact tested source above. Permanent native/public evidence is committed in
+`docs/validation/release-v2.5.0.json`; package links and limitations are in
+`docs/RELEASE_2.5.0.md`. Windows binaries were not manually executed in this Linux
+environment. The five physical Windows checks remain unrun and disclosed.
+The broader comparison architecture remains deferred roadmap work; no additional
+features are being started as part of publication.
 
 ## Validated development checkpoint
 
@@ -39,8 +53,8 @@ Windows checks remain manual: navigation input, display scaling, mixed-monitor
 behavior, keyboard/screen-reader access, and long-running workloads/antivirus.
 Permanent observed evidence is recorded in
 `docs/validation/v250-windows-build-41183692326.json`.
-The development build is ready for Windows user testing. Main and the published
-2.4.3 release remain unchanged; no merge or release publication was performed.
+At this development checkpoint, main and the published 2.4.3 release were
+unchanged. The later 2.5.0 main-branch publication is recorded above.
 
 ### Repair and local validation
 
@@ -271,9 +285,9 @@ negative pre-program time.
   tests passed, as did the 2.5.0 workbench self-test. A complete fault-enabled suite
   is running for this revision; native build validation remains pending.
 
-The core timing/usability requirements above are implemented, and the native
-Windows automated gates passed. Remaining release review includes the five manual
-Windows checks and user testing of the generated development packages. The
+The core timing/usability requirements above are implemented, the native
+Windows automated gates passed, and 2.5.0 is published. Remaining platform review
+includes the five manual Windows checks and user testing of the released packages. The
 broader extensible-comparison architecture remains a roadmap: full field inventory,
 reviewed semantic/scaling mappings for unfamiliar channels, categorical metrics and
 stage-sequence matching are not claimed complete by this regression-focused build.
@@ -289,8 +303,8 @@ channel-to-pane mapping when combining measurements.
 
 GitHub pushes work with the existing platform authentication. GitHub GraphQL API
 access returned Forbidden, so automatic pull-request creation is unavailable in
-this environment. The development branch is pushed; main and published packages
-remain unchanged.
+this environment. Recovery and release branches are pushed; main contains the
+released implementation and publication/verification evidence.
 
 ## Continuation policy
 

@@ -1,13 +1,12 @@
 # Appliance Signal Studio 2.5.0 — program timing and shared graph inspection
 
-Publication authorized on 31 October 2026. The main-branch Windows release
-workflow must finish before this version is described as published. The prior
-development build passed all automated Windows gates; see the
-[observed evidence](validation/v250-windows-build-41183692326.json).
-Main was fast-forwarded to `da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb`;
-[release workflow 41186819267](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267)
-is validating that exact revision. Documentation-only progress updates do not
-restart it or change its release source.
+**Published and independently verified on 31 October 2026.** Installed Setup,
+standalone EXE and portable ZIP share the same tested source and matching update
+feeds. See the [public release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.5.0)
+and [permanent native/public verification evidence](validation/release-v2.5.0.json).
+The release tag resolves to tested source
+`da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb`. Later documentation-only progress
+commits do not change that immutable release source.
 
 ## Timing and graph inspection
 
@@ -74,12 +73,33 @@ or application-callback errors; the source self-test passed.
 passed native tests, frozen smoke checks, installer lifecycle, recording acceptance
 in standalone EXE/extracted ZIP/installed editions, and actual application
 updates/workspace recovery. Exact native test counts were not visible through the
-public run page and are not inferred. Release preparation updates the bundled
-manual, so the main-branch workflow revalidates the final release revision.
+public run page and were not inferred for that earlier build.
 
-Publication must attach `validation-v2.5.0.json`, containing the actual native gate
-reports, source commit, package hashes and manual-check limits. Public downloads,
-feeds, release tag, ZIP contents and manual will be checked after publication.
+The final [main-branch release workflow 41186819267](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267)
+finished with **Success in 40m 25s**. Its actual captured native suite ran
+**609 tests: 608 passed, 1 skip, zero expected failures**.
+All **53 recording checks passed in each of the standalone EXE, extracted ZIP and
+installed editions**, with zero runner/application-callback errors. Installer
+lifecycle passed 7 checks; actual application updates/workspace recovery passed
+13 checks. The attached `validation-v2.5.0.json` retains the original gate reports,
+exact source commit, package hashes and manual-check limits.
+
+Independent public verification downloaded and hashed all three binaries, checked
+the latest and versioned feeds for every edition, matched the public tag to the
+tested commit, and checked the ZIP inventory/CRC. The archive contains 2,594 files
+and 389,000,955 uncompressed bytes. The published manual matches its bundled ZIP
+copy byte-for-byte and source content after line-ending normalization. These
+downloads were inspected in Linux; Windows execution evidence comes from native CI.
+
+| Delivery form | Public file | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| Installed Setup | [ApplianceSignalStudio-Setup-2.5.0.exe](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio-Setup-2.5.0.exe) | 135,276,403 | `360530b5fa0998b252f16e4f99a90c32b068c4d5b08a68c154a6d91ec4cdeade` |
+| Standalone EXE | [ApplianceSignalStudio.exe](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio.exe) | 155,389,530 | `b93400f01e7b5796fb213e027f44bd94a531969174d12ea55778b17c3573a83c` |
+| Standalone ZIP | [ApplianceSignalStudio_Portable.zip](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio_Portable.zip) | 156,228,948 | `9c0e8021d3d8a5f10fac5ed8754993b60aa7229b9c1b88f5d43a931e1266390d` |
+
+Published/bundled manual: **104,437 bytes**, SHA-256
+`bf53baac53df079003271b9b3d97d463d6ff034df496c885e23c13053a596689`.
+Only the current version manual was regenerated; historical manuals are unchanged.
 
 The installer remains unsigned. The following manual Windows checks remain unrun:
 
