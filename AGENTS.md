@@ -1,9 +1,8 @@
 # Development continuity
 
-Work is paused at the user's request after completing local validation on
-31 October 2026. Do not resume implementation or trigger additional builds until
-the user asks to resume. Read `docs/WORKFLOW_RECOVERY_PROGRESS.md` for the exact
-checkpoint, passing local results and the already-running Windows job to check.
+The user resumed work on 31 October 2026. Read
+`docs/WORKFLOW_RECOVERY_PROGRESS.md` for the current source checkpoint, validation
+results and Windows build status before continuing.
 
 User requirement: keep application development code and progress on GitHub so work
 can resume from another session or account.

@@ -3,10 +3,28 @@
 Target: next development release; current published version remains 2.4.3.
 Working branch: `feature/recover-analysis-workflow`.
 
-## Current status: paused at the user's request
+## Current status: resumed; Windows packaged acceptance failure under repair
 
-The user requested completion of the validation in progress, then a pause until
-they explicitly ask to resume. Do not start further implementation or builds.
+The user explicitly resumed work on 31 October 2026. The previous Windows run
+finished with Failure after 23m 9s. Its onefile EXE exited with Windows access
+violation 3221225477 during `LAYOUT-2×2-Light-1024`, while restoring panes. The
+published main-thread snapshot enters `ViewBoxMenu` / `WidgetGroup.addWidget`
+through a newly constructed primary `NavigationViewBox`. Public diagnostic
+evidence is retained in `docs/validation/v250-packaged-crash-41169411523.json`.
+
+The app already exposes its own chart context menu and disables framework
+transforms. Primary and secondary axes now avoid constructing the unused native
+ViewBox menu, and explicitly route right-clicks to the existing app menu.
+Two targeted regressions passed: real mouse right-click retains chart actions,
+and repeated multi-axis restore/GC preserves ranges/cursors without ever creating
+the hidden framework menu. The combined chart-menu, navigation, geometry and
+header/hover run passed all 30 tests with fault diagnostics. Full discovery and
+53-check supplied-recording acceptance are running; fresh native validation is
+next. No Windows release is ready or published.
+
+## Previous pause checkpoint (historical)
+
+The prior pause was requested after completing the following local validation.
 
 Application source checkpoint: `596b6766b9d52185579c1edd91a2cfab254a0dfd`.
 The complete fault-enabled local suite finished successfully: **607 tests in
@@ -17,8 +35,8 @@ manual platform checks unrun. The lifecycle-corrected 2.5.0 workbench self-test
 also passed. Repeated graph/fullscreen lifecycle validation passed 84 checks.
 
 The already-submitted [Windows run 41169411523](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41169411523)
-for source `596b676` was **In progress** when paused. It may finish independently
-on GitHub. Its installer/EXE/ZIP artifacts and native test results have **not**
+for source `596b676` was **In progress** when paused; its subsequent failure is
+described above. Its installer/EXE/ZIP artifacts and native test results have **not**
 been verified here. No release was published or merge to main performed. This
 documentation-only checkpoint does not restart that job.
 

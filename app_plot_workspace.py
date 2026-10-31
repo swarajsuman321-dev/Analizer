@@ -81,6 +81,18 @@ class NavigationViewBox(pg.ViewBox):
     """Apply a plot gesture equally in screen space to every physical Y axis."""
     owner=None
 
+    def __init__(self,*args,**kwargs):
+        # The app supplies its own chart menu. Constructing the unused native
+        # ViewBoxMenu creates a WidgetGroup/QWidget tree for every value axis;
+        # that constructor crashed in the frozen Windows restore loop.
+        kwargs['enableMenu']=False
+        super().__init__(*args,**kwargs)
+
+    def mouseClickEvent(self,event):
+        if event.button()==QtCore.Qt.MouseButton.RightButton and self.owner is not None:
+            self.raiseContextMenu(event);event.accept()
+        else:super().mouseClickEvent(event)
+
     def _gesture(self,method,event,axis):
         if self.owner is None:return method(event,axis=axis)
         workspace=getattr(self.owner,'workspace',None)

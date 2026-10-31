@@ -1,0 +1,49 @@
+{
+  "run_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/41169411523",
+  "source_commit": "596b6766b9d52185579c1edd91a2cfab254a0dfd",
+  "conclusion": "failure",
+  "evidence_origin": "Public GitHub Actions annotation; detailed build artifacts have not been downloaded",
+  "diagnostic": {
+    "edition_directory": "onefile",
+    "process": {
+      "run_id": "2223b4fc-8124-46e7-b456-48fb94162c7c",
+      "timed_out": false,
+      "returncode": 3221225477,
+      "seconds": 127.735
+    },
+    "acceptance": {
+      "run_id": "2223b4fc-8124-46e7-b456-48fb94162c7c",
+      "current_check": "LAYOUT-2\u00d72-Light-1024",
+      "check_started_at_utc": "2026-10-31T05:01:42.096822+00:00",
+      "current_stage": "Starting check",
+      "started_at_utc": "2026-10-31T04:59:44.424509+00:00",
+      "finished_at_utc": null,
+      "completed_checks": 28,
+      "recent_checks": [
+        {
+          "id": "LAYOUT-Vertical split-Light-1024",
+          "status": "passed",
+          "seconds": 2.124
+        },
+        {
+          "id": "LAYOUT-Vertical split-Light-1536",
+          "status": "passed",
+          "seconds": 2.314
+        },
+        {
+          "id": "LAYOUT-2\u00d72-Dark-1024",
+          "status": "passed",
+          "seconds": 3.078
+        },
+        {
+          "id": "LAYOUT-2\u00d72-Dark-1536",
+          "status": "passed",
+          "seconds": 3.25
+        }
+      ],
+      "failures": []
+    },
+    "stderr_tail": "",
+    "stack_tail": "Snapshot at 2026-10-31T05:01:44.428493+00:00\r\nThread 0x894 (AcceptanceStackDiagnostics):\r\n  File \"threading.py\", line 1032, in _bootstrap\r\n  File \"threading.py\", line 1075, in _bootstrap_inner\r\n  File \"threading.py\", line 1012, in run\r\n  File \"app_release_acceptance.py\", line 318, in capture\r\n    _acceptance_stack_snapshot(path)\r\n  File \"app_release_acceptance.py\", line 299, in _acceptance_stack_snapshot\r\n    lines.extend(traceback.format_stack(frame, limit=64))\r\nThread 0x1190 (MainThread):\r\n  File \"windows_entry.py\", line 169, in <module>\r\n    raise SystemExit(entry_main())\r\n  File \"windows_entry.py\", line 141, in entry_main\r\n    result = run_acceptance(args.samples, args.output or Path(tempfile.mkdtemp(prefix='signal-acceptance-')))\r\n  File \"app_release_acceptance.py\", line 362, in run_acceptance\r\n    _run_workbench(recorder, Path(samples).resolve() if samples else None, output)\r\n  File \"app_release_acceptance.py\", line 1413, in _run_workbench\r\n    recorder.check(f'LAYOUT-{layout}-{theme}-{size[0]}',\r\n  File \"app_release_acceptance.py\", line 242, in check\r\n    observed = operation()\r\n  File \"app_release_acceptance.py\", line 1414, in <lambda>\r\n    lambda layout=layout, theme=theme, size=size: layout_theme_geometry(layout, theme, size),\r\n  File \"app_release_acceptance.py\", line 1398, in layout_theme_geometry\r\n    workspace.restore(saved)\r\n  File \"app_plot_workspace.py\", line 1383, in restore\r\n    self.set_layout(state['layout'])\r\n  File \"app_plot_workspace.py\", line 1194, in set_layout\r\n    self.panes.append(self._new_pane())\r\n  File \"app_plot_workspace.py\", line 1210, in _new_pane\r\n    pane=PlotPane(self.store);pane.installEventFilter(self);pane.workspace=self\r\n  File \"app_plot_workspace.py\", line 153, in __init__\r\n    view=NavigationViewBox();super().__init__(viewBox=view);view.owner=self\r\n  File \"pyqtgraph\\graphicsItems\\ViewBox\\ViewBox.py\", line 232, in __init__\r\n  File \"pyqtgraph\\graphicsItems\\ViewBox\\ViewBoxMenu.py\", line 70, in __init__\r\n  File \"pyqtgraph\\WidgetGroup.py\", line 144, in __init__\r\n  File \"pyqtgraph\\WidgetGroup.py\", line 204, in autoAdd\r\n  File \"pyqtgraph\\WidgetGroup.py\", line 203, in autoAdd\r\n  File \"pyqtgraph\\WidgetGroup.py\", line 175, in addWidget\r\n"
+  }
+}
