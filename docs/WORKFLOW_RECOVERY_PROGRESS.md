@@ -1,17 +1,20 @@
 # Analysis workflow recovery
 
 Target: publish 2.5.0; current published version remains 2.4.3 until CI completes.
-Working branch: `feature/recover-analysis-workflow`.
+Release branch: `release/2.5.0`; recovered development branch:
+`feature/recover-analysis-workflow`.
 
-## Current status: 2.5.0 publication authorized; preparing main-branch release
+## Current status: 2.5.0 main-branch release workflow running
 
 The user explicitly authorized release on 31 October 2026. Release preparation
 updates the current manual/release summary and download documentation without
 changing the validated application behavior. All 7 release/evidence checks and
 4 manual/UI checks passed. Only the 2.5.0 version manual was regenerated;
-historical manuals are unchanged. Fast-forward main to the release branch and let the existing Windows workflow
-validate all packages, generate matching update feeds, and publish the immutable
-v2.5.0 release. Verify the actual workflow outcome and public assets before
+historical manuals are unchanged. Main was fast-forwarded to release source
+`da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb` and pushed. The
+[release workflow 41186819267](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267)
+is running to validate all packages, generate matching update feeds, and publish
+the immutable v2.5.0 release. Verify the actual workflow outcome and public assets before
 recording publication. The five manual Windows checks remain unrun and disclosed;
 the user authorized publication with those limitations already documented.
 

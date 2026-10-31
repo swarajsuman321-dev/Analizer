@@ -4,6 +4,10 @@ Publication authorized on 31 October 2026. The main-branch Windows release
 workflow must finish before this version is described as published. The prior
 development build passed all automated Windows gates; see the
 [observed evidence](validation/v250-windows-build-41183692326.json).
+Main was fast-forwarded to `da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb`;
+[release workflow 41186819267](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267)
+is validating that exact revision. Documentation-only progress updates do not
+restart it or change its release source.
 
 ## Timing and graph inspection
 
