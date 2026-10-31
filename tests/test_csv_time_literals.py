@@ -27,26 +27,10 @@ class CsvTimeLiteralTests(unittest.TestCase):
             self.assertEqual(next(iter(store.datasets.values())).frame.iloc[:,0].tolist(),text)
             self.assertEqual(path.read_bytes(),original)
 
-    def test_timestamp_values_under_nonstandard_header_after_signal_columns(self):
-        text=['="2026-10-30 13:00:37.349"', '="2026-10-30 13:00:37.351"', '="2026-10-30 13:09:28.4252"']
-        with tempfile.TemporaryDirectory() as root:
-            path=Path(root)/'logger.csv'
-            frame=pd.DataFrame({**{f'Signal {i}':[1,2,3] for i in range(5)},'Logger recorded at':text})
-            frame.to_csv(path,index=False)
-            parsed=extract_datetime_series(smart_read_file(path),fallback=False)
-            self.assertTrue(parsed.notna().all())
-            store=ChannelStore();ids=ingest(store,path)
-            self.assertEqual(len(ids),5)
-            for id in ids:
-                channel=store.channels[id]
-                self.assertEqual(channel.coordinate_kind,'time')
-                np.testing.assert_allclose(channel.x,[0,.002/60,8.85127],atol=1e-10)
-            pd.testing.assert_frame_equal(next(iter(store.datasets.values())).frame,frame)
-
-    def test_whitespace_and_logger_clock_alias_preserve_millisecond_units(self):
+    def test_whitespace_in_clock_heading_preserves_millisecond_units(self):
         with tempfile.TemporaryDirectory() as root:
             path=Path(root)/'elapsed.csv'
-            pd.DataFrame({' dTime [ms] ':[60000,60002,120000],'Signal':[1,2,3]}).to_csv(path,index=False)
+            pd.DataFrame({' time [ms] ':[60000,60002,120000],'Signal':[1,2,3]}).to_csv(path,index=False)
             store=ChannelStore();ids=ingest(store,path)
             self.assertEqual(len(ids),1)
             channel=store.channels[ids[0]]
@@ -61,7 +45,7 @@ class CsvTimeLiteralTests(unittest.TestCase):
             for channel in store.channels.values():
                 self.assertEqual(channel.coordinate_kind,'sample')
                 np.testing.assert_array_equal(channel.x,[0,1,2])
-            pd.DataFrame({'Logger recorded at':['="2026-10-30 12:00:00.001"','="2026-10-30 12:00:01.002"'],'Signal':[1,2]}).to_csv(path,index=False)
+            pd.DataFrame({'datetime':['="2026-10-30 12:00:00.001"','="2026-10-30 12:00:01.002"'],'Signal':[1,2]}).to_csv(path,index=False)
             store=ChannelStore();ingest(store,path,force_sample=True)
             channel=next(c for c in store.channels.values() if c.name=='Signal')
             self.assertEqual(channel.coordinate_kind,'sample')

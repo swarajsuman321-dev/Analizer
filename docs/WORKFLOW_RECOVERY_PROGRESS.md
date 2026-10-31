@@ -13,19 +13,23 @@ with independently moving X views and A/B cursors. Work is on
 - Exact-file reproduction confirmed the ordinary CSV reader retains an invisible
   UTF-8 BOM before the datetime heading. The released clock-name matcher misses
   that heading, so all 8 signals incorrectly use sample coordinates 0–1393.
-- Shared clock candidate detection now ignores BOM/heading whitespace, recognizes
-  logger clock aliases and inspects date/clock-shaped text beyond the first four
-  columns. Numeric row IDs and remaining-time values do not invent a clock.
+- The CSV clock-heading matcher now ignores the BOM and surrounding whitespace
+  while retaining original source keys and text. The user confirmed other files
+  already import correctly, so the fix retains the existing clock-selection and
+  parsing rules rather than extending them to new heading/value heuristics.
   The supplied file now imports all 1,394 timestamps and 8 signals on a minute
   axis over 139.599 seconds, preserving milliseconds and original source text.
 - Same-recording sample graphs now share X ranges, A/B positions, hover/readout
   and fit bounds. Real horizontal drags from either pane move its aligned group
   with the general time lock off; unrelated sample recordings and frequency
   results remain independent. Pan does not move A/B or change stored samples.
-- All 103 focused clock, navigation, cursor, geometry, program-origin, TDMS and
-  engineering checks passed. A complete suite and exact-file GUI acceptance are
-  the next validation gates. Private CSV data stays outside Git; the BOM fixture
-  uses synthetic timestamps and values.
+- The earlier broader clock-candidate implementation passed 103 focused checks;
+  it was then narrowed after exact-file diagnosis and the user's confirmation
+  that other CSV files work. Its in-flight complete suite was stopped and is not
+  a passing result for the final correction. The final focused run passed all
+  102 checks in 41.982 seconds. Full discovery and exact-file GUI acceptance are
+  being rerun. Private CSV data stays outside Git;
+  the BOM fixture uses synthetic timestamps and values.
 
 The file establishes recording time, not a verified program-start event. Program
 time zero still needs the confirmed start point; no start is inferred from the
