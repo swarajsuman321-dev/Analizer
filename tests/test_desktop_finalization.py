@@ -34,10 +34,10 @@ class DesktopFinalizationTests(unittest.TestCase):
         option=QtWidgets.QStyleOptionViewItem();option.initFrom(tree);tree.itemDelegate().initStyleOption(option,index);option.rect=tree.visualRect(index)
         rect=tree.style().subElementRect(QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,option,tree)
         self.assertTrue(option.rect.contains(rect));QtTest.QTest.mouseClick(tree.viewport(),QtCore.Qt.MouseButton.LeftButton,pos=rect.center());self.app.processEvents()
-    def test_engineering_is_default_tab_and_help_about_are_separate(self):
+    def test_data_portal_is_default_and_help_about_are_separate(self):
         w=self.w;self.assertIn(w.docks['Data Portal'],w.tabifiedDockWidgets(w.docks['Engineering Controls']))
-        self.assertTrue(w.docks['Engineering Controls'].visibleRegion().isEmpty()==False)
-        self.assertTrue(w.docks['Data Portal'].visibleRegion().isEmpty())
+        self.assertTrue(w.docks['Engineering Controls'].isHidden())
+        self.assertFalse(w.docks['Data Portal'].visibleRegion().isEmpty())
         self.assertTrue(w.info_dialog.isModal());self.assertFalse(w.help_dialog.isModal())
         self.assertIs(w.help.parentWidget(),w.help_dialog);self.assertIs(w.info.parentWidget(),w.info_dialog)
         w.help_action.trigger();self.app.processEvents();self.assertTrue(w.help_dialog.isVisible())

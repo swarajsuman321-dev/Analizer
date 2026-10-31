@@ -27,9 +27,9 @@ class ManualAndViewTests(unittest.TestCase):
 
     def test_supporting_panels_fold_by_default_and_saved_layout_wins(self):
         w=self.window
-        folded={'Properties','Channel Math','Channel Table','Interval Measurements'}
+        folded={'Properties','Channel Math','Channel Table','Interval Measurements','Engineering Controls'}
         self.assertEqual({name for name,dock in w.docks.items() if dock.isHidden()},folded)
-        self.assertTrue(w.docks['Engineering Controls'].toggleViewAction().isChecked())
+        self.assertFalse(w.docks['Engineering Controls'].toggleViewAction().isChecked())
         self.assertTrue(w.docks['Readout'].toggleViewAction().isChecked())
         self.assertEqual(w.portal.tree.columnCount(),2)
         w.panel_folding.set_folded('Properties',False);self.app.processEvents()

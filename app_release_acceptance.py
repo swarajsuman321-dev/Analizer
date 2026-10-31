@@ -437,10 +437,10 @@ def _run_workbench(recorder, samples, output):
 
         def folded_panels_preserve_readout():
             controls = window.panel_folding
-            folded = ('Properties', 'Channel Math', 'Channel Table', 'Interval Measurements')
-            assert all(controls.is_folded(name) for name in folded), 'The four approved default folds were not applied'
-            assert all(not controls.is_folded(name) for name in ('Engineering Controls', 'Readout', 'Data Portal'))
-            assert window.docks['Engineering Controls'].widget().isVisible(), 'Engineering Controls is not the default available tab'
+            folded = ('Properties', 'Channel Math', 'Channel Table', 'Interval Measurements','Engineering Controls')
+            assert all(controls.is_folded(name) for name in folded), 'The plot-first supporting-panel folds were not applied'
+            assert all(not controls.is_folded(name) for name in ('Readout', 'Data Portal'))
+            assert window.docks['Data Portal'].widget().isVisible(), 'Data Portal is not the default available tab'
             source = real_channel('tdms', '°C')
             workspace.active.bind([source.id])
             window._readouts()
@@ -958,7 +958,21 @@ def _run_workbench(recorder, samples, output):
                 rendered_pages.append('\n'.join(texts))
                 return value
             started = time.monotonic()
+            program_origins={id:deepcopy(store.datasets[id].frame.attrs.get('program_start'))
+                for id in (reference.dataset_id,candidate.dataset_id)}
             try:
+                from app_signal_comparison import compare_signals,_origin
+                # These recordings have no independently certified program-start
+                # marker. Test missing-origin blocking, then use explicit harness
+                # coordinates to exercise the UI/report plumbing. This is not a
+                # determination of the actual machines' program starts.
+                for id in program_origins:store.datasets[id].frame.attrs.pop('program_start',None)
+                blocked=compare_signals(store,reference.id,candidate.id,alignment='program')
+                assert blocked['status']=='blocked' and 'Confirm program start' in blocked['reason']
+                for channel in (reference,candidate):
+                    store.datasets[channel.dataset_id].frame.attrs['program_start']={
+                        'source_min':_origin(store,channel)[0]/60,'confirmed':True,
+                        'method':'acceptance_fixture','evidence':'Explicit test coordinate only; not proof of actual machine program start'}
                 # Only a failure-message boundary is made nonblocking. The
                 # selected QAction, engine, background worker, report writers
                 # and results dialog all run as shipped in this distribution.
@@ -974,7 +988,7 @@ def _run_workbench(recorder, samples, output):
                 assert result and result['status'] == 'compared' and bundle
                 assert result['reference']['channel_id'] == reference.id
                 assert result['candidate']['channel_id'] == candidate.id
-                assert result['alignment']['mode'] == 'elapsed'
+                assert result['alignment']['mode'] == 'program'
                 assert result['metrics']['unit'] == 'RPM'
                 independent = verify_comparison_interval_metrics(result)
                 paths = {key: Path(bundle[key]) for key in ('pdf', 'workbook', 'evidence')}
@@ -1017,7 +1031,7 @@ def _run_workbench(recorder, samples, output):
                 pdf_text = '\n'.join(rendered_pages)
                 pdf_words = ' '.join(pdf_text.split())
                 assert reference.name in pdf_words and candidate.name in pdf_words
-                assert 'elapsed' in pdf_text.casefold() and 'coverage' in pdf_text.casefold()
+                assert 'program' in pdf_text.casefold() and 'coverage' in pdf_text.casefold()
                 assert 'Acceptance evidence' in pdf_words and 'no test limits evaluated' in pdf_words
                 for label in ('Time-weighted average difference', 'Root mean square difference',
                               'Largest absolute difference', 'Supported comparison coverage'):
@@ -1045,7 +1059,9 @@ def _run_workbench(recorder, samples, output):
                     filename = next(entry['filename'] for entry in manifest['files'] if entry['role'] == role)
                     assert sha256_file(samples/filename) == file_hash
                 return {'source_roles': ['machine', 'simulation'],
-                    'reference': reference.name, 'candidate': candidate.name, 'alignment': 'elapsed',
+                    'reference': reference.name, 'candidate': candidate.name, 'alignment': 'program',
+                    'missing_program_start_blocked':True,
+                    'origin_limitation':'Explicit test coordinates; actual machine program starts are not established by this acceptance check',
                     'unit': 'RPM', 'raw_samples': evidence['raw_interval_sample_count'],
                     'complete_difference_intervals': len(result['differences']),
                     'complete_activity_events': len(result['events']), 'pdf_pages': page_count,
@@ -1056,6 +1072,9 @@ def _run_workbench(recorder, samples, output):
                     'raw_sources_and_original_workspaces_unchanged': True,
                     'seconds_with_output_inspection': round(time.monotonic()-started, 3)}
             finally:
+                for id,origin in program_origins.items():
+                    if origin is None:store.datasets[id].frame.attrs.pop('program_start',None)
+                    else:store.datasets[id].frame.attrs['program_start']=origin
                 window.engineering.session['metadata'] = metadata
                 if controls.result_dialog is not None:
                     controls.result_dialog.close()

@@ -166,6 +166,20 @@ class SignalComparisonControlsTests(unittest.TestCase):
         self.assertIsNone(self.controls.dialog)
         self.assertEqual(list((self.root/'outputs').rglob('*.pdf')), [])
 
+    def test_real_three_signal_worker_produces_bundle_and_result_tables(self):
+        third_dataset=self.dataset('Third run.csv')
+        third=self.channel(third_dataset,x=[40,41,42],y=[0,80,0])
+        third_dataset.frame.attrs['program_start']={'source_min':40.,'confirmed':True,'evidence':'Reviewed fixture program start'}
+        self.controls.start_multi(self.reference.id,[self.candidate.id,third.id])
+        from app_release_acceptance import wait_for_acceptance_workers,acceptance_worker_events
+        wait_for_acceptance_workers(self.window,lambda:acceptance_worker_events(self.app),timeout=30)
+        self.app.processEvents()
+        self.assertFalse(self.errors)
+        self.assertEqual(len(self.controls.last_result['pairs']),2)
+        self.assertTrue(all(pair['status']=='compared' for pair in self.controls.last_result['pairs']))
+        self.assertEqual(self.controls.result_dialog.results.rowCount(),2)
+        for key in ('pdf','workbook','evidence'):self.assertTrue(Path(self.controls.last_bundle[key]).is_file())
+
     def test_chooser_excludes_same_recording_and_keeps_source_qualified_names(self):
         extra = self.channel(self.a, name='Speed feedback')
         with patch.object(self.window.portal, 'selected', return_value=[self.reference.id, extra.id]):

@@ -582,6 +582,7 @@ class PlotPane(pg.PlotWidget):
         QtWidgets.QApplication.clipboard().setPixmap(self.grab())
 
     def bind(self, ids, assignments=None, fit=True):
+        ids=[id for id in ids if id in self.store.channels]
         self.clear_hover()
         for view,marker in getattr(self,'inspection_markers',{}).values():view.removeItem(marker)
         self.inspection_markers={}

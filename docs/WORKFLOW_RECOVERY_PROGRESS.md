@@ -88,6 +88,19 @@ negative pre-program time.
   9 existing header/hover tests, 4 multi-comparison tests, 10 comparison-control
   tests, 5 program-origin tests and 33 engineering analytics tests. Full suite,
   source smoke and real-recording acceptance are the next integration gates.
+- Integration fixes: removed-recording refresh now filters stale channel IDs
+  before collecting shared cursor state; dock visibility callbacks ignore a
+  destroyed window during teardown. Source smoke passes after the stale-ID fix.
+- The real three-signal worker, result UI and complete report bundle passed an
+  end-to-end control test. Its wait uses the existing acceptance runner's explicit
+  Python-thread yield so Qt polling cannot starve the report worker.
+- The first full integration run exposed assertions for the superseded Engineering
+  Controls default. Those checks now verify the approved Data Portal default and
+  still test that all advanced panels can reopen and saved layouts win.
+- Supplied-recording comparison acceptance now checks missing-origin blocking and
+  explicit fixture anchors. Fixture coordinates are labelled test-only and do not
+  establish actual program starts of the supplied machine runs. Actual starts
+  still require user evidence; the app does not guess them.
 
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared

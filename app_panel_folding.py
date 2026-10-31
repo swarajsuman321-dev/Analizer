@@ -77,6 +77,8 @@ class PanelFoldingControls(QtCore.QObject):
         return self._dock(name).isHidden()
 
     def _dock_changed(self, name):
+        from shiboken6 import isValid
+        if not isValid(self.window) or not isValid(self.docks[name]) or not isValid(self.actions[name]):return
         folded = self.is_folded(name)
         previous = self._folded.get(name)
         self._folded[name] = folded

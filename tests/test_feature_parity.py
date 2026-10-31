@@ -130,7 +130,7 @@ class QtParityTests(unittest.TestCase):
     def test_tools_keep_two_workspaces_with_all_view_panels_enabled(self):
         w=self.window;self.assertEqual(w.tabs.count(),2);self.assertTrue(any(a.text()=='Tools' for a in w.menuBar().actions()))
         self.assertEqual({name for name,dock in w.docks.items() if dock.isHidden()},
-                         {'Properties','Channel Math','Channel Table','Interval Measurements'})
+                         {'Properties','Channel Math','Channel Table','Interval Measurements','Engineering Controls'})
         w.enable_all_panels()
         self.assertTrue(all(d.toggleViewAction().isChecked() for d in w.docks.values()))
     def test_channel_mapping_style_manual_bounds_and_ten_panels(self):
