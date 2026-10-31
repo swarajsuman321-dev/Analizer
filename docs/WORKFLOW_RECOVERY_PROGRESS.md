@@ -18,9 +18,16 @@ ViewBox menu, and explicitly route right-clicks to the existing app menu.
 Two targeted regressions passed: real mouse right-click retains chart actions,
 and repeated multi-axis restore/GC preserves ranges/cursors without ever creating
 the hidden framework menu. The combined chart-menu, navigation, geometry and
-header/hover run passed all 30 tests with fault diagnostics. Full discovery and
-53-check supplied-recording acceptance are running; fresh native validation is
-next. No Windows release is ready or published.
+header/hover run passed all 30 tests with fault diagnostics. Full discovery
+finished with **609 tests: 604 passed, 5 platform skips, zero failures/errors**
+in 381.248 seconds. Supplied-recording acceptance passed **53/53** with zero
+runner/callback errors; the 2.5.0 source self-test also passed. Evidence is saved
+in `docs/validation/v250-local-menu-fix.json`.
+
+Native validation of source `2aa04ce` is running in
+[Windows run 41183692326](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326).
+No Windows release is ready or published until that run and its packages are
+verified. Documentation-only progress pushes do not restart the native job.
 
 ## Previous pause checkpoint (historical)
 

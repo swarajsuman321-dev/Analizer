@@ -1,0 +1,30 @@
+{
+  "source_commit": "2aa04ce",
+  "version": "2.5.0",
+  "platform": "Linux cloud executor",
+  "unit_tests": {
+    "command": "python -X faulthandler -m unittest discover -s tests -v",
+    "ran": 609,
+    "passed": 604,
+    "skipped": 5,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 381.248
+  },
+  "recording_acceptance": {
+    "checks": 53,
+    "passed": 53,
+    "unmet": 0,
+    "unrun": 0,
+    "runner_errors": 0,
+    "application_callback_errors": 0,
+    "expected_safety_rejections": 7,
+    "manual_unrun": 5
+  },
+  "source_self_test_ok": true,
+  "native_validation": {
+    "run_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326",
+    "status_at_recording": "in_progress",
+    "packages_verified": false
+  }
+}
