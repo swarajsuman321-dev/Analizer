@@ -155,6 +155,13 @@ negative pre-program time.
 - These final focused changes add one theme regression beyond the 604-test full
   run. Native CI will run the complete current suite; do not report an unexecuted
   605-test local run. The 2.5.0 source workbench self-test passed as well.
+- Saved-workspace compatibility review found another timing edge: legacy splits
+  could restore conflicting pairs, or a hidden graph could reappear with old
+  positions. Linking compatible time graphs now copies the active pair/locks on
+  restore/expansion as well as on movement. Seven shared-time/theme regressions
+  and all 20 existing comparison-workflow tests passed. The manual documents the
+  active-pair migration. Final full discovery for this revision is pending; an
+  in-flight prior-revision repeat is diagnostic only.
 
 The core timing/usability requirements above are implemented. Remaining release
 gates are native Windows validation and review of the generated packages. The

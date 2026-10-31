@@ -809,6 +809,10 @@ compatible time graphs; frequency and sample-domain graphs retain their own
 coordinates. Hover marks each available trace at its nearest actual sample, on
 its own value axis. The mouse-readout tooltip retains the complete sample values.
 
+When restoring an older workspace or showing hidden graphs, compatible time
+graphs adopt the active time graph's A/B positions and sample locks. Conflicting
+independent pairs from older versions are not retained as separate cursors.
+
 ## Freely arranged graphs | 2.5.0
 
 **Add Graph** creates an empty active graph. Choose its channels using Data Portal.

@@ -87,5 +87,15 @@ class SharedTimeCursorTests(unittest.TestCase):
             pane=self.workspace.add_graph()
             self.assertEqual(pane.getAxis('bottom').textPen().color().name(),color)
 
+    def test_legacy_restore_and_hidden_graph_expansion_keep_one_cursor_pair(self):
+        state=self.workspace.state();state['active']=0
+        state['panes'][0]['cursors']=[8.,9.];state['panes'][1]['cursors']=[1.,2.]
+        self.workspace.restore(state);self.app.processEvents()
+        for pane in self.workspace.visible_panes():self.assertEqual([line.value() for line in pane.cursor_lines],[8,9])
+        self.workspace.set_layout('Single')
+        self.workspace.active.cursor_lines[0].setValue(6);self.workspace.active.cursor_lines[1].setValue(7)
+        self.workspace.set_layout('Vertical split');self.app.processEvents()
+        for pane in self.workspace.visible_panes():self.assertEqual([line.value() for line in pane.cursor_lines],[6,7])
+
 
 if __name__=='__main__':unittest.main()

@@ -1258,6 +1258,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         for panes in groups.values():
             source=self.active if self.active in panes else panes[0]
             self._time_range_changed(source,source.getViewBox().viewRange()[0])
+            self._cursors(source)
 
     def visible_panes(self):
         rows,cols=LAYOUTS[self.layout_name]
