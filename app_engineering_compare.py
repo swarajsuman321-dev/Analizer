@@ -31,7 +31,7 @@ def anchor_seconds(store,config,mapping=None,profile=None):
     if mode=='program':
         from app_program_alignment import program_start
         record=program_start(store,config.get('dataset_id'))
-        channels=[c for c in store.channels.values() if c.dataset_id==config.get('dataset_id') and c.coordinate_kind=='time']
+        channels=[c for c in store.channels.values() if c.dataset_id==config.get('dataset_id') and c.coordinate_kind=='time' and not c.attributes.get('engineering_projection')]
         shifts=[float(convert(c.shift,c.coordinate_unit,'s')) for c in channels]
         if not shifts or not np.allclose(shifts,shifts[0],rtol=0,atol=1e-9):
             raise ValueError('Reapply Align Program Starts so every channel in the run has one time offset.')

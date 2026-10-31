@@ -130,6 +130,16 @@ negative pre-program time.
   The focused default-layout test passes, including reopening and separate Help.
 - Documentation-only progress pushes no longer restart native builds. Source,
   tests, bundled manuals and workflow changes still trigger native validation.
+- The supplied-recording domain guard now verifies all three cases: frequency
+  stays independent, same-source time stays linked even when globally unlocked,
+  and two separate synthetic runs can be independently viewed when unlocked.
+- Correcting program start after an engineering plot already exists now uses its
+  exact retained parent-clock mapping, avoiding a second shift. Missing or
+  nonconstant source mappings block with a regeneration instruction. Six origin
+  regressions and four multiple-signal tests pass, including this correction.
+- Earlier in-flight runs were stopped after these corrections so the final
+  checks use one frozen source revision. They are retained as diagnostic output,
+  not reported as passing final validations.
 
 Repair shared cursor normalization across unequal-duration splits and combine their
 readouts, then add freely arranged blank graphs. Multi-signal comparison, shared

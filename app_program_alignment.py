@@ -30,6 +30,21 @@ def program_start(store, dataset_id):
     return deepcopy(record)
 
 
+def source_offset_minutes(store,channel):
+    """Undo an engineering projection's existing origin before rebasing a run."""
+    if not channel.attributes.get('engineering_projection'):return 0.
+    import numpy as np
+    if len(channel.parents)!=1 or channel.parents[0] not in store.channels:
+        raise ValueError('Regenerate the engineering projection from its source before program alignment.')
+    parent=store.channels[channel.parents[0]]
+    if len(channel.x)!=len(parent.x) or not len(channel.x):
+        raise ValueError('Engineering projection has no exact source-clock mapping; regenerate it before alignment.')
+    offsets=channel.x*minute_factor(channel.coordinate_unit)-parent.x*minute_factor(parent.coordinate_unit)
+    if not np.allclose(offsets,offsets[0],rtol=0,atol=1e-8):
+        raise ValueError('Engineering projection clock is not a source-wide offset; regenerate it before alignment.')
+    return float(offsets[0])
+
+
 def align_program_start(store, dataset_id, source_min, evidence):
     """Apply one origin to every time channel without changing original arrays."""
     if dataset_id not in store.datasets:raise ValueError('Choose a loaded recording.')
@@ -46,7 +61,7 @@ def align_program_start(store, dataset_id, source_min, evidence):
     changes=[]
     for channel in store.channels.values():
         if channel.dataset_id!=dataset_id or channel.coordinate_kind!='time':continue
-        shift=-source_min/minute_factor(channel.coordinate_unit)
+        shift=(-source_min-source_offset_minutes(store,channel))/minute_factor(channel.coordinate_unit)
         delta=shift-channel.shift
         attributes={**channel.attributes,'program_start':deepcopy(record)}
         changes.append((channel.id,shift,[(a+delta,b+delta) for a,b in channel.masks],attributes))

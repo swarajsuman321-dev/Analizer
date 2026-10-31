@@ -77,5 +77,17 @@ class ProgramAlignmentTests(unittest.TestCase):
         self.assertEqual([run['program_start']['source_min'] for run in result['runs']],[2.,7.])
         self.assertEqual([run['offset_s'] for run in result['runs']],[0.,0.])
 
+    def test_existing_engineering_projection_is_not_shifted_twice(self):
+        store,ids=self.fixture();a,b=[store.channels[id] for id in ids]
+        align_program_start(store,a.dataset_id,2,'Reviewed initial start')
+        align_program_start(store,b.dataset_id,7,'Reviewed initial start')
+        projected=store.add(Channel('Voltage engineering projection',a.x-2,a.y,unit='V',coordinate_unit='min',dataset_id=a.dataset_id,parents=[a.id],attributes={'engineering_projection':True}))
+        align_program_start(store,a.dataset_id,3,'Reviewed corrected start')
+        align_program_start(store,b.dataset_id,8,'Reviewed corrected start')
+        np.testing.assert_allclose(store.channels[projected.id].values()[0],store.channels[a.id].values()[0])
+        result=compare_signals(store,projected.id,b.id,alignment='program')
+        self.assertEqual(result['status'],'compared',result['reason'])
+        self.assertAlmostEqual(result['metrics']['rmse'],0.)
+
 
 if __name__=='__main__':unittest.main()

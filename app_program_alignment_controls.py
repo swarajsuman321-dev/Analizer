@@ -1,6 +1,6 @@
 """Review a source-time program origin for each recording, with explicit evidence."""
 from PySide6 import QtWidgets
-from app_program_alignment import align_program_start, program_start, source_span
+from app_program_alignment import align_program_start, program_start, source_span,source_offset_minutes
 from app_time_units import minute_factor
 
 
@@ -44,7 +44,7 @@ class ProgramAlignmentDialog(QtWidgets.QDialog):
         pane=self.window.active_workspace.active;id=self.recording.currentData()
         channel=next((self.window.store.channels[c] for c in pane.ids if self.window.store.channels[c].dataset_id==id and self.window.store.channels[c].coordinate_kind=='time'),None)
         if channel is None:self.status.setText('Activate a time graph containing this recording first.');return
-        self.point.setValue((pane.cursor_lines[0].value()-channel.shift)*minute_factor(channel.coordinate_unit))
+        self.point.setValue((pane.cursor_lines[0].value()-channel.shift)*minute_factor(channel.coordinate_unit)-source_offset_minutes(self.window.store,channel))
         self.status.setText('Cursor A selected. Describe why this point establishes program start, then Apply.')
 
     def apply(self):

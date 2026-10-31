@@ -343,12 +343,12 @@ def compare_signals(store, reference_id, candidate_id, alignment='elapsed', offs
         origins = [record[0] for record in origin_records]
         program_records=[]
         if alignment=='program':
-            from app_program_alignment import program_start
+            from app_program_alignment import program_start,source_offset_minutes
             program_records=[program_start(store,c.dataset_id) for c in (reference,candidate)]
             origins=[record['source_min']*60 for record in program_records]
         if alignment == 'elapsed' and not all(record[1] for record in origin_records):
             result['limitations'].append('An original source clock is unavailable in at least one dataset; its elapsed origin uses the earliest remaining temporal projection.')
-        shifts=[float(convert(c.shift,c.coordinate_unit,'s')) if alignment=='program' else 0 for c in (reference,candidate)]
+        shifts=[float(convert(c.shift,c.coordinate_unit,'s'))+source_offset_minutes(store,c)*60 if alignment=='program' else 0 for c in (reference,candidate)]
         left = _trace(reference, target, -origins[0]-shifts[0], max_gap_seconds)
         right = _trace(candidate, target, -origins[1]-shifts[1]+offset_min*60, max_gap_seconds)
         start, end = min(left.t[0], right.t[0]), max(left.t[-1], right.t[-1])

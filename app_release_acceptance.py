@@ -1431,8 +1431,15 @@ def _run_workbench(recorder, samples, output):
             pane.setXRange(.1, .6, padding=0)
             other.setXRange(1.1, 1.8, padding=0)
             events()
-            assert not np.allclose(pane.getViewBox().viewRange()[0], other.getViewBox().viewRange()[0])
-            return {'frequency_independent': True, 'unlocked_time_independent': True}
+            np.testing.assert_allclose(pane.getViewBox().viewRange()[0],other.getViewBox().viewRange()[0])
+            from app_channel_store import Dataset,identity
+            from dataclasses import replace
+            separate=Dataset('Independent synthetic run',pd.DataFrame());store.datasets[separate.id]=separate
+            separate_channel=store.add(replace(synthetic[2],id=identity(),dataset_id=separate.id))
+            other.bind([separate_channel.id]);pane.setXRange(.1,.6,padding=0);other.setXRange(1.1,1.8,padding=0)
+            events()
+            assert not np.allclose(pane.getViewBox().viewRange()[0],other.getViewBox().viewRange()[0])
+            return {'frequency_independent': True, 'same_source_always_linked':True,'unlocked_different_runs_independent': True}
         recorder.check('NON-TEMPORAL-AND-UNLOCKED-INDEPENDENCE', domain_independence, 'time_lock',
                        requires=('SYNTHETIC-SOURCE-EDGE-CASES',))
 

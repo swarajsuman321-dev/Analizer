@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from app_channel_identity import channel_label
-from app_program_alignment import program_start
+from app_program_alignment import program_start,source_offset_minutes
 from app_time_units import minute_factor
 from app_operation_context import checkpoint
 
@@ -29,7 +29,7 @@ def compare_many(store,reference_id,candidate_ids,max_gap_seconds=None):
         pairs.append(compare_signals(store,reference_id,id,alignment='program',max_gap_seconds=max_gap_seconds,allow_same_recording=True))
     binary=[];overlaps=[];sources=[]
     for c in channels:
-        origin=origins[c.dataset_id]['source_min']
+        origin=origins[c.dataset_id]['source_min']+source_offset_minutes(store,c)
         factor=minute_factor(c.coordinate_unit)
         trace=Trace(c,offset=-origin*60-c.shift*factor*60,max_gap_seconds=max_gap_seconds)
         sources.append({'channel_id':c.id,'name':channel_label(store,c),'dataset_id':c.dataset_id,
