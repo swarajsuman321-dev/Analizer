@@ -1,0 +1,59 @@
+{
+  "version": "2.5.0",
+  "source_commit": "2aa04ce27a8add0ed015cb0443af16586e27bac1",
+  "branch": "feature/recover-analysis-workflow",
+  "observed_at_utc": "2026-10-31T08:55:12Z",
+  "workflow": {
+    "url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326",
+    "job_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326/job/124486164302",
+    "conclusion": "success",
+    "duration_displayed": "40m 55s",
+    "artifact_count": 2,
+    "evidence_source": "Public GitHub Actions run page; source commit, final status and artifact metadata observed directly."
+  },
+  "required_automated_gates": {
+    "result": "passed in successful workflow",
+    "checks": [
+      "Native update and channel interaction tests",
+      "Full source unittest discovery on Windows",
+      "Frozen onedir, onefile and restart smoke checks",
+      "Per-user installer lifecycle",
+      "Recording acceptance inside standalone EXE, extracted portable ZIP and installed app",
+      "Actual application update and workspace recovery",
+      "Native gate-report validation and package hashing"
+    ],
+    "native_unittest_count_observed": null,
+    "note": "Detailed logs and validation JSON were not accessible through the public run page. No exact native test count is inferred."
+  },
+  "artifacts": [
+    {
+      "name": "ApplianceSignalStudio-Windows-v2.5.0",
+      "size_displayed": "424 MB",
+      "digest_displayed": "sha256:81908f11ee8683f209e9a7fa2c92e0d308877521ee608dfe0d338c0385894812",
+      "expected_contents_from_workflow": [
+        "ApplianceSignalStudio.exe",
+        "ApplianceSignalStudio_Portable.zip",
+        "ApplianceSignalStudio-Setup-2.5.0.exe",
+        "validation-v2.5.0.json"
+      ],
+      "retention_days": 30
+    },
+    {
+      "name": "Windows-build-diagnostics",
+      "size_displayed": "206 KB",
+      "digest_displayed": "sha256:e4ce244232ca680d9d88b96d0690f6ca4e8c335b9046dd0883d06cff107b586d"
+    }
+  ],
+  "artifact_contents_independently_downloaded_here": false,
+  "windows_binaries_manually_executed_here": false,
+  "manual_windows_checks_unrun": [
+    "Physical wheel, box selection and keyboard navigation in every zoom mode",
+    "Windows 100%, 125%, 150% and 200% display scaling",
+    "Moving between monitors with different scaling and graphics drivers",
+    "Keyboard-only task completion and screen-reader announcements",
+    "Long-running acquisition-sized workloads and antivirus policy interaction"
+  ],
+  "local_validation": "docs/validation/v250-local-menu-fix.json",
+  "release_published": false,
+  "merged_to_main": false
+}

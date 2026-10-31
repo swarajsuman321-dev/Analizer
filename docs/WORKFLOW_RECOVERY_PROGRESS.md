@@ -3,7 +3,31 @@
 Target: next development release; current published version remains 2.4.3.
 Working branch: `feature/recover-analysis-workflow`.
 
-## Current status: resumed; Windows packaged acceptance failure under repair
+## Current status: 2.5.0 development packages built; Windows CI passed
+
+The resumed build completed successfully in **40m 55s**:
+[Windows run 41183692326](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326),
+application source `2aa04ce27a8add0ed015cb0443af16586e27bac1`.
+The workflow passed native tests, frozen application smoke checks, installer
+lifecycle checks, recording acceptance in all three distributions, actual
+application updates/workspace recovery, and native validation-report assembly.
+It uploaded **ApplianceSignalStudio-Windows-v2.5.0** (424 MB) and
+**Windows-build-diagnostics** (206 KB). Open the run's Artifacts section while
+signed in to GitHub to download the development packages; retention is 30 days.
+The Windows download contains the standalone EXE, portable ZIP, per-user Setup
+installer and `validation-v2.5.0.json` with the CI gate reports and package hashes.
+
+Public run status and artifact metadata were verified here; artifact contents
+were not independently downloaded or executed in this Linux environment. Exact
+native unittest counts were not visible and are not inferred. Five physical
+Windows checks remain manual: navigation input, display scaling, mixed-monitor
+behavior, keyboard/screen-reader access, and long-running workloads/antivirus.
+Permanent observed evidence is recorded in
+`docs/validation/v250-windows-build-41183692326.json`.
+The development build is ready for Windows user testing. Main and the published
+2.4.3 release remain unchanged; no merge or release publication was performed.
+
+### Repair and local validation
 
 The user explicitly resumed work on 31 October 2026. The previous Windows run
 finished with Failure after 23m 9s. Its onefile EXE exited with Windows access
@@ -24,10 +48,10 @@ in 381.248 seconds. Supplied-recording acceptance passed **53/53** with zero
 runner/callback errors; the 2.5.0 source self-test also passed. Evidence is saved
 in `docs/validation/v250-local-menu-fix.json`.
 
-Native validation of source `2aa04ce` is running in
-[Windows run 41183692326](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41183692326).
-No Windows release is ready or published until that run and its packages are
-verified. Documentation-only progress pushes do not restart the native job.
+Native validation of source `2aa04ce` subsequently passed as recorded above.
+The local evidence file retains its earlier in-progress observation; the native
+evidence file records the final result. Documentation-only progress pushes do
+not restart the native job.
 
 ## Previous pause checkpoint (historical)
 
@@ -232,15 +256,16 @@ negative pre-program time.
   tests passed, as did the 2.5.0 workbench self-test. A complete fault-enabled suite
   is running for this revision; native build validation remains pending.
 
-The core timing/usability requirements above are implemented. Remaining release
-gates are native Windows validation and review of the generated packages. The
+The core timing/usability requirements above are implemented, and the native
+Windows automated gates passed. Remaining release review includes the five manual
+Windows checks and user testing of the generated development packages. The
 broader extensible-comparison architecture remains a roadmap: full field inventory,
 reviewed semantic/scaling mappings for unfamiliar channels, categorical metrics and
 stage-sequence matching are not claimed complete by this regression-focused build.
 The original newly supplied CSV/video from the prior account remain unavailable;
 its exact CSV wrapper is covered with synthetic regressions.
 
-Confirmed cursor reproducer: create vertical splits with minute-based channels
+Historical baseline cursor reproducer (fixed): create vertical splits with minute-based channels
 covering 0–10 and 0–3, bind one to each pane, then set the long pane's A/B to 8/9.
 After Qt events, both panes read 3/3. Pane-local normalization and range callbacks
 must not overwrite the shared pair; the short channel should read Unknown at 8/9.
