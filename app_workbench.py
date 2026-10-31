@@ -1160,6 +1160,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.theme.timer.stop();QtWidgets.QApplication.instance().removeEventFilter(self.theme)
         if self.busy:
             self.cancel_operation();self.statusBar().showMessage('Waiting for the current safe processing step before closing…');self.pool.waitForDone()
+        for workspace in self.workspaces:workspace.close()
+        self.readout_timer.stop()
         self.info_dialog.close();self.help_dialog.close()
         event.accept()
 

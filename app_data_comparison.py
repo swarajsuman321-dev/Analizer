@@ -310,7 +310,7 @@ class DataComparisonControls(QtCore.QObject):
             for pane in workspace.panes[len(original_panes):]:
                 workspace.grid.removeWidget(pane)
                 pane.hide()
-                pane.deleteLater()
+                pane.stop_callbacks();pane.deleteLater()
             workspace.panes = original_panes
             workspace.active = original_panes[state.get('active', 0)]
             workspace.layout_proportions = deepcopy(state.get('layout_proportions', {}))

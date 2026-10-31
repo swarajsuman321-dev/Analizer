@@ -225,12 +225,17 @@ class PlotPane(pg.PlotWidget):
 
     def close(self):
         if self.plotItem is None:return True
+        self.stop_callbacks()
+        return super().close()
+
+    def stop_callbacks(self):
+        if getattr(self,'_callbacks_stopped',False):return
+        self._callbacks_stopped=True
         self._closing=True;self.timer.stop();self.hover_proxy.disconnect();self.clear_hover()
         # Clear framework hover owners while PlotItem and its auto button
         # still exist. Reparenting during PlotWidget.close emits a later Leave
         # event, after that button has already been destroyed.
         self.scene().leaveEvent(QtCore.QEvent(QtCore.QEvent.Type.Leave))
-        return super().close()
 
     def _build_hover(self):
         pen=pg.mkPen('#8394a8',width=1,style=QtCore.Qt.PenStyle.DashLine)
@@ -1123,6 +1128,7 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def queue_canvas_alignment(self):
         """Coalesce axis/font/layout changes into a single geometry pass."""
+        if getattr(self,'_closed',False):return
         if self._canvas_alignment_running:
             self._canvas_alignment_dirty=True
             return
@@ -1137,6 +1143,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         Padding only the missing gutter keeps each real axis fully automatic;
         this does not introduce geometry-dependent X linking or fixed tick widths.
         """
+        if getattr(self,'_closed',False):return
         if self._canvas_alignment_running:
             self._canvas_alignment_dirty=True
             return
@@ -1206,6 +1213,12 @@ class PlotWorkspace(QtWidgets.QWidget):
         pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
         pane.contextRequested.connect(self.contextRequested)
         return pane
+
+    def closeEvent(self,event):
+        self._closed=True
+        self._canvas_alignment_timer.stop()
+        for pane in self.panes:pane.stop_callbacks()
+        super().closeEvent(event)
 
     def add_graph(self):
         count=len(self.visible_panes())
@@ -1360,7 +1373,9 @@ class PlotWorkspace(QtWidgets.QWidget):
         blocker=QtCore.QSignalBlocker(self.time_lock_action);self.time_lock_action.setChecked(self.time_axes_locked);del blocker
         self.statistics_scope=state.get('statistics_scope','Cursor interval')
         # Restoring into fresh panes avoids stale channel bindings.
-        for pane in self.panes:self.grid.removeWidget(pane);pane.deleteLater()
+        self._canvas_alignment_timer.stop()
+        for pane in self.panes:
+            self.grid.removeWidget(pane);pane.stop_callbacks();pane.deleteLater()
         self.panes=[]
         required=max(len(state['panes']),LAYOUTS[state['layout']][0]*LAYOUTS[state['layout']][1])
         if required>32:raise ValueError('Workspace exceeds the 32 graph limit')

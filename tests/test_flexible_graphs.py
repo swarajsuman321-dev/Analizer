@@ -22,7 +22,9 @@ class FlexibleGraphTests(unittest.TestCase):
             work.move_graph(second,-1)
             self.assertEqual([p.ids for p in work.visible_panes()],[[b.id],[a.id],[]])
             work.set_pane_proportions(rows=[2.,1.,3.])
+            old_panes=list(work.panes)
             saved=work.state();work.restore(saved)
+            self.assertTrue(all(pane._callbacks_stopped for pane in old_panes))
             self.assertEqual([p.ids for p in work.visible_panes()],[[b.id],[a.id],[]])
             self.assertEqual(work.layout_proportions[work.layout_name]['rows'],[2.,1.,3.])
             work.remove_graph(work.panes[0]);self.app.processEvents()
@@ -51,6 +53,20 @@ class FlexibleGraphTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'32 graphs'):work.add_graph()
             self.assertEqual(work.state(),before)
         finally:work.close();self.app.processEvents()
+
+    def test_close_stops_pending_plot_and_alignment_callbacks(self):
+        store=ChannelStore();c=store.add(Channel('Synthetic',[0,1,2],[0,1,0]))
+        work=PlotWorkspace(store)
+        try:
+            work.assign([c.id]);work.queue_canvas_alignment()
+            self.assertTrue(work._canvas_alignment_timer.isActive())
+            work.close()
+            self.assertFalse(work._canvas_alignment_timer.isActive())
+            self.assertTrue(all(pane._closing and not pane.timer.isActive() for pane in work.panes))
+            work.queue_canvas_alignment()
+            self.assertFalse(work._canvas_alignment_timer.isActive())
+        finally:
+            work.close();work.deleteLater();self.app.processEvents()
 
 
 if __name__=='__main__':unittest.main()

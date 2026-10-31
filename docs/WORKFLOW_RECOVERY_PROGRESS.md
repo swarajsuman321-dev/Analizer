@@ -162,6 +162,19 @@ negative pre-program time.
   and all 20 existing comparison-workflow tests passed. The manual documents the
   active-pair migration. Final full discovery for this revision is pending; an
   in-flight prior-revision repeat is diagnostic only.
+- A later full-suite run exited with a Qt segmentation fault during selected-graph
+  fullscreen restoration. This is a failed validation, not covered by the earlier
+  passing run. The isolated 11-test fullscreen suite passed, so lifecycle/sequence
+  behavior was investigated rather than dropping the test.
+- Confirmed defect: closing a workspace left its plot and canvas-alignment timers
+  active. Shutdown now stops timers and hover callbacks without destroying graph
+  state needed by fullscreen restoration. Old panes also stop callbacks before
+  deferred deletion on workspace restore or failed comparison rollback.
+- The lifecycle regression asserts stopped timers and prevents rescheduling after
+  close. Three consecutive rounds of flexible graphs and both fullscreen modes
+  passed all 84 checks with fault diagnostics enabled; all 20 comparison-workflow
+  tests passed, as did the 2.5.0 workbench self-test. A complete fault-enabled suite
+  is running for this revision; native build validation remains pending.
 
 The core timing/usability requirements above are implemented. Remaining release
 gates are native Windows validation and review of the generated packages. The
