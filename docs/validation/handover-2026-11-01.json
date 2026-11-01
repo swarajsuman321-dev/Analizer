@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "prepared_on_india_date": "2026-11-01",
+  "handover_kind": "Published release plus separately archived unfinished implementation",
+  "repository": "swarajsuman321-dev/Analizer",
+  "main_observed_commit": "25d112488456565777f836d8bf003b8b807e76e8",
+  "published": {
+    "version": "2.5.0",
+    "release_source": "da8766f2c60c235c1af1ee2a9e3ddcc3a8a41dfb",
+    "release_evidence": "docs/validation/release-v2.5.0.json",
+    "workflow_url": "https://github.com/swarajsuman321-dev/Analizer/actions/runs/41186819267",
+    "native_unit_tests": {
+      "status": "passed",
+      "tests_run": 609,
+      "skipped": 1,
+      "expected_failures": 0,
+      "duration_seconds": 479.334,
+      "terminal_summary": "Ran 609 tests in 479.334s\nOK (skipped=1)",
+      "source_log": "build.log",
+      "source_bytes": 141871,
+      "source_sha256": "30ad213681e59976cc48b28a9285eeeeecdf191c3e2981d381e30ce59e367527"
+    },
+    "packaged_editions": {
+      "standalone-onefile": {
+        "checks": 53,
+        "passed": 53,
+        "unmet": 0,
+        "unrun": 0,
+        "runner_errors": 0,
+        "application_callback_errors": 0,
+        "expected_safety_rejections": 7,
+        "manual_unrun": 5
+      },
+      "standalone-folder": {
+        "checks": 53,
+        "passed": 53,
+        "unmet": 0,
+        "unrun": 0,
+        "runner_errors": 0,
+        "application_callback_errors": 0,
+        "expected_safety_rejections": 7,
+        "manual_unrun": 5
+      },
+      "installed": {
+        "checks": 53,
+        "passed": 53,
+        "unmet": 0,
+        "unrun": 0,
+        "runner_errors": 0,
+        "application_callback_errors": 0,
+        "expected_safety_rejections": 7,
+        "manual_unrun": 5
+      }
+    },
+    "installer_checks": 7,
+    "update_recovery_checks": 13,
+    "manual_checks_unrun": [
+      "Physical wheel, box selection and keyboard navigation in every zoom mode",
+      "Windows 100%, 125%, 150% and 200% display scaling",
+      "Moving between monitors with different scaling and graphics drivers",
+      "Keyboard-only task completion and screen-reader announcements",
+      "Long-running acquisition-sized workloads and antivirus policy interaction"
+    ]
+  },
+  "handover_public_feed_recheck": {
+    "checked_at_utc": "2026-11-01T04:26:33.357734+00:00",
+    "method": "Read public update manifests; compare version, URL, byte count and SHA-256 with committed release evidence.",
+    "binary_redownloaded_for_this_handover": false,
+    "checks": [
+      {
+        "edition": "standalone-onefile",
+        "version": "2.5.0",
+        "asset": "ApplianceSignalStudio.exe",
+        "size": 155389530,
+        "sha256": "b93400f01e7b5796fb213e027f44bd94a531969174d12ea55778b17c3573a83c",
+        "latest_and_versioned_match_recorded_release": true,
+        "feeds": [
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/update.json",
+            "sha256": "23c21360a6b2c8896e44e51dd6bdcd6bd720361ad604759ef35c1647fcaf0c37"
+          },
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/update.json",
+            "sha256": "23c21360a6b2c8896e44e51dd6bdcd6bd720361ad604759ef35c1647fcaf0c37"
+          }
+        ]
+      },
+      {
+        "edition": "standalone-folder",
+        "version": "2.5.0",
+        "asset": "ApplianceSignalStudio_Portable.zip",
+        "size": 156228948,
+        "sha256": "9c0e8021d3d8a5f10fac5ed8754993b60aa7229b9c1b88f5d43a931e1266390d",
+        "latest_and_versioned_match_recorded_release": true,
+        "feeds": [
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/zip-update.json",
+            "sha256": "6a7503d17b800a0aeb5af2e3d04ba7d5d2d590698c4da94b1d913d61b46e2c80"
+          },
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/zip-update.json",
+            "sha256": "6a7503d17b800a0aeb5af2e3d04ba7d5d2d590698c4da94b1d913d61b46e2c80"
+          }
+        ]
+      },
+      {
+        "edition": "installed-setup",
+        "version": "2.5.0",
+        "asset": "ApplianceSignalStudio-Setup-2.5.0.exe",
+        "size": 135276403,
+        "sha256": "360530b5fa0998b252f16e4f99a90c32b068c4d5b08a68c154a6d91ec4cdeade",
+        "latest_and_versioned_match_recorded_release": true,
+        "feeds": [
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/latest/download/installer-update.json",
+            "sha256": "233e4bd304a97ef9e2672151ea3cc1dc30e4f8b97210ce2937674661ab4d62d5"
+          },
+          {
+            "url": "https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/installer-update.json",
+            "sha256": "233e4bd304a97ef9e2672151ea3cc1dc30e4f8b97210ce2937674661ab4d62d5"
+          }
+        ]
+      }
+    ]
+  },
+  "archive": {
+    "branch": "archive/extensible-comparison-wip-2026-11-01",
+    "source_checkpoint": "59c2eeba7eaaf9d1990df5f1d774b6f45e0f3b6a",
+    "historical_base": "9211de1c40e995d30cf4f1f7d4098187046f4e97",
+    "runtime_version_label": "2.5.0",
+    "runtime_build_date_label": "2026-10-30",
+    "is_published_release_source": false,
+    "native_build_verified": false,
+    "full_discovery": {
+      "log_name": "final-regression.log",
+      "bytes": 149488,
+      "sha256": "5180dd1340605b6f336f5a979a580f78865991502f931d2d6d5f705c7d917f90",
+      "tests_run": 749,
+      "duration_seconds": 399.022,
+      "status": "failed",
+      "passed": 742,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 5,
+      "failing_tests": [
+        "test_each_new_quick_analysis_contract_is_mandatory_for_every_packaged_edition",
+        "test_persistent_dialog_folders_contract_is_mandatory_for_every_packaged_edition"
+      ],
+      "cause": "Gate inventory assertions still expected the old 49 checks; implementation requires 55.",
+      "full_discovery_repeated_after_assertion_updates": false
+    },
+    "handover_targeted_rerun": {
+      "log_name": "handover-targeted.log",
+      "bytes": 262,
+      "sha256": "4b7047b5177cec6df7a14c82bc30437f552075a23838d86f8605e015b874e641",
+      "tests_run": 25,
+      "duration_seconds": 11.576,
+      "status": "passed",
+      "failures": 0,
+      "errors": 0,
+      "modules": [
+        "tests.test_audit_harness",
+        "tests.test_release_plot_first_acceptance"
+      ]
+    },
+    "parameter_focused_run": {
+      "log_name": "parameter-regression.log",
+      "bytes": 1095,
+      "sha256": "759d765a0146e2dd19680af04c14f35640b3468ce236819a5c50b16b3b530244",
+      "tests_run": 117,
+      "duration_seconds": 9.473,
+      "status": "passed",
+      "modules": [
+        "tests/test_parameter*.py"
+      ],
+      "overlaps_other_runs": true
+    },
+    "source_acceptance": {
+      "ok": false,
+      "summary": {
+        "checks": 55,
+        "passed": 54,
+        "unmet": 0,
+        "unrun": 0,
+        "runner_errors": 1,
+        "application_callback_errors": 0,
+        "expected_safety_rejections": 7,
+        "manual_unrun": 5
+      },
+      "nonpassing_checks": [
+        {
+          "id": "EXACT-REAL-SOURCE-WORKSPACE-ROUNDTRIP",
+          "status": "execution_error"
+        }
+      ],
+      "report_sha256": "b4e903165f7bd649ff6bdd2e03d64643a88fd3ceac1d64dce1f7d46c765fa0d5",
+      "failure_class": "Runner metadata equality uses plain dict equality on nested NumPy arrays.",
+      "exact_metadata_restoration_verified": false
+    },
+    "actual_uploaded_csv_local_check": {
+      "timestamp_rows": 1899,
+      "measurement_channels": 11,
+      "span_minutes": 8.851266666666668,
+      "raw_timestamp_text_preserved": true,
+      "source_file_unchanged": true,
+      "combined_readout_rows": 11,
+      "analysis_metrics": 210,
+      "comparison_not_implicitly_run": true,
+      "export_bundle_exists": true
+    },
+    "known_ui_cleanup": [
+      "Unused Add Graph child widget can overlap the menu bar.",
+      "Engineering cancellation remains visible while idle.",
+      "Advanced combobox widgets need visible labels."
+    ],
+    "integration_hazards": [
+      "Same version identifier does not establish source equivalence.",
+      "Preserve released program-start alignment and native Windows lifecycle/menu corrections.",
+      "Review archive changes as individual slices; do not replace main with the old checkout."
+    ]
+  },
+  "privacy": {
+    "private_uploads_committed": false,
+    "generated_measurement_reports_committed": false,
+    "raw_local_logs_committed": false,
+    "screenshots_in_archive": "Synthetic observations only"
+  },
+  "scope_limits": [
+    "Feed recheck does not re-execute or re-download the three Windows binaries.",
+    "Archived test totals do not describe the published release.",
+    "Passing targeted reruns do not replace a complete final discovery/source acceptance run.",
+    "No new application release or update feed is published by this handover."
+  ]
+}

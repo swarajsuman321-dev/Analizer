@@ -1,5 +1,20 @@
 # Analysis workflow recovery
 
+## Handover — 1 November 2026
+
+The [project handover](HANDOVER_2026-11-01.md) records the published v2.5.0
+baseline, verified package evidence, user decisions, outstanding roadmap work
+and continuation steps. Its [portable evidence summary](validation/handover-2026-11-01.json)
+keeps current-release results separate from an older alternate implementation.
+
+Previously uncommitted work from the 29–30 October workspace has been preserved
+on `archive/extensible-comparison-wip-2026-11-01` at
+`59c2eeba7eaaf9d1990df5f1d774b6f45e0f3b6a`. It is not the published source or a
+replacement release. Read its `ARCHIVED_WIP.md` before reusing any code. Preserve
+the current confirmed-program alignment and native Windows lifecycle/menu fixes;
+review useful inventory/mapping/capability slices individually on a new branch
+from current main. This handover does not promote application code or update feeds.
+
 Published release: **2.5.0**, independently verified on 31 October 2026.
 Release branch: `release/2.5.0`; recovered development branch:
 `feature/recover-analysis-workflow`.
