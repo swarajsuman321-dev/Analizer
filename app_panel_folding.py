@@ -5,6 +5,7 @@ changes its tab group. Native QMainWindow state remains the layout authority.
 An inactive tab is open: visibilityChanged(False) alone does not mean folded.
 """
 from PySide6 import QtCore, QtGui, QtWidgets
+from shiboken6 import isValid
 
 
 class PanelFoldingControls(QtCore.QObject):
@@ -77,6 +78,9 @@ class PanelFoldingControls(QtCore.QObject):
         return self._dock(name).isHidden()
 
     def _dock_changed(self, name):
+        # Native dock/action signals can arrive while the parent window is
+        # being destroyed. Teardown is not a user layout edit.
+        if not isValid(self) or not isValid(self.window) or not isValid(self.docks[name]):return
         folded = self.is_folded(name)
         previous = self._folded.get(name)
         self._folded[name] = folded

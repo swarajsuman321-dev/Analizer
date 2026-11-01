@@ -7,11 +7,15 @@ UNITS={
     'L/s':('flow',1,0),'L/min':('flow',1/60,0),'L':('volume',1,0),'mL':('volume',.001,0),
     'Hz':('frequency',1,0),'kHz':('frequency',1000,0),'RPM':('rotation',1,0),'rps':('rotation',60,0),
     'g':('acceleration',9.80665,0),'m/s²':('acceleration',1,0),'mm':('length',.001,0),'m':('length',1,0),'N·m':('torque',1,0),
+    'N':('force',1,0),'kN':('force',1000,0),
     'V':('voltage',1,0),'mV':('voltage',.001,0),'A':('current',1,0),'mA':('current',.001,0),
     'W':('power',1,0),'kW':('power',1000,0),'Wh':('energy',3600,0),'kWh':('energy',3600000,0),'J':('energy',1,0),
     '%':('ratio',.01,0),'':('ratio',1,0),'1':('ratio',1,0),'μS/cm':('conductivity',1,0),
     's':('time',1,0),'ms':('time',.001,0),'us':('time',1e-6,0),'min':('time',60,0),'h':('time',3600,0),
-    'count':('count',1,0),'state':('state',1,0),'code':('code',1,0),'°C/min':('heating_rate',1,0),'RPM/s':('acceleration_rotation',1,0),
+    'count':('count',1,0),'state':('state',1,0),'code':('code',1,0),
+    '°C/min':('heating_rate',1,0),'K/min':('heating_rate',1,0),'°F/min':('heating_rate',5/9,0),
+    '°C/s':('heating_rate',60,0),'K/s':('heating_rate',60,0),'°F/s':('heating_rate',100/3,0),
+    'RPM/s':('acceleration_rotation',1,0),'RPM/min':('acceleration_rotation',1/60,0),
 }
 ALIASES={'rpm':'RPM','mmH2O':'mm H₂O','mm H2O':'mm H₂O','µS/cm':'μS/cm','uS/cm':'μS/cm','Nm':'N·m','degC':'°C','µs':'us'}
 
@@ -28,7 +32,10 @@ def convert(values,source,target):
 
 def convert_difference(values,source,target):
     """Affine offsets cancel for standard deviations, deltas and band widths."""
-    return convert(values,source,target)-convert(0,source,target)
+    source,target=unit(source),unit(target)
+    a,b=UNITS.get(source),UNITS.get(target)
+    if not a or not b or a[0]!=b[0]:raise ValueError(f'No verified difference conversion from {source or "unitless"} to {target or "unitless"}')
+    return np.asarray(values,dtype=float)*(a[1]/b[1])
 
 
 def seconds(channel):

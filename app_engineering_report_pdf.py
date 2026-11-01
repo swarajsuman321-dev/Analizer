@@ -272,7 +272,9 @@ def render_summary(path,store,runs,comparison,tables,info,view,cancel,selected_i
                     ax.fill_between(trace.t/60,0,.035,where=np.r_[unsupported,False],step='post',transform=ax.get_xaxis_transform(),color='#64748b',alpha=.55,label='Unsupported time')
                 for phase in run['phases'][:12]:ax.axvspan(phase['start_s']/60,phase['end_s']/60,alpha=.05,color='#0369a1')
                 if a is not None and b is not None and a<b:ax.set_xlim(a/60,b/60)
-            for name,position,color in zip(('A','B'),(view or {}).get('cursors',[]),CURSOR_COLORS):
+            from app_report_appearance import include_cursor_lines
+            export_cursors = (view or {}).get('cursors',[]) if include_cursor_lines(info) else []
+            for name,position,color in zip(('A','B'),export_cursors,CURSOR_COLORS):
                 ax.axvline(position,color=color,lw=1.2,ls='--');ax.text(position,.98,f'{name} {position:.6g} min',transform=ax.get_xaxis_transform(),fontsize=6,ha='right',va='top',color=INK,bbox={'facecolor':'white','alpha':.85,'edgecolor':color,'linewidth':.5})
             ax.set_ylabel(next((run['traces'][key].unit for run in visual_runs if key in run['traces']),''),fontsize=8)
             ax.tick_params(labelsize=7);ax.grid(alpha=.15);ax.legend(fontsize=6,loc='lower right',framealpha=.75,ncol=2)

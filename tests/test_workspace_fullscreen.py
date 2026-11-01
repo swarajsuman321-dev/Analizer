@@ -98,17 +98,18 @@ class WorkspaceFullscreenTests(unittest.TestCase):
                 self.assertIs(self.workspace.scroll.widget(), container)
                 self.assertEqual(tuple(self.workspace.visible_panes()), panes)
 
-    def test_clicking_another_graph_changes_live_values_without_hiding_other_panes(self):
+    def test_clicking_another_graph_keeps_all_shared_values_without_hiding_other_panes(self):
         self.controller.enter()
         self.events()
         self.assertEqual(self.controller.pane_selector.currentIndex(), 1)
-        self.assertEqual(self.controller.readout.item(0, 1).text(), 'Pa')
+        self.assertEqual(self.controller.readout.rowCount(),2)
+        self.assertEqual({self.controller.readout.item(row,1).text() for row in range(2)},{'Pa','°C'})
         first = self.workspace.panes[0]
         self.workspace.set_active(first)
         self.events()
         self.assertIs(self.controller.pane, first)
         self.assertEqual(self.controller.pane_selector.currentIndex(), 0)
-        self.assertEqual(self.controller.readout.item(0, 1).text(), '°C')
+        self.assertEqual(self.controller.readout.rowCount(),2)
         self.controller.pane_selector.setCurrentIndex(1)
         self.events()
         second = self.workspace.panes[1]
@@ -117,12 +118,43 @@ class WorkspaceFullscreenTests(unittest.TestCase):
         second.cursor_locks[0]['index'] = 1
         second.restore_ranges(second.state())
         self.events()
-        self.assertEqual(float(self.controller.readout.item(0, 2).text()), 200)
+        pressure_row=next(row for row in range(self.controller.readout.rowCount())
+            if self.controller.readout.item(row,0).data(QtCore.Qt.ItemDataRole.UserRole)==self.second.id)
+        self.assertEqual(float(self.controller.readout.item(pressure_row, 2).text()), 200)
         second.step_cursor(0, 1)
         self.events()
-        self.assertEqual(float(self.controller.readout.item(0, 2).text()), 300)
+        self.assertEqual(float(self.controller.readout.item(pressure_row, 2).text()), 300)
         self.assertIn('300 Pa', self.controller.cursor_cards[0].toolTip())
         self.assertTrue(all(pane.isVisible() for pane in self.workspace.visible_panes()))
+
+    def test_shared_mouse_column_keeps_all_native_values_and_clears_without_moving_cursors(self):
+        self.controller.enter();self.events()
+        before=[[line.value() for line in pane.cursor_lines] for pane in self.workspace.visible_panes()]
+        panes=self.workspace.visible_panes();source=panes[0]
+        position=source.getViewBox().mapViewToScene(QtCore.QPointF(1,30))
+        source._mouse_hover((position,))
+        rows={self.controller.readout.item(row,0).data(QtCore.Qt.ItemDataRole.UserRole):row
+              for row in range(self.controller.readout.rowCount())}
+        self.assertEqual(self.controller.readout.columnCount(),11)
+        self.assertEqual(float(self.controller.readout.item(rows[self.first.id],10).text()),30)
+        self.assertEqual(float(self.controller.readout.item(rows[self.second.id],10).text()),300)
+        self.assertIn('Native sample 2',self.controller.readout.item(rows[self.second.id],10).toolTip())
+        self.assertEqual([[line.value() for line in pane.cursor_lines] for pane in panes],before)
+        source.clear_hover()
+        self.assertTrue(all(self.controller.readout.item(row,10).text()=='—' for row in range(len(rows))))
+
+    def test_combined_readout_deduplicates_repeated_traces_and_selected_fullscreen_remains_local(self):
+        self.workspace.set_layout('2×2')
+        self.workspace.panes[2].bind([self.first.id]);self.workspace.panes[3].bind([self.second.id])
+        self.controller.enter();self.events()
+        self.assertEqual(self.controller.readout.rowCount(),2)
+        self.assertIn('All plotted time-based channels',self.controller.interval_caption.text())
+        self.controller.exit();self.events()
+        self.window.graph_fullscreen.enter(self.workspace.panes[1]);self.events()
+        try:
+            self.assertEqual(self.window.graph_fullscreen.readout.rowCount(),1)
+            self.assertEqual(self.window.graph_fullscreen.readout.item(0,1).text(),'Pa')
+        finally:self.window.graph_fullscreen.exit()
 
     def test_shared_zoom_modes_and_time_lock_work_on_expanded_layout(self):
         self.controller.enter()

@@ -430,13 +430,13 @@ class GraphFullscreenController(QtCore.QObject):
         self.interval_caption.setText(delta_label+' '+_number(abs(positions[1]-positions[0]))+' '+coordinate[1]+'\nStatistics: '+scope)
         # A direct empty selection is a normal state.  Its original empty-canvas
         # placeholder remains in the same pane and no orphan axes are created.
-        measurements = pane.measurements() if all(channel_id in pane.store.channels for channel_id in pane.ids) else {}
+        measurements = self._readout_rows(pane)
         self.readout.setRowCount(len(measurements))
         self.readout.setAccessibleDescription('No channels selected' if not measurements else 'Values follow the source samples and cursor locks in this graph.')
-        for row, (channel_id, interval) in enumerate(measurements.items()):
-            channel = pane.store.channels[channel_id]
-            stats = self.window.statistics_for_display(pane, channel_id, interval) if hasattr(self.window, 'statistics_for_display') else interval
-            values = [channel_label(pane.store, channel), channel.unit or 'Unknown',
+        for row, (channel_id, (owner, interval)) in enumerate(measurements.items()):
+            channel = owner.store.channels[channel_id]
+            stats = self.window.statistics_for_display(owner, channel_id, interval) if hasattr(self.window, 'statistics_for_display') else interval
+            values = [channel_label(owner.store, channel), channel.unit or 'Unknown',
                       _number(stats['A']), _number(stats['B']), _number(stats['ΔY']),
                       _number(stats['Min']), _number(stats['Max']), _number(stats['Mean']),
                       f'{stats["Coverage"]*100:.4g}%' if math.isfinite(stats['Coverage']) else 'Unknown', '—']
@@ -451,16 +451,21 @@ class GraphFullscreenController(QtCore.QObject):
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, channel_id)
-                item.setToolTip(channel_details(pane.store, channel)+'\n'+value)
+                item.setToolTip(channel_details(owner.store, channel)+'\n'+value)
                 if column in (2, 3):
                     item.setForeground(QtGui.QColor(CURSOR_COLORS[column-2]))
                     item.setBackground(QtGui.QColor('#182033'))
-                elif column == 0 and channel_id in pane.curves:
-                    item.setForeground(pane.curves[channel_id][1].pen.color())
+                elif column == 0 and channel_id in owner.curves:
+                    item.setForeground(owner.curves[channel_id][1].pen.color())
                 elif column == 9 and color:
                     item.setBackground(QtGui.QColor(color))
                     item.setForeground(QtGui.QColor('#101828'))
                 self.readout.setItem(row, column, item)
+
+    def _readout_rows(self,pane):
+        """Selected-graph fullscreen deliberately retains its selected scope."""
+        measurements=pane.measurements() if all(id in pane.store.channels for id in pane.ids) else {}
+        return {id:(pane,stats) for id,stats in measurements.items()}
 
     def _pane_destroyed(self, *args):
         # Structural changes should exit before deleting panes.  This final

@@ -4,6 +4,7 @@ The session metadata remains the single persistent source. Editing this dialog
 does not calculate results, change engineering limits, or accept a test.
 """
 from PySide6 import QtWidgets
+from app_report_appearance import CURSOR_LINES_OPTION, include_cursor_lines
 
 
 REPORT_FIELDS = ('Report title', 'Prepared by', 'Reviewed by', 'Test conditions',
@@ -45,6 +46,11 @@ class ReportDetailsDialog(QtWidgets.QDialog):
             field.setPlaceholderText('Optional user-provided '+name.lower())
             tabs.addTab(field, name)
             self.fields[name] = field
+        self.cursor_lines = QtWidgets.QCheckBox(CURSOR_LINES_OPTION)
+        self.cursor_lines.setObjectName('includeExportCursorLines')
+        self.cursor_lines.setChecked(include_cursor_lines(metadata))
+        self.cursor_lines.setToolTip('Export presentation only. Cursor times, values and interval statistics are retained either way; on-screen cursors stay unchanged.')
+        layout.addWidget(self.cursor_lines)
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Save |
             QtWidgets.QDialogButtonBox.StandardButton.Cancel)
@@ -53,14 +59,19 @@ class ReportDetailsDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
     def values(self):
-        return {name: (field.text() if isinstance(field, QtWidgets.QLineEdit)
+        return {**{name: (field.text() if isinstance(field, QtWidgets.QLineEdit)
                        else field.toPlainText()).strip()
-                for name, field in self.fields.items()}
+                for name, field in self.fields.items()},
+                CURSOR_LINES_OPTION: self.cursor_lines.isChecked()}
 
 
 def update_report_details(metadata, values):
     """Apply an accepted edit, retaining unrelated legacy/custom metadata."""
     result = dict(metadata)
+    if CURSOR_LINES_OPTION in values:
+        if not isinstance(values[CURSOR_LINES_OPTION], bool):
+            raise ValueError(CURSOR_LINES_OPTION+' must be a checkbox value')
+        result[CURSOR_LINES_OPTION] = values[CURSOR_LINES_OPTION]
     for name in REPORT_FIELDS:
         value = values.get(name, '')
         if not isinstance(value, str):

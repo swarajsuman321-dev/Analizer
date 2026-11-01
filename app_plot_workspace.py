@@ -12,7 +12,81 @@ from app_channel_identity import channel_label, channel_details
 
 pg.setConfigOptions(antialias=False, background='#151b26', foreground='#e3eaf5')
 COLORS=['#58b6ff','#ffb454','#79dba8','#d4a1ff','#ff8096','#e5da69','#83e1e8']
-LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1)}
+LAYOUTS={'Single':(1,1),'Horizontal split':(1,2),'Vertical split':(2,1),'2×2':(2,2),'Stacked':(4,1),'3 stacked':(3,1),'10 panels':(10,1),'Custom':(1,1)}
+
+
+def graph_positions(state):
+    """Return validated visible graph cells, including user-arranged layouts.
+
+    Presets retain their old representation. Custom positions refer to the
+    visible prefix of ``panes``; any remaining panes retain their hidden data.
+    Coordinates are bounded to protect workspace loading from excessive grids.
+    """
+    name=state.get('layout','Single')
+    if name not in LAYOUTS:raise ValueError('Unsupported graph layout')
+    if name!='Custom':
+        rows,cols=LAYOUTS[name]
+        return [(index//cols,index%cols) for index in range(rows*cols)]
+    grid=state.get('graph_grid',{})
+    positions=grid.get('positions',[[0,0]]) if isinstance(grid,dict) else None
+    if not isinstance(positions,(list,tuple)) or not 1<=len(positions)<=256:
+        raise ValueError('Custom layout requires between 1 and 256 graph positions')
+    cells=[]
+    for cell in positions:
+        if (not isinstance(cell,(list,tuple)) or len(cell)!=2 or
+                any(isinstance(v,bool) or not isinstance(v,(int,np.integer)) or not 0<=v<256 for v in cell)):
+            raise ValueError('Custom graph positions must be bounded nonnegative row/column indices')
+        cells.append(tuple(map(int,cell)))
+    if len(set(cells))!=len(cells):raise ValueError('Two graphs cannot occupy the same layout cell')
+    return cells
+
+
+def layout_shape(name_or_state,graph_grid=None):
+    """Common geometry contract for live graphs and exported workspaces."""
+    state=name_or_state if isinstance(name_or_state,dict) else {'layout':name_or_state,'graph_grid':graph_grid or {}}
+    cells=graph_positions(state)
+    return max(r for r,c in cells)+1,max(c for r,c in cells)+1
+
+
+def workspace_panes(state):
+    """Yield visible pane snapshots with their actual user-chosen grid cells."""
+    return list(zip(graph_positions(state),state.get('panes',[])))
+
+
+class GraphDivider(QtWidgets.QWidget):
+    """A real drag target adjusts retained row/column weights without replotting."""
+    def __init__(self,workspace,orientation,index):
+        super().__init__(workspace.container)
+        self.workspace,self.orientation,self.index=workspace,orientation,index
+        self._start=None
+        self.setObjectName('graphResizeDivider')
+        self.setCursor(QtCore.Qt.CursorShape.SplitVCursor if orientation=='rows' else QtCore.Qt.CursorShape.SplitHCursor)
+        self.setToolTip('Drag to resize the neighbouring graphs')
+        self.setStyleSheet('background:rgba(130,147,169,90); border-radius:2px;')
+        self.setAccessibleName('Resize graph '+('rows' if orientation=='rows' else 'columns'))
+
+    def mousePressEvent(self,event):
+        if event.button()!=QtCore.Qt.MouseButton.LeftButton:return super().mousePressEvent(event)
+        count=self.workspace.shape()[0 if self.orientation=='rows' else 1]
+        saved=self.workspace.layout_proportions.get(self.workspace.layout_name,{})
+        weights=list(saved.get(self.orientation,[1.]*count))
+        if len(weights)!=count:weights=[1.]*count
+        self._start=(event.globalPosition(),weights,self.workspace.container.height() if self.orientation=='rows' else self.workspace.container.width())
+        event.accept()
+
+    def mouseMoveEvent(self,event):
+        if self._start is None:return super().mouseMoveEvent(event)
+        origin,weights,pixels=self._start
+        delta=event.globalPosition().y()-origin.y() if self.orientation=='rows' else event.globalPosition().x()-origin.x()
+        weight_delta=delta*sum(weights)/max(1,pixels)
+        pair=weights[self.index]+weights[self.index+1]
+        first=float(np.clip(weights[self.index]+weight_delta,pair*.05,pair*.95))
+        updated=list(weights);updated[self.index],updated[self.index+1]=first,pair-first
+        self.workspace.set_pane_proportions(**{self.orientation:updated})
+        event.accept()
+
+    def mouseReleaseEvent(self,event):
+        self._start=None;event.accept()
 
 
 class GraphHeaderNavigation(QtWidgets.QStackedWidget):
@@ -238,6 +312,7 @@ class PlotPane(pg.PlotWidget):
             line.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);line.setZValue(900);self.addItem(line,ignoreBounds=True);line.hide()
         self.hover_marker=pg.ScatterPlotItem(size=9,brush=None,pen=pg.mkPen('#ffffff',width=2))
         self.hover_marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);self.hover_marker.setZValue(901);self.addItem(self.hover_marker,ignoreBounds=True);self.hover_marker.hide()
+        self.hover_markers={};self._hover_sampling={}
         self.hover_state=None;self.hover_text=''
         # Only passive crosshairs/markers live in the canvas. Text is emitted to
         # the workspace's fixed readout strip so it never covers a trace.
@@ -249,11 +324,60 @@ class PlotPane(pg.PlotWidget):
         self.hover_state=None;self.hover_text=''
         if not hasattr(self,'hover_marker'):return
         self.hover_marker.hide()
+        for view,marker in self.hover_markers.values():
+            view.removeItem(marker)
+        self.hover_markers={}
         for line in self.hover_lines:line.hide()
         if had_state:self.hoverChanged.emit(None)
 
     def leaveEvent(self,event):
         self.clear_hover();super().leaveEvent(event)
+
+    def hover_samples(self,x):
+        """Inspect every trace at one coordinate using each native sample grid."""
+        from app_hover_samples import hover_sample
+        records=[]
+        for id,(view,curve) in self.curves.items():
+            channel=self.store.channels.get(id)
+            if channel is None:continue
+            record=hover_sample(channel,x,self._hover_sampling)
+            record.update(name=channel_label(self.store,channel),color=curve.pen.color().name(),
+                          actuator=bool(channel.attributes.get('actuator_binary')))
+            if record['available']:
+                display=record['y']
+                if id in self._normalization:
+                    low,high,offset=self._normalization[id]
+                    display=((display-low)/(high-low) if high>low else .5)+offset
+                record['display_y']=float(display)
+                record['scene']=view.mapViewToScene(QtCore.QPointF(record['x'],display))
+            records.append(record)
+        return records
+
+    def _show_hover_samples(self,records):
+        """Colored passive markers use their own value axes, never the mouse Y."""
+        present={record['channel'] for record in records if record['available']}
+        for id,(view,marker) in self.hover_markers.items():
+            if id not in present:marker.hide()
+        for record in records:
+            if not record['available'] or record['channel'] not in self.curves:continue
+            id=record['channel'];view=self.curves[id][0]
+            previous=self.hover_markers.get(id)
+            if previous is not None and previous[0] is not view:
+                previous[0].removeItem(previous[1]);previous=None
+            if previous is None:
+                marker=pg.ScatterPlotItem(size=7,brush=record['color'],pen=pg.mkPen(record['color'],width=1))
+                marker.setAcceptedMouseButtons(QtCore.Qt.MouseButton.NoButton);marker.setZValue(902)
+                view.addItem(marker,ignoreBounds=True);self.hover_markers[id]=(view,marker)
+            else:marker=previous[1]
+            marker.setData([record['x']],[record['display_y']]);marker.show()
+
+    @staticmethod
+    def _hover_description(record):
+        from app_actuators import state_text
+        if not record['available']:
+            return record['name']+': Unknown ('+record['reason']+')'
+        value=state_text(record['y']) if record['actuator'] else f"{record['y']:.6g} {record['unit']}"
+        return f"{record['name']}: {value} [sample {record['index']} @ {record['x']:.6g} {record['coordinate_unit']}]"
 
     def hover_values(self,position):
         primary=self.getViewBox()
@@ -262,21 +386,14 @@ class PlotPane(pg.PlotWidget):
         for unit in dict.fromkeys(self.bindings.values()):
             view=self.axes[unit][1] if unit in self.axes else primary
             axes.append({'unit':unit or 'Value','y':float(view.mapSceneToView(position).y())})
-        for id,(view,curve) in self.curves.items():
-            channel=self.store.channels[id];xs,ys=channel.values()
-            if not len(xs) or x<xs[0] or x>xs[-1]:continue
-            index=min(len(xs)-1,int(np.searchsorted(xs,x)));previous=max(0,index-1)
-            if abs(xs[previous]-x)<=abs(xs[index]-x):index=previous
-            value=ys[index]
-            if not np.isfinite(value):continue
-            display=value
-            if id in self._normalization:
-                low,high,offset=self._normalization[id];display=((value-low)/(high-low) if high>low else .5)+offset
-            scene=view.mapViewToScene(QtCore.QPointF(float(xs[index]),float(display)))
+        records=self.hover_samples(x)
+        for record in records:
+            if not record['available']:continue
+            scene=record['scene']
             distance=(scene.x()-position.x())**2+(scene.y()-position.y())**2
             if nearest is None or distance<nearest['distance']:
-                nearest={'channel':id,'name':channel_label(self.store,channel),'x':float(xs[index]),'y':float(value),'unit':channel.unit,'distance':distance,'scene':scene}
-        return {'x':x,'coordinate_unit':self.coordinate[1] if self.coordinate else '', 'axes':axes,'nearest':nearest}
+                nearest={**record,'distance':distance}
+        return {'x':x,'coordinate_unit':self.coordinate[1] if self.coordinate else '', 'axes':axes,'nearest':nearest,'values':records}
 
     def _live_hover(self,args):
         # SignalProxy coalesces motion. Its saved scene point can be stale by
@@ -299,19 +416,22 @@ class PlotPane(pg.PlotWidget):
         text=[f"Mouse X  {state['x']:.6g} {state['coordinate_unit']}  |  Mouse Y  "+'  |  '.join(('ON/OFF track' if a['unit']=='Actuators' else f"{a['y']:.6g} {a['unit']}") for a in state['axes'])]
         nearest=state['nearest']
         if nearest:
-            channel=self.store.channels[nearest['channel']]
-            from app_actuators import state_text
-            value=state_text(nearest['y']) if channel.attributes.get('actuator_binary') else f"{nearest['y']:.6g} {nearest['unit']}"
-            text.append(f"{nearest['name']}  |  Sample  {nearest['x']:.6g} {state['coordinate_unit']}  ·  {value}")
+            text.append(' | '.join(self._hover_description(record) for record in state['values']))
             self.hover_marker.setPen(pg.mkPen(self.curves[nearest['channel']][1].pen.color(),width=2))
             marker=primary.mapSceneToView(nearest['scene']);self.hover_marker.setData([marker.x()],[marker.y()]);self.hover_marker.show()
-        else:text.append('No sample available here');self.hover_marker.hide()
+        else:text.append('No sample available here'+(' | '+' | '.join(self._hover_description(record) for record in state['values']) if state['values'] else ''));self.hover_marker.hide()
+        self._show_hover_samples(state['values'])
         self.hover_text='\n'.join(text)
         self.hoverChanged.emit(state)
 
     def _cursor_changed(self):
         if self.sender() in self.cursor_lines and not getattr(self,'_restoring_cursors',False):self._restored_positions=False
         if self._normalizing:return
+        workspace=getattr(self,'workspace',None)
+        if not self._synchronizing and workspace is not None and workspace._normalize_shared_cursors(self,self.sender()):
+            self.update_cursor_markers()
+            self.cursorsChanged.emit()
+            return
         if not self._synchronizing:
             self._normalizing=True
             try:
@@ -386,15 +506,21 @@ class PlotPane(pg.PlotWidget):
         lock=self.cursor_locks[index]
         channel_id=lock['channel'] if lock else next((id for id in self.ids if len(self.store.channels[id].x)),None)
         if channel_id not in self.store.channels:return
-        x=self.store.channels[channel_id].values()[0]
+        channel=self.store.channels[channel_id]
+        x=channel.values()[0]
         if not len(x):return
-        current=lock['index'] if lock else min(len(x)-1,int(np.searchsorted(x,self.cursor_lines[index].value())))
+        factor=1.
+        if self.coordinate and self.coordinate[0]=='time' and channel.coordinate_kind=='time':
+            from app_time_units import minute_factor
+            factor=minute_factor(channel.coordinate_unit)/minute_factor(self.coordinate[1])
+        current=lock['index'] if lock else min(len(x)-1,int(np.searchsorted(x,self.cursor_lines[index].value()/factor)))
         target=int(np.clip(current+direction,0,len(x)-1))
         if lock:lock['index']=target
         low,high=self.getViewBox().viewRange()[0]
-        if x[target]<low or x[target]>high:
-            width=high-low;self.setXRange(float(x[target]-width/2),float(x[target]+width/2),padding=0)
-        self.cursor_lines[index].setValue(float(x[target]));self._cursor_changed()
+        point=float(x[target]*factor)
+        if point<low or point>high:
+            width=high-low;self.setXRange(float(point-width/2),float(point+width/2),padding=0)
+        self.cursor_lines[index].setValue(point);self._cursor_changed()
 
     def resizeEvent(self,event):
         super().resizeEvent(event)
@@ -536,10 +662,13 @@ class PlotPane(pg.PlotWidget):
 
     def bind(self, ids, assignments=None, fit=True):
         self.clear_hover()
+        self._hover_sampling={}
         for index,view in enumerate(self.marker_views):
             if view is not None:view.removeItem(self.cursor_markers[index]);self.marker_views[index]=None
         coordinates={(self.store.channels[id].coordinate_kind,self.store.channels[id].coordinate_unit) for id in ids if id in self.store.channels}
         if len(coordinates)>1:raise ValueError('Different coordinate systems require separate viewports')
+        workspace=getattr(self,'workspace',None)
+        self._binding_shared_seed=getattr(workspace,'_shared_cursor_state',None)
         saved=self.state()
         for vb,item in self.annotation_items:vb.removeItem(item)
         self.annotation_items=[]
@@ -559,6 +688,10 @@ class PlotPane(pg.PlotWidget):
         if len(coordinates)>1:
             raise ValueError('Different coordinate systems require separate viewports')
         self.coordinate=next(iter(coordinates),None)
+        if self.coordinate and self.coordinate[0]!='time':
+            for index,lock in enumerate(self.cursor_locks):
+                if lock and lock['channel'] not in self.ids:
+                    self.cursor_locks[index]=None;self.cursor_lines[index].label.setFormat(('A','B')[index])
         self.bindings={id:('Normalized tracks' if self.normalized else ('Actuators' if self.store.channels[id].attributes.get('actuator_binary') and (assignments or {}).get(id,self.store.channels[id].unit) in ('state','Actuators') else (assignments or {}).get(id,self.store.channels[id].unit))) for id in self.ids}
         units=list(dict.fromkeys(self.bindings.values()))
         colors=channel_colors(self.store)
@@ -641,6 +774,7 @@ class PlotPane(pg.PlotWidget):
         for record in self.annotations:self._annotation(record)
         self.update_cursor_markers()
         self._queue_canvas_alignment()
+        self.__dict__.pop('_binding_shared_seed',None)
 
     def _layout_axes(self):
         plot=self.getPlotItem();layout=plot.layout
@@ -798,8 +932,17 @@ class PlotPane(pg.PlotWidget):
             if values:
                 low,high=min(values),max(values);vb.setYRange(low,high if high>low else low+1,padding=.08)
         if self.normalized:self.setYRange(-.2,len(self.ids)+.2,padding=0)
+        workspace=getattr(self,'workspace',None)
+        shared=getattr(workspace,'_shared_cursor_state',None) if self.coordinate and self.coordinate[0]=='time' else None
+        initializing_shared='_binding_shared_seed' in self.__dict__ and self._binding_shared_seed is None
         for index,(line,fraction) in enumerate(zip(self.cursor_lines,(.25,.75))):
-            if not self.cursor_locks[index]:line.setValue(left+(right-left)*fraction)
+            if not self.cursor_locks[index] and (shared is None or initializing_shared):line.setValue(left+(right-left)*fraction)
+        if shared is not None and not initializing_shared and self.coordinate and self.coordinate[0]=='time':
+            factor=workspace._cursor_seconds_factor(self)
+            for line,position in zip(self.cursor_lines,shared['positions_s']):
+                previous=self._synchronizing;self._synchronizing=True
+                try:line.setValue(position/factor)
+                finally:self._synchronizing=previous
         self._cursor_changed()
         self.remember_view()
 
@@ -874,7 +1017,12 @@ class PlotPane(pg.PlotWidget):
                 if lock and lock['channel'] in self.store.channels:
                     x=self.store.channels[lock['channel']].values()[0]
                     sample=locked_index(self.store.channels[lock['channel']],lock)
-                    if sample is not None:lock['index']=sample;pos=float(x[sample])
+                    if sample is not None:
+                        lock['index']=sample;pos=float(x[sample])
+                        channel=self.store.channels[lock['channel']]
+                        if self.coordinate and self.coordinate[0]=='time' and channel.coordinate_kind=='time':
+                            from app_time_units import minute_factor
+                            pos*=minute_factor(channel.coordinate_unit)/minute_factor(self.coordinate[1])
                 line.setValue(pos)
                 line.label.setFormat(('A','B')[index]+(' · '+channel_label(self.store,lock['channel']).replace('{','{{').replace('}','}}') if lock else ''))
         finally:
@@ -901,15 +1049,18 @@ class PlotWorkspace(QtWidgets.QWidget):
     activeChanged=QtCore.Signal(object)
     measurementsChanged=QtCore.Signal()
     contextRequested=QtCore.Signal(str,object)
+    hoverValuesChanged=QtCore.Signal(object)
 
     def __init__(self,store):
         super().__init__();self.store=store;self.panes=[];self.active=None;self.layout_name='Single';self._syncing=False;self._range_syncing=False;self.time_axes_locked=True;self.navigation_mode='pan';self._hover_pane=None;self.layout_proportions={}
+        self.graph_grid={'positions':[[0,0]]};self._hidden_assignments={};self._dividers=[]
         self._canvas_alignment_timer=QtCore.QTimer(self);self._canvas_alignment_timer.setSingleShot(True)
         self._canvas_alignment_timer.timeout.connect(self._align_canvas_gutters)
         self._canvas_alignment_running=False;self._canvas_alignment_dirty=False
         outer=QtWidgets.QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
         self.scroll=QtWidgets.QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         self.container=QtWidgets.QWidget();self.scroll.setWidget(self.container)
+        self.container.installEventFilter(self)
         self.grid=QtWidgets.QGridLayout(self.container);self.grid.setContentsMargins(0,0,0,0)
         # The main window mounts this same toolbar beside its graph tabs. A
         # standalone workspace retains a normal layout row, never an overlay.
@@ -932,6 +1083,7 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.hover_strip.setFixedHeight(48)
         strip_layout=QtWidgets.QHBoxLayout(self.hover_strip);strip_layout.setContentsMargins(0,0,4,0);strip_layout.setSpacing(4)
         self.hover_readout=QtWidgets.QLabel('Mouse X/Y · Move over a graph to inspect values',self.hover_strip)
+        self.hover_values=None
         self.hover_readout.setObjectName('mouseXYReadout');self.hover_readout.setTextFormat(QtCore.Qt.TextFormat.PlainText)
         self.hover_readout.setFixedHeight(48);self.hover_readout.setContentsMargins(8,2,8,2)
         self.hover_readout.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,QtWidgets.QSizePolicy.Policy.Fixed)
@@ -956,9 +1108,41 @@ class PlotWorkspace(QtWidgets.QWidget):
             item=QtWidgets.QListWidgetItem('━ '+name);item.setForeground(QtGui.QColor(color));item.setToolTip(channel_details(self.store,id));self.channel_legend.addItem(item)
 
     def _hover_changed(self,pane,state):
+        if getattr(self,'_hover_broadcasting',False):return
         if state is None and pane is not self._hover_pane:return
         self._hover_pane=pane if state else None
-        text=pane.hover_text if state else 'Mouse X/Y · Move over a graph to inspect values'
+        records=[];seen=set()
+        self._hover_broadcasting=True
+        try:
+            from app_hover_samples import compatible_hover_coordinate
+            for target in self.visible_panes():
+                if target is pane:
+                    values=state.get('values',[]) if state else []
+                elif state:
+                    x=compatible_hover_coordinate(pane.coordinate,target.coordinate,state['x'])
+                    if x is None:
+                        target.clear_hover();continue
+                    values=target.hover_samples(x)
+                    target.hover_lines[0].setValue(x);target.hover_lines[0].show()
+                    target.hover_lines[1].hide();target.hover_marker.hide()
+                    target._show_hover_samples(values)
+                else:
+                    target.clear_hover();continue
+                for record in values:
+                    if record['channel'] not in seen:
+                        records.append({key:value for key,value in record.items() if key!='scene'})
+                        seen.add(record['channel'])
+        finally:self._hover_broadcasting=False
+        if state:
+            text=pane.hover_text.splitlines()[0]+'\n'+' | '.join(pane._hover_description(record) for record in records)
+            # Fullscreen hosts consume the pane's same two-line description.
+            # Keep them consistent with the combined workspace inspection.
+            pane.hover_text=text
+            self.hover_values={'x':state['x'],'coordinate_unit':state['coordinate_unit'],
+                               'values':records,'source_graph':self.panes.index(pane)+1}
+        else:
+            text='Mouse X/Y · Move over a graph to inspect values';self.hover_values=None
+        self.hoverValuesChanged.emit(self.hover_values)
         self.hover_readout.setToolTip(text)
         width=max(0,self.hover_readout.contentsRect().width())
         lines=text.splitlines()
@@ -1030,12 +1214,97 @@ class PlotWorkspace(QtWidgets.QWidget):
 
     def set_pane_proportions(self,rows=None,columns=None):
         """Retain explicit layout weights without reusing stale grid rows."""
-        height,width=LAYOUTS[self.layout_name];saved=self.layout_proportions.setdefault(self.layout_name,{})
+        height,width=self.shape();saved=self.layout_proportions.setdefault(self.layout_name,{})
         for name,values,count in [('rows',rows,height),('columns',columns,width)]:
             if values is not None:
                 if len(values)!=count or any(not np.isfinite(v) or v<=0 for v in values):raise ValueError('Pane proportions must be finite positive weights for every visible row/column')
                 saved[name]=list(map(float,values))
         self._apply_proportions()
+        self.grid.activate();self._position_dividers();self.queue_canvas_alignment()
+
+    def shape(self):
+        return layout_shape(self.layout_name,self.graph_grid)
+
+    def positions(self):
+        return graph_positions({'layout':self.layout_name,'graph_grid':self.graph_grid})
+
+    def visible_count(self):
+        return len(self.positions())
+
+    def _new_pane(self):
+        pane=PlotPane(self.store);pane.installEventFilter(self);pane.workspace=self
+        pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
+        pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
+        pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
+        pane.contextRequested.connect(self.contextRequested)
+        return pane
+
+    def _make_custom(self,positions):
+        self.graph_grid={'positions':[list(cell) for cell in positions]}
+        self.set_layout('Custom')
+
+    def add_graph(self,direction='below',reference=None):
+        """Create a genuinely blank graph beside/below the selected graph."""
+        if direction not in ('below','right'):raise ValueError('Choose below or right for the new graph')
+        visible=self.visible_panes()
+        if len(visible)>=256:raise ValueError('This workspace already has 256 graphs; close a graph before adding another')
+        reference=reference if reference in visible else self.active
+        index=visible.index(reference) if reference in visible else len(visible)-1
+        positions=self.positions();row,col=positions[index]
+        if direction=='below':
+            positions=[(r+1 if r>row else r,c) for r,c in positions];cell=(row+1,col)
+        else:
+            positions=[(r,c+1 if c>col else c) for r,c in positions];cell=(row,col+1)
+        pane=self._new_pane();self.panes.insert(len(visible),pane)
+        positions.append(cell)
+        # Start fresh weights for a changed grid; old preset weights remain.
+        self.layout_proportions.pop('Custom',None)
+        self._make_custom(positions);self.set_active(pane)
+        if hasattr(self,'sync_shared_cursors'):self.sync_shared_cursors(reference)
+        return pane
+
+    def remove_graph(self,pane=None):
+        """Remove a viewport while preserving all source channels and other plots."""
+        pane=pane or self.active;visible=self.visible_panes()
+        if pane not in visible:return False
+        index=visible.index(pane)
+        if pane is self._hover_pane:pane.clear_hover()
+        if len(visible)==1:
+            pane.bind([],fit=False);self.measurementsChanged.emit();return True
+        positions=self.positions();positions.pop(index)
+        self.panes.remove(pane);self.panes.insert(len(visible)-1,pane)
+        pane.bind([],fit=False)
+        for channel_id,homes in list(self._hidden_assignments.items()):
+            kept=[home for home in homes if home[0] is not pane]
+            if kept:self._hidden_assignments[channel_id]=kept
+            else:self._hidden_assignments.pop(channel_id,None)
+        # Compact empty rows/columns while retaining the remaining topology.
+        rows=sorted({r for r,c in positions});cols=sorted({c for r,c in positions})
+        positions=[(rows.index(r),cols.index(c)) for r,c in positions]
+        self.layout_proportions.pop('Custom',None)
+        self.active=self.panes[min(index,len(visible)-2)]
+        self._make_custom(positions)
+        self.measurementsChanged.emit();return True
+
+    def move_graph(self,pane=None,direction='up'):
+        """Move to an adjacent cell, exchanging graphs when that cell is occupied."""
+        pane=pane or self.active;visible=self.visible_panes()
+        if pane not in visible:return False
+        positions=self.positions();index=visible.index(pane)
+        if isinstance(direction,int) and not isinstance(direction,bool):
+            target=int(np.clip(direction,0,len(visible)-1));positions[index],positions[target]=positions[target],positions[index]
+        else:
+            delta={'up':(-1,0),'down':(1,0),'left':(0,-1),'right':(0,1)}.get(direction)
+            if delta is None:raise ValueError('Choose up, down, left or right')
+            row,col=positions[index];destination=(row+delta[0],col+delta[1])
+            if min(destination)<0:return False
+            if max(destination)>=256:raise ValueError('Graph grid is at its supported extent')
+            if destination in positions:
+                target=positions.index(destination);positions[index],positions[target]=positions[target],positions[index]
+            else:positions[index]=destination
+        rows=sorted({r for r,c in positions});cols=sorted({c for r,c in positions})
+        positions=[(rows.index(r),cols.index(c)) for r,c in positions]
+        self._make_custom(positions);self.set_active(pane);return True
 
     def queue_canvas_alignment(self):
         """Coalesce axis/font/layout changes into a single geometry pass."""
@@ -1058,11 +1327,11 @@ class PlotWorkspace(QtWidgets.QWidget):
             return
         self._canvas_alignment_running=True;self._canvas_alignment_dirty=False
         try:
-            _,columns=LAYOUTS[self.layout_name];groups={}
-            for index,pane in enumerate(self.visible_panes()):
+            groups={}
+            for (row,column),pane in zip(self.positions(),self.visible_panes()):
                 if (getattr(pane,'_closing',False) or pane.__dict__.get('plotItem') is None
                         or self.grid.indexOf(pane)<0):continue
-                groups.setdefault(index%columns,[]).append(pane)
+                groups.setdefault(column,[]).append(pane)
             for panes in groups.values():
                 margins=[pane.canvas_gutters() for pane in panes]
                 if len(panes)==1:
@@ -1085,7 +1354,7 @@ class PlotWorkspace(QtWidgets.QWidget):
                 self._canvas_alignment_timer.start(16)
 
     def _apply_proportions(self):
-        rows,cols=LAYOUTS[self.layout_name];saved=self.layout_proportions.get(self.layout_name,{})
+        rows,cols=self.shape();saved=self.layout_proportions.get(self.layout_name,{})
         for row in range(max(self.grid.rowCount(),rows)):
             weights=saved.get('rows',[]);weight=weights[row] if row<len(weights) else 1
             self.grid.setRowStretch(row,max(1,int(weight*100)) if row<rows else 0)
@@ -1095,32 +1364,53 @@ class PlotWorkspace(QtWidgets.QWidget):
             self.grid.setColumnStretch(col,max(1,int(weight*100)) if col<cols else 0)
             self.grid.setColumnMinimumWidth(col,380 if col<cols else 0)
 
+    def _rebuild_dividers(self):
+        for divider in self._dividers:divider.hide();divider.deleteLater()
+        self._dividers=[]
+        rows,cols=self.shape()
+        for orientation,count in (('rows',rows),('columns',cols)):
+            for index in range(count-1):
+                divider=GraphDivider(self,orientation,index);self._dividers.append(divider)
+        self.grid.activate();self._position_dividers()
+
+    def _position_dividers(self):
+        for divider in self._dividers:
+            index=divider.index
+            if divider.orientation=='rows':
+                first=self.grid.cellRect(index,0);next_cell=self.grid.cellRect(index+1,0)
+                y=(first.bottom()+next_cell.top())//2
+                divider.setGeometry(0,y-3,self.container.width(),6)
+            else:
+                first=self.grid.cellRect(0,index);next_cell=self.grid.cellRect(0,index+1)
+                x=(first.right()+next_cell.left())//2
+                divider.setGeometry(x-3,0,6,self.container.height())
+            divider.show();divider.raise_()
+
     def set_layout(self,name):
-        rows,cols=LAYOUTS[name];required=rows*cols
+        positions=graph_positions({'layout':name,'graph_grid':self.graph_grid})
+        rows,cols=layout_shape(name,self.graph_grid);required=len(positions)
         previous=self.active
+        if self._hover_pane:self._hover_pane.clear_hover()
         for pane in self.panes:self.grid.removeWidget(pane)
         while len(self.panes)<required:
-            pane=PlotPane(self.store);pane.installEventFilter(self)
-            pane.workspace=self
-            pane.hoverChanged.connect(lambda state,p=pane:self._hover_changed(p,state))
-            pane.cursorsChanged.connect(lambda p=pane:self._cursors(p))
-            pane.getViewBox().sigXRangeChanged.connect(lambda view,bounds,p=pane:self._time_range_changed(p,bounds))
-            pane.contextRequested.connect(self.contextRequested)
-            self.panes.append(pane)
+            self.panes.append(self._new_pane())
         for i,pane in enumerate(self.panes):
             pane.dark=self.panes[0].dark;pane.setBackground(self.panes[0].backgroundBrush())
             pane.snap=self.active.snap if self.active else True
             pane.set_cursor_mode(self.active.cursor_mode if self.active else 'dual')
             pane.setMinimumHeight(230)
             pane.display_budget=12000/required
-            if i<required:self.grid.addWidget(pane,i//cols,i%cols)
+            if i<required:self.grid.addWidget(pane,*positions[i])
             # Reparenting into a visible layout hides newly created widgets.
             pane.setVisible(i<required)
         self.layout_name=name;self._apply_proportions();self.active=previous if previous in self.visible_panes() else self.panes[0];self.activeChanged.emit(self.active)
         self.navigate(self.navigation_mode);self.link()
         self.queue_canvas_alignment()
+        self._rebuild_dividers()
 
     def eventFilter(self,obj,event):
+        if obj is self.container and event.type() in (QtCore.QEvent.Type.Resize,QtCore.QEvent.Type.LayoutRequest):
+            self._position_dividers()
         if event.type()==QtCore.QEvent.Type.FocusIn and obj in self.panes:
             self.set_active(obj)
         return super().eventFilter(obj,event)
@@ -1140,21 +1430,125 @@ class PlotWorkspace(QtWidgets.QWidget):
             self._time_range_changed(source,source.getViewBox().viewRange()[0])
 
     def visible_panes(self):
-        rows,cols=LAYOUTS[self.layout_name]
-        return self.panes[:rows*cols]
+        return self.panes[:self.visible_count()]
+
+    @staticmethod
+    def _cursor_seconds_factor(pane):
+        from app_time_units import minute_factor
+        return minute_factor(pane.coordinate[1])*60
+
+    def _cursor_time_panes(self):
+        return [pane for pane in self.visible_panes() if pane.coordinate and pane.coordinate[0]=='time' and pane.ids]
+
+    def shared_cursor_positions(self,unit='min'):
+        """Return the one temporal A/B pair, expressed in a requested time unit."""
+        from app_time_units import minute_factor
+        state=getattr(self,'_shared_cursor_state',None)
+        if state is not None:return [position/(minute_factor(unit)*60) for position in state['positions_s']]
+        pane=self.active
+        if pane is None or not pane.coordinate or pane.coordinate[0]!='time':return None
+        factor=self._cursor_seconds_factor(pane)/(minute_factor(unit)*60)
+        return [float(line.value())*factor for line in pane.cursor_lines]
+
+    def _normalize_shared_cursors(self,pane,sender=None):
+        """Normalize against all plotted native clocks, never one short trace.
+
+        Binary search of each clock finds an actual source timestamp without a
+        global resample or concatenating million-sample arrays on every drag.
+        A secondary plot cannot re-snap the common cursor onto its own grid.
+        """
+        if not pane.coordinate or pane.coordinate[0]!='time':return False
+        temporal=self._cursor_time_panes()
+        channels=[];seen=set()
+        from app_time_units import minute_factor
+        for item in temporal:
+            for channel_id in item.ids:
+                channel=self.store.channels.get(channel_id)
+                if channel is not None and channel_id not in seen and len(channel.x):
+                    seen.add(channel_id)
+                    channels.append((channel,channel.values()[0],minute_factor(channel.coordinate_unit)*60))
+        if not channels:return False
+        factor=self._cursor_seconds_factor(pane)
+        seed=next((getattr(item,'_binding_shared_seed',None) for item in temporal
+                   if getattr(item,'_binding_shared_seed',None) is not None),None)
+        # Adding/rebinding a plot adopts the established pair and row locks;
+        # fit/axis-layout signals are not user requests for new cursor times.
+        if seed is not None:
+            values=list(seed['positions_s']);locks=[dict(lock) if lock else None for lock in seed['locks']]
+        else:
+            values=[float(line.value())*factor for line in pane.cursor_lines]
+            locks=[dict(lock) if lock else None for lock in pane.cursor_locks]
+        low=min(float(x[0])*scale for _,x,scale in channels)
+        high=max(float(x[-1])*scale for _,x,scale in channels)
+        # A single graph retains visible-range clamping. With linked viewports,
+        # their common range constrains the pair; independent viewports may
+        # display a shared cursor off-screen without changing its source time.
+        if seed is None and (len(temporal)==1 or self.time_axes_locked):
+            vl,vr=pane.getViewBox().viewRange()[0]
+            visible_low,visible_high=max(low,float(vl)*factor),min(high,float(vr)*factor)
+            if visible_low<=visible_high:low,high=visible_low,visible_high
+        moving=next((index for index,line in enumerate(pane.cursor_lines) if sender is line),None)
+        pane._normalizing=True
+        try:
+            for index,line in enumerate(pane.cursor_lines):
+                lock=locks[index]
+                channel=self.store.channels.get(lock.get('channel')) if lock else None
+                if channel is not None and channel.id in seen and len(channel.x):
+                    x=channel.values()[0];scale=minute_factor(channel.coordinate_unit)*60
+                    preferred=lock.get('index')
+                    sample=nearest_index(x,values[index]/scale,preferred) if moving==index and seed is None else locked_index(channel,lock)
+                    if sample is not None:
+                        lock['index']=sample;values[index]=float(x[sample])*scale
+                        line.setValue(values[index]/factor)
+                        continue
+                locks[index]=None
+                value=float(np.clip(values[index],low,high))
+                if pane.cycle_snap and pane.cycle_boundaries:
+                    candidates=np.asarray(pane.cycle_boundaries,dtype=float)*factor
+                    candidates=candidates[(candidates>=low)&(candidates<=high)]
+                    if len(candidates):value=float(candidates[np.argmin(np.abs(candidates-value))])
+                elif pane.snap:
+                    nearest=None
+                    for _,x,scale in channels:
+                        begin=int(np.searchsorted(x,low/scale,side='left'))
+                        end=int(np.searchsorted(x,high/scale,side='right'))
+                        if begin>=end:continue
+                        right=min(end-1,max(begin,int(np.searchsorted(x,value/scale,side='left'))))
+                        left=max(begin,right-1)
+                        for sample in (left,right):
+                            candidate=float(x[sample])*scale
+                            key=(abs(candidate-value),candidate)
+                            if nearest is None or key<nearest[0]:nearest=(key,candidate)
+                    if nearest is not None:value=nearest[1]
+                values[index]=value;line.setValue(value/factor)
+            pane.cursor_locks=locks
+            self._shared_cursor_state={'positions_s':values,'locks':[dict(lock) if lock else None for lock in locks]}
+        finally:pane._normalizing=False
+        return True
+
+    def sync_shared_cursors(self,source=None):
+        """Adopt one restored/native pair after all plot sources are ready."""
+        source=source or self.active
+        if source is None:return
+        if source.coordinate and source.coordinate[0]=='time':
+            factor=self._cursor_seconds_factor(source)
+            self._shared_cursor_state={'positions_s':[float(line.value())*factor for line in source.cursor_lines],
+                'locks':[dict(lock) if lock else None for lock in source.cursor_locks]}
+        self._cursors(source)
 
     def _cursors(self,pane):
         if self._syncing:return
         self._syncing=True
         try:
             for target in self.visible_panes():
-                if target is not pane and target.coordinate==pane.coordinate and self._temporal_group(pane) is not None:
+                if target is not pane and target.coordinate and target.coordinate[0]=='time' and self._temporal_group(pane) is not None:
                     target.cursor_locks=[dict(lock) if lock and lock['channel'] in self.store.channels else None for lock in pane.cursor_locks]
                     for index,lock in enumerate(target.cursor_locks):
                         target.cursor_lines[index].label.setFormat(('A','B')[index]+(' · '+channel_label(self.store,lock['channel']).replace('{','{{').replace('}','}}') if lock else ''))
                     target._synchronizing=True
                     try:
-                        for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(b.value())
+                        factor=self._cursor_seconds_factor(pane)/self._cursor_seconds_factor(target)
+                        for a,b in zip(target.cursor_lines,pane.cursor_lines):a.setValue(float(b.value())*factor)
                     finally:target._synchronizing=False
                     target.update_cursor_markers()
             self.measurementsChanged.emit()
@@ -1198,28 +1592,59 @@ class PlotWorkspace(QtWidgets.QWidget):
         self.link();self.measurementsChanged.emit()
 
     def set_visible(self,ids,visible):
+        ids=list(dict.fromkeys(id for id in ids if id in self.store.channels))
         if visible:
-            saved=[(pane,pane.state()) for pane in self.visible_panes() if pane.ids]
-            self.assign(ids)
+            # Restore prior views for hidden traces, while a newly chosen
+            # channel in a genuinely blank graph must still fit its data.
+            previous_homes={home[0] for channel_id in ids for home in self._hidden_assignments.get(channel_id,[])}
+            saved=[(pane,pane.state()) for pane in self.visible_panes() if pane.ids or pane in previous_homes]
+            pending=[];restore_by_pane={}
+            for channel_id in ids:
+                homes=[home for home in self._hidden_assignments.get(channel_id,[]) if home[0] in self.visible_panes()]
+                if not homes:
+                    if not any(channel_id in pane.ids for pane in self.visible_panes()):pending.append(channel_id)
+                    continue
+                for pane,axis,position in homes:
+                    restore_by_pane.setdefault(pane,[]).append((position,channel_id,axis))
+                self._hidden_assignments.pop(channel_id,None)
+            for pane,entries in restore_by_pane.items():
+                bindings=dict(pane.bindings);channel_ids=list(pane.ids)
+                for position,channel_id,axis in sorted(entries,key=lambda entry:entry[0]):
+                    bindings[channel_id]=axis
+                    if channel_id not in channel_ids:channel_ids.insert(min(position,len(channel_ids)),channel_id)
+                pane.bind(channel_ids,bindings,fit=False)
+            if pending:self.assign(pending)
             for pane,state in saved:pane.restore_ranges(state)
             self.measurementsChanged.emit()
         else:
             for pane in self.panes:
+                for channel_id in ids:
+                    if channel_id in pane.ids:
+                        homes=self._hidden_assignments.setdefault(channel_id,[])
+                        if not any(home[0] is pane for home in homes):homes.append((pane,pane.bindings.get(channel_id,self.store.channels[channel_id].unit),pane.ids.index(channel_id)))
                 for index,lock in enumerate(pane.cursor_locks):
                     if lock and lock['channel'] in ids:pane.cursor_locks[index]=None;pane.cursor_lines[index].label.setFormat(('A','B')[index])
             for pane in self.panes:pane.bind([id for id in pane.ids if id not in ids],pane.bindings,fit=False)
             self.link();self.measurementsChanged.emit()
 
     def refresh(self):
+        if not self.store.channels:
+            self._shared_cursor_state=None;self._hidden_assignments={}
         for pane in self.panes:
             pane.bind(pane.ids,pane.bindings,fit=False)
         self.link()
 
     def state(self):
-        return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'layout_proportions':self.layout_proportions,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
+        homes={channel_id:[{'pane':self.panes.index(pane),'binding':binding,'position':position} for pane,binding,position in entries if pane in self.panes]
+               for channel_id,entries in self._hidden_assignments.items() if channel_id in self.store.channels}
+        return {'time_axes_locked':self.time_axes_locked,'navigation_mode':self.navigation_mode,'layout_proportions':self.layout_proportions,'graph_grid':self.graph_grid,'hidden_assignments':homes,'statistics_scope':getattr(self,'statistics_scope','Cursor interval'),'layout':self.layout_name,'panes':[p.state() for p in self.panes],
                 'display_options':getattr(self,'display_options',{}),'playback_speed':getattr(self,'playback_speed',10),'active':self.panes.index(self.active)}
 
     def restore(self,state):
+        self.graph_grid=dict(state.get('graph_grid',{'positions':[[0,0]]}))
+        graph_positions(state)
+        self._hidden_assignments={}
+        self._shared_cursor_state=None
         self.layout_proportions=dict(state.get('layout_proportions',{}))
         self.display_options=dict(state.get('display_options',{}));self.playback_speed=float(np.clip(state.get('playback_speed',10),.1,128))
         mode=state.get('navigation_mode','pan');self.navigation_mode=mode if mode in ('x','y','xy','pan','cursor') else 'pan'
@@ -1230,9 +1655,20 @@ class PlotWorkspace(QtWidgets.QWidget):
         # Restoring into fresh panes avoids stale channel bindings.
         for pane in self.panes:self.grid.removeWidget(pane);pane.deleteLater()
         self.panes=[]
-        if len(state['panes'])>LAYOUTS[state['layout']][0]*LAYOUTS[state['layout']][1]:self.set_layout('10 panels' if len(state['panes'])>4 else '2×2')
+        # Retain every hidden historical pane without choosing a fixed ceiling.
+        while len(self.panes)<len(state['panes']):self.panes.append(self._new_pane())
         self.set_layout(state['layout'])
         for pane,saved in zip(self.panes,state['panes']):pane.restore(saved)
         self.active=self.panes[min(state.get('active',0),len(self.visible_panes())-1)]
+        for channel_id,entries in state.get('hidden_assignments',{}).items():
+            if channel_id not in self.store.channels or not isinstance(entries,list):continue
+            homes=[]
+            for entry in entries:
+                if isinstance(entry,dict) and isinstance(entry.get('pane'),int) and 0<=entry['pane']<len(self.panes):
+                    position=entry.get('position',len(self.panes[entry['pane']].ids))
+                    if not isinstance(position,int) or position<0:position=0
+                    homes.append((self.panes[entry['pane']],str(entry.get('binding',self.store.channels[channel_id].unit)),position))
+            if homes:self._hidden_assignments[channel_id]=homes
+        if hasattr(self,'sync_shared_cursors'):self.sync_shared_cursors(self.active)
         self.activeChanged.emit(self.active)
         self.link();self.measurementsChanged.emit()

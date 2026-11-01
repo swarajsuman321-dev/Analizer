@@ -10,7 +10,7 @@ from PySide6 import QtCore,QtGui,QtWidgets
 from app_channel_store import ChannelStore,Channel,Dataset
 from app_channel_portal import ChannelPortal
 from app_ingestion import ingest
-from app_plot_workspace import PlotWorkspace,LAYOUTS
+from app_plot_workspace import PlotWorkspace,LAYOUTS,graph_positions
 from app_signal_processing import formula,transform,UNIT_DEFINITIONS
 from app_workspace_io import save_workspace,load_workspace
 from app_qt_style import ThemeController
@@ -78,6 +78,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         for workspace in self.workspaces:
             workspace.measurementsChanged.connect(self.readouts)
             workspace.activeChanged.connect(self.workspace_changed)
+            if hasattr(workspace,'hoverValuesChanged'):
+                workspace.hoverValuesChanged.connect(lambda value,w=workspace:self.hover_values(w,value))
             workspace.setAcceptDrops(True);workspace.installEventFilter(self)
         self.tabs.currentChanged.connect(self.workspace_changed)
         self.docks={};self._build_portal();self._build_properties();self._build_readouts();self._build_math();self._build_table();self._build_engineering();self._build_toolbar();self._build_operation_status()
@@ -140,6 +142,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.signal_comparison=SignalComparisonControls(self)
         self.main_toolbar.insertAction(self.compare_data_action,self.signal_comparison.action)
         self.studio.submenus['Engineering'].addAction(self.signal_comparison.action)
+        from app_parameter_controls import ParameterAnalysisControls
+        self.parameter_analysis=ParameterAnalysisControls(self)
+        self.studio.submenus['Engineering'].addAction(self.parameter_analysis.action)
+        self.channel_menu.addAction(self.parameter_analysis.action)
+        self.import_options_action=QtGui.QAction('Import Text with Options…',self)
+        self.import_options_action.setToolTip('Review delimiter, header, decimal separator, encoding and native time column before importing tabular text')
+        self.import_options_action.triggered.connect(lambda:self.guard(lambda:self.open_data(import_options=True)))
+        self.channel_menu.addAction(self.import_options_action)
         before=next((action for action in self.main_toolbar.actions() if action.text()=='Calculate Channel'),None)
         self.main_toolbar.insertWidget(before,self.panel_folding.button)
         def fullscreen_icon(dark=None):
@@ -163,6 +173,54 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             button.setMenu(menu);button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
             self.fullscreen_menus.append(menu)
         self.panel_folding.apply_defaults(['Properties','Channel Math','Channel Table','Interval Measurements'])
+        from app_graph_controls import GraphControls
+        self.graph_controls=GraphControls(self)
+        for workspace in self.workspaces:
+            action=self.graph_controls.add_action
+            workspace.navigation_bar.insertAction(workspace.navigation_actions['x'],action)
+            widget=workspace.navigation_bar.widgetForAction(action)
+            widget.setMenu(self.graph_controls.menu)
+            widget.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.studio.submenus['Plot'].addMenu(self.graph_controls.menu)
+        self.tabs.setTabToolTip(0,'Plot recordings and inspect all selected signals with shared time cursors and one combined value table.')
+        self.tabs.setTabToolTip(1,'Compare chosen signals from one or more recordings. Choose any number of signals; one reference is compared with each candidate.')
+        from app_quick_signal_analysis import QuickSignalAnalysisControls
+        self.quick_analysis=QuickSignalAnalysisControls(self)
+        before=next((action for action in self.main_toolbar.actions() if action.text()=='Save workspace'),None)
+        self.main_toolbar.insertAction(before,self.quick_analysis.analyse_action)
+        self.main_toolbar.insertAction(before,self.quick_analysis.action)
+        self.studio.submenus['Engineering'].addAction(self.quick_analysis.analyse_action)
+        self.studio.submenus['Engineering'].addAction(self.quick_analysis.action)
+        self.studio.submenus['Engineering'].addAction(self.quick_analysis.setup_action)
+        self._fold_secondary_toolbar_controls()
+
+    def _fold_secondary_toolbar_controls(self):
+        """Keep plotting tasks visible; retain advanced controls in one menu.
+
+        The user requested a clean default surface. Existing actions/widgets
+        are moved into this menu, preserving signals, settings and shortcuts.
+        """
+        menu=QtWidgets.QMenu('More Tools',self)
+        self.secondary_tools_menu=menu
+        keep={'Open Data Files','Save workspace','Restore Workspace','Compare Selected Signals','Analyse Selected Signals'}
+        for action in tuple(self.main_toolbar.actions()):
+            widget=self.main_toolbar.widgetForAction(action)
+            if action.text() in keep or widget in (self.export_button,self.panel_folding.button):continue
+            if action.menu() is self.studio.menu:
+                self.main_toolbar.removeAction(action)
+                continue  # The Tools menu already has permanent menu-bar access.
+            self.main_toolbar.removeAction(action)
+            menu.addAction(action)
+            if widget is self.layout_combo:action.setText('Preset Graph Layout')
+            elif widget is self.cursor_combo:action.setText('Cursor Display')
+            elif widget is self.snap_checkbox:action.setText('Snap to Samples')
+        menu.addSeparator();menu.addAction(self.report_details_action)
+        menu.addAction(self.parameter_analysis.action)
+        menu.addAction(self.signal_comparison.action)
+        button=QtWidgets.QToolButton(self)
+        button.setText('More Tools');button.setAccessibleName('More tools and graph options')
+        button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup);button.setMenu(menu)
+        self.secondary_tools_button=button;self.main_toolbar.addWidget(button)
 
     def exit_graph_fullscreen(self):
         if hasattr(self,'workspace_fullscreen'):self.workspace_fullscreen.exit()
@@ -249,7 +307,7 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         self.cursor_caption=QtWidgets.QLabel();top=QtWidgets.QHBoxLayout();layout.addLayout(top);top.addWidget(self.cursor_caption,1)
         self.stats_scope=QtWidgets.QComboBox();self.stats_scope.addItems(['Cursor interval','Whole recording']);self.stats_scope.setToolTip('Scope for Min, Max and Average; A, B and Δ value always follow the cursors');top.addWidget(self.stats_scope);self.stats_scope.currentIndexChanged.connect(self.readouts)
         body=QtWidgets.QHBoxLayout();layout.addLayout(body)
-        self.readout=QtWidgets.QTableWidget(0,9);self.readout.setHorizontalHeaderLabels(['Channel','Unit','A','B','Match','Δ value','Min','Max','Average'])
+        self.readout=QtWidgets.QTableWidget(0,10);self.readout.setHorizontalHeaderLabels(['Channel','Unit','A','B','Match','Δ value','Min','Max','Average','At Mouse'])
         header=self.readout.horizontalHeader();header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch);header.setMinimumSectionSize(65)
         header.setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeMode.Interactive);self.readout.setColumnWidth(0,260)
         header.setSectionResizeMode(1,QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -273,12 +331,13 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
 
     def update_interval_card(self):
         import html
-        pane=self.active_workspace.active
-        measurements=pane.measurements()
-        keys=list(measurements);row=self.readout.currentRow()
+        rows=self.workspace_measurements()
+        keys=list(rows);row=self.readout.currentRow()
         if not keys:
             self.interval_card.setText('No channels selected');self.interval_card.setToolTip('');return
-        channel_id=keys[row if 0<=row<len(keys) else 0];c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurements[channel_id])
+        channel_id=keys[row if 0<=row<len(keys) else 0]
+        pane,measurement=rows[channel_id]
+        c=self.store.channels[channel_id];stats=self.statistics_for_display(pane,channel_id,measurement)
         def number(key):return f"{abs(stats[key]) if key in ('ΔX','ΔY') else stats[key]:.5g}" if np.isfinite(stats[key]) else '—'
         anchors=self.locked_cursor_texts(pane)
         from app_channel_identity import channel_label,channel_details
@@ -488,23 +547,38 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         path,_=open_file(self,'Choose recording',purpose=purpose)
         if path:field.setText(path)
 
-    def open_data(self,*,plot_import=True):
+    def open_data(self,*,plot_import=True,import_options=False):
         from app_dialog_history import open_files
-        self.mutate();paths,_=open_files(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json)',purpose='OpenData')
+        self.mutate();paths,_=open_files(self,'Open recordings','','Data (*.tdms *.csv *.txt *.xlsx *.xls *.zip *.parquet *.json);;All files (*)',purpose='OpenData')
         if not paths:return False
+        from app_reader_registry import reader_for,UnsupportedFormatError
+        from app_import_options import ImportOptionsDialog
+        options={}
+        for path in paths:
+            unsupported=False
+            try:reader_for(path)
+            except UnsupportedFormatError:unsupported=True
+            if unsupported or import_options:
+                dialog=ImportOptionsDialog(path,self,unsupported=unsupported)
+                if dialog.exec()!=QtWidgets.QDialog.DialogCode.Accepted:return False
+                options[path]=dialog.options()
         def load():
             from app_operation_context import checkpoint
             store=ChannelStore()
             for index,path in enumerate(paths):
-                checkpoint(f'Loading {Path(path).name} ({index+1}/{len(paths)})',index,len(paths));ingest(store,path);checkpoint()
+                checkpoint(f'Loading {Path(path).name} ({index+1}/{len(paths)})',index,len(paths));ingest(store,path,reader_options=options.get(path));checkpoint()
             return store
         workspace=self.active_workspace
         self.background(load,lambda other:self.finish_import(other,workspace,plot_import=plot_import),title='Opening recordings')
         return True
 
     def finish_import(self,other,workspace=None,*,plot_import=True):
-        if not other.channels:raise ValueError('No numeric measurement channels were found. Check the file format, coordinate column and unit settings.')
-        if self.review_tdms_import(other):self.merge_store(other,workspace,plot_import=plot_import)
+        if not other.datasets and not other.channels:raise ValueError('No source tables or measurement channels were found. Check the file format and import options.')
+        if self.review_tdms_import(other):
+            self.merge_store(other,workspace,plot_import=plot_import)
+            self.show_dock('Data Portal')
+            if not other.channels:
+                self.statusBar().showMessage('Recording imported. No numeric traces are available; use Analyse & Compare Recordings to review its categorical, empty or unsupported source fields.')
 
     def review_tdms_import(self,other):
         """Use one template contract for Open and Engineering Controls."""
@@ -607,18 +681,22 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                         if saved_locks[cursor] is None and lock and lock.get('channel') in self.store.channels:
                             saved_locks[cursor]=deepcopy(lock)
                             saved.setdefault('cursors',[0,0])[cursor]=now.get('cursors',[0,0])[cursor]
-            old_count=np.prod(LAYOUTS[state['layout']]);current_count=np.prod(LAYOUTS[current['layout']])
+            old_count=len(graph_positions(state));current_count=len(graph_positions(current))
             if current_count>=old_count:
                 state['layout']=current['layout'];state['active']=current.get('active',0);state['layout_proportions']=current.get('layout_proportions',{})
+                if current.get('layout')=='Custom':state['graph_grid']=deepcopy(current.get('graph_grid',[]))
             if additional:
                 for extra in additional:
                     empty=next((index for index,pane in enumerate(panes) if not pane.get('ids')),None)
                     if empty is None:panes.append(extra)
                     else:panes[empty]=extra
                 required=max(index+1 for index,pane in enumerate(panes) if pane.get('ids'))
-                choices=[(rows*cols,name) for name,(rows,cols) in LAYOUTS.items() if rows*cols>=required]
-                if not choices:raise ValueError('Undo needs another viewport for a different coordinate domain. Save your current work or close an unused pane before retrying.')
-                state['layout']=min(choices)[1]
+                choices=[(rows*cols,name) for name,(rows,cols) in LAYOUTS.items() if name!='Custom' and rows*cols>=required]
+                if state.get('layout')=='Custom' or not choices:
+                    positions=[list(position) for position in graph_positions(state)]
+                    while len(positions)<required:positions.append([max((position[0] for position in positions),default=-1)+1,0])
+                    state['layout']='Custom';state['graph_grid']={'positions':positions}
+                else:state['layout']=min(choices)[1]
         current_ui=self.ui_state()
         current_ui['selection']=list(dict.fromkeys(current_ui.get('selection',[])+ui.get('selection',[])))
         if current_ui.get('source') is None:current_ui['source']=ui.get('source')
@@ -878,6 +956,50 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             for workspace in self.workspaces:workspace.statistics_scope=self.stats_scope.currentText()
         if hasattr(self,'readout_timer') and not self.readout_timer.isActive():self.readout_timer.start(16)
 
+    def workspace_measurements(self):
+        """One source-qualified value table for the complete temporal workspace.
+
+        A trace repeated in two graphs appears once. Frequency/sample-domain
+        panes retain their own coordinate semantics when deliberately selected.
+        """
+        workspace=self.active_workspace;active=workspace.active
+        panes=workspace.visible_panes()
+        if active is not None and active.coordinate and active.coordinate[0]!='time':
+            panes=[active]
+        else:
+            panes=[pane for pane in panes if pane.coordinate and pane.coordinate[0]=='time']
+            if not panes and active is not None:panes=[active]
+        rows={}
+        for pane in panes:
+            try:measurements=pane.measurements()
+            except KeyError:continue
+            for channel_id,stats in measurements.items():
+                if channel_id in self.store.channels:rows.setdefault(channel_id,(pane,stats))
+        return rows
+
+    def hover_values(self,workspace,state):
+        """Update only the live mouse column; cursor positions remain untouched."""
+        if workspace is not self.active_workspace:return
+        self._hover_values={record.get('channel',record.get('channel_id')):record for record in (state or {}).get('values',[])}
+        for row in range(self.readout.rowCount()):
+            item=self.readout.item(row,0)
+            if item is not None:self._mouse_readout_cell(row,item.data(QtCore.Qt.ItemDataRole.UserRole))
+
+    def _mouse_readout_cell(self,row,channel_id):
+        record=getattr(self,'_hover_values',{}).get(channel_id,{})
+        value=record.get('value',record.get('y'));channel=self.store.channels.get(channel_id)
+        if isinstance(value,(int,float,np.number)) and np.isfinite(value):
+            if channel is not None and channel.attributes.get('actuator_binary'):
+                from app_actuators import state_text
+                text=state_text(value)
+            else:text=f'{value:.6g}'
+        else:text='Unknown' if record else '—'
+        cell=QtWidgets.QTableWidgetItem(text)
+        cell.setToolTip(str(record.get('reason') or ('Native sample '+str(record.get('index',record.get('source_index','')))+' at '+str(record.get('x','')))))
+        color=record.get('color')
+        if color:cell.setForeground(QtGui.QColor(color))
+        self.readout.setItem(row,9,cell)
+
     def statistics_for_display(self,pane,channel_id,stats):
         if self.stats_scope.currentIndex()==0:return stats
         channel=self.store.channels[channel_id]
@@ -908,17 +1030,24 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
         a,b=[line.value() for line in pane.cursor_lines]
         pane_number=self.active_workspace.panes.index(pane)+1
         coordinate=pane.coordinate or ('No channels selected','')
-        self.cursor_caption.setText(f'Active pane {pane_number} · {coordinate[0]} ({coordinate[1]}) &nbsp; <span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
+        shared=(coordinate[0]=='time' or (pane.coordinate is None and any(p.coordinate and p.coordinate[0]=='time' for p in self.active_workspace.visible_panes()))) and hasattr(self.active_workspace,'shared_cursor_positions')
+        if shared:a,b=self.active_workspace.shared_cursor_positions('min')
+        caption='All time graphs · min' if shared else f'Graph {pane_number} · {coordinate[0]} ({coordinate[1]})'
+        self.cursor_caption.setText(f'{caption} &nbsp; <span style="color:{CURSOR_COLORS[0]};background:#182033;padding:4px"><b>A</b> {a:.6g}</span> &nbsp; <span style="color:{CURSOR_COLORS[1]};background:#182033;padding:4px"><b>B</b> {b:.6g}</span>')
         self.cursor_caption.setWordWrap(True)
         if hasattr(self,'studio'):
-            live=self.studio.live_readout(pane,a)
+            live=self.studio.live_readout(pane,pane.cursor_lines[0].value())
             if live:self.cursor_caption.setText(self.cursor_caption.text()+' &nbsp; '+live)
-        try:measurements=pane.measurements()
-        except KeyError:return
+        rows=self.workspace_measurements()
+        measurements={channel_id:stats for channel_id,(_,stats) in rows.items()}
+        selected_item=self.readout.item(self.readout.currentRow(),0)
+        selected_id=selected_item.data(QtCore.Qt.ItemDataRole.UserRole) if selected_item is not None else None
+        readout_blocker=QtCore.QSignalBlocker(self.readout)
         self.readout.setRowCount(len(measurements));self.intervals.setRowCount(len(measurements))
         self.readout.setColumnHidden(4,not any(match_color(self.store.channels[id].attributes.get('match_percent')) for id in measurements))
         def display(value):return f'{value:.6g}' if np.isfinite(value) else 'Unknown'
         for row,(id,interval_stats) in enumerate(measurements.items()):
+            pane=rows[id][0]
             stats=self.statistics_for_display(pane,id,interval_stats)
             c=self.store.channels[id]
             from app_channel_identity import channel_label,channel_details
@@ -929,12 +1058,14 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
                 cells[2]=state_text(stats['A']);cells[3]=state_text(stats['B']);cells[5]=cells[2]+' → '+cells[3];cells[6]=state_text(stats['Min']);cells[7]=state_text(stats['Max']);cells[8]=f"{100*stats['Mean']:.4g}% ON" if np.isfinite(stats['Mean']) else 'Unknown'
             for col,text in enumerate(cells):
                 item=QtWidgets.QTableWidgetItem(text);item.setToolTip(channel_details(self.store,c)+'\n'+text)
+                if col==0:item.setData(QtCore.Qt.ItemDataRole.UserRole,id)
                 if col in (2,3):
                     item.setForeground(QtGui.QColor(CURSOR_COLORS[col-2]));item.setBackground(QtGui.QColor('#182033'))
                 if col==4:
                     color=match_color(c.attributes.get('match_percent'))
                     if color:item.setBackground(QtGui.QColor(color));item.setForeground(QtGui.QColor('#101828'))
                 self.readout.setItem(row,col,item)
+            self._mouse_readout_cell(row,id)
             labels=['ΔX','ΔY','Mean','RMS','Min','Max','Peak-to-Peak','Slope','Integral','Coverage']
             measure_unit=c.coordinate_unit
             physical=c.unit or 'Unknown unit'
@@ -942,6 +1073,8 @@ class AdvancedStudioWindow(QtWidgets.QMainWindow):
             self.intervals.setItem(row,0,QtWidgets.QTableWidgetItem(label))
             for col,(label,unit) in enumerate(zip(labels,units),1):self.intervals.setItem(row,col,QtWidgets.QTableWidgetItem(display(interval_stats[label])+' '+unit))
 
+        if selected_id in measurements:self.readout.setCurrentCell(list(measurements).index(selected_id),0)
+        del readout_blocker
         self.update_interval_card()
 
     def engineering_import(self,paths,calculate,complete):

@@ -20,6 +20,10 @@ class PluginManager:
         self.custom_kpi_hooks=[];self.custom_plot_hooks=[];self.custom_sync_hooks={}
         self.patch_errors={};self.patch_descriptions={};self._loaded_modules={};self.patch_states={}
         self.logger=logging.getLogger('appliance_signal_studio')
+        from app_parameter_analytics import capability_registry
+        self.parameter_registry=capability_registry().clone()
+        from app_parameter_comparison import comparator_registry
+        self.comparator_registry=comparator_registry().clone()
 
     @staticmethod
     def valid_name(name):
@@ -33,7 +37,19 @@ class PluginManager:
         with atomic_output(self.config) as temporary:Path(temporary).write_text(json.dumps(states,indent=2),encoding='utf-8')
         self.patch_states=states
 
+    def register_analyser(self,definition,function):
+        """Register a numerical method from explicitly installed trusted code."""
+        return self.parameter_registry.register(definition,function,trusted=True)
+
+    def register_comparator(self,definition,function):
+        """Register an auditable pair comparer from trusted installed code."""
+        return self.comparator_registry.register(definition,function,trusted=True)
+
     def reload(self):
+        from app_parameter_analytics import capability_registry
+        self.parameter_registry=capability_registry().clone()
+        from app_parameter_comparison import comparator_registry
+        self.comparator_registry=comparator_registry().clone()
         self.custom_kpi_hooks.clear();self.custom_plot_hooks.clear();self.custom_sync_hooks.clear()
         for name,module in self._loaded_modules.items():
             if sys.modules.get(name) is module:sys.modules.pop(name,None)
@@ -81,6 +97,10 @@ class PluginManager:
         filename = os.path.basename(filepath)
         original_kpi, original_plot, original_sync = self.custom_kpi_hooks, self.custom_plot_hooks, self.custom_sync_hooks
         before_kpi, before_plot, before_sync = list(original_kpi), list(original_plot), dict(original_sync)
+        original_registry=self.parameter_registry
+        before_registry=original_registry.snapshot()
+        original_comparators=self.comparator_registry
+        before_comparators=original_comparators.snapshot()
         digest = hashlib.sha256(os.path.abspath(filepath).encode('utf-8')).hexdigest()[:16]
         name = f'appliance_signal_patch_{digest}'
         module = None
@@ -118,9 +138,17 @@ class PluginManager:
                     or any(index >= len(self.custom_plot_hooks) or self.custom_plot_hooks[index] is not hook
                            for index, hook in enumerate(before_plot))):
                 raise ValueError('A plugin cannot remove or overwrite hooks registered by another plugin.')
+            if self.parameter_registry is not original_registry:
+                raise ValueError('A plugin cannot replace the analyser registry.')
+            self.parameter_registry.validate_extension(before_registry)
+            if self.comparator_registry is not original_comparators:
+                raise ValueError('A plugin cannot replace the comparator registry.')
+            self.comparator_registry.validate_extension(before_comparators)
             if (len(self.custom_kpi_hooks) == len(before_kpi) and len(self.custom_plot_hooks) == len(before_plot)
-                    and len(self.custom_sync_hooks) == len(before_sync)):
-                raise ValueError('register_patch must add at least one sync, plot, or KPI hook.')
+                    and len(self.custom_sync_hooks) == len(before_sync)
+                    and len(self.parameter_registry.entries()) == len(before_registry)
+                    and len(self.comparator_registry.entries()) == len(before_comparators)):
+                raise ValueError('register_patch must add at least one sync, plot, KPI hook, analyser, or comparator.')
             registered_kpi, registered_plot, registered_sync = list(self.custom_kpi_hooks), list(self.custom_plot_hooks), dict(self.custom_sync_hooks)
             self.custom_kpi_hooks, self.custom_plot_hooks, self.custom_sync_hooks = original_kpi, original_plot, original_sync
             original_kpi[:] = registered_kpi
@@ -131,6 +159,10 @@ class PluginManager:
             self.logger.info("Plugin '%s' registered", filename)
             return True
         except (Exception, SystemExit) as exc:
+            self.parameter_registry=original_registry
+            original_registry.restore(before_registry)
+            self.comparator_registry=original_comparators
+            original_comparators.restore(before_comparators)
             self.custom_kpi_hooks, self.custom_plot_hooks, self.custom_sync_hooks = original_kpi, original_plot, original_sync
             original_kpi[:] = before_kpi
             original_plot[:] = before_plot

@@ -1,3 +1,8 @@
+> **Archived, unfinished development branch.** This checkout is an alternate
+> implementation, not the published v2.5.0 app. Read [ARCHIVED_WIP.md](ARCHIVED_WIP.md)
+> and the [current handover](https://github.com/swarajsuman321-dev/Analizer/blob/docs/handover-2026-11-01/docs/HANDOVER_2026-11-01.md).
+> The release instructions below describe this branch's historical baseline.
+
 # Appliance Signal Studio 2.4.3
 
 A standalone Qt workbench for recording import, channel analysis and reporting.

@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "id": "force_fixture",
+  "category": "Synthetic force fixture",
+  "metadata": {
+    "description": "Example of a new domain and role using existing generic numerical operations. All values and names are synthetic; this is not an acceptance specification."
+  },
+  "domains": [
+    {"id": "mechanical_fixture", "name": "Mechanical fixture", "dimensions": ["force"]}
+  ],
+  "roles": [
+    {
+      "id": "clamping_force",
+      "name": "Clamping force",
+      "domain": "mechanical_fixture",
+      "structures": ["analog"],
+      "dimensions": ["force"],
+      "operations": ["min", "max", "mean", "rms"]
+    }
+  ],
+  "channels": [
+    {
+      "id": "clamp_front",
+      "name": "Front clamp force",
+      "aliases": ["Synthetic force"],
+      "mapping": {
+        "schema_version": 2,
+        "structure": "analog",
+        "role": "clamping_force",
+        "domain": "mechanical_fixture",
+        "instance": "front",
+        "signal_kind": "measurement",
+        "unit": "N",
+        "dimension": "force",
+        "encoding": {"stored_values": "engineering"},
+        "authority": {"kind": "heuristic", "source": "Synthetic role example; confirm per source", "version": "1", "reviewed": false}
+      }
+    }
+  ],
+  "operations": [{"id": "mean", "version": "1"}, {"id": "max", "version": "1"}],
+  "kpis": [
+    {"id": "maximum_force", "name": "Maximum clamp force", "channel": "clamp_front", "op": "max", "unit": "N"},
+    {"id": "mean_force", "name": "Mean clamp force", "channel": "clamp_front", "op": "mean", "unit": "N"}
+  ],
+  "phases": [],
+  "acceptance": {},
+  "tolerances": {},
+  "calibrations": {},
+  "anomalies": []
+}

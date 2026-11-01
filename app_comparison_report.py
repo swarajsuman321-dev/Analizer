@@ -74,9 +74,8 @@ def _snapshot_hash(channel):
 
 
 def visible_views(workspace):
-    from app_plot_workspace import LAYOUTS
-    rows, columns = LAYOUTS[workspace['layout']]
-    return list(workspace['panes'][:rows*columns])
+    from app_plot_workspace import workspace_panes
+    return [pane for _,pane in workspace_panes(workspace)]
 
 
 def _source_rows(store, ids):
@@ -249,7 +248,7 @@ def _excel_value(value):
     return str(value), None
 
 
-def write_workbook(path, data, summary, evidence, tables, scorecard=None):
+def write_workbook(path, data, summary, evidence, tables, scorecard=None, *, base_frames=None):
     """Stream complete evidence rows with bounded Excel-cell memory.
 
     A realistic comparison has millions of cells. Building a normal worksheet
@@ -263,7 +262,7 @@ def write_workbook(path, data, summary, evidence, tables, scorecard=None):
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
 
-    frames = {'Active interval': data, 'Cursor summary': summary}
+    frames = {'Active interval': data, 'Cursor summary': summary} if base_frames is None else dict(base_frames)
     if scorecard is not None:
         frames['Comparison'] = scorecard
     frames.update(tables)
@@ -508,9 +507,11 @@ def _paired_plot(pages, pair,store,colors):
                       fontsize=8, color=MUTED, parse_math=False)
 
 
-def _workspace_plots(pages, store, workspace, colors):
+def _workspace_plots(pages, store, workspace, colors, metadata=None):
     from app_fast_plot import EnvelopeCache
     from app_time_units import minute_factor
+    from app_report_appearance import include_cursor_lines
+    show_cursors=include_cursor_lines(metadata)
     for pane_number, view in enumerate(visible_views(workspace), 1):
         if not view['ids']:
             pages.page('2. Graphs', f'Pane {pane_number}')
@@ -560,8 +561,8 @@ def _workspace_plots(pages, store, workspace, colors):
                 axis.set_xlim(bounds[0]*factor,bounds[1]*factor)
                 axis.set_xlabel('Time (min)' if channel.coordinate_kind=='time' else
                                f'{channel.coordinate_kind} ({channel.coordinate_unit})',parse_math=False)
-                if view.get('cursor_mode','dual')!='off':
-                    for index, lock in enumerate(view.get('cursor_locks', [])[:2]):
+                if show_cursors and view.get('cursor_mode','dual')!='off':
+                    for index, lock in enumerate(view.get('cursor_locks', [])[:1 if view.get('cursor_mode')=='point' else 2]):
                         if lock and lock.get('channel')==id and len(x):
                             sample=int(np.clip(lock['index'],0,len(x)-1))
                             value=y[sample]
@@ -570,7 +571,7 @@ def _workspace_plots(pages, store, workspace, colors):
                             axes[key].scatter([x[sample]*factor],[value], c=[CURSOR_COLORS[index]], s=35, zorder=6)
             primary=store.channels[ids[0]]
             factor=minute_factor(primary.coordinate_unit) if primary.coordinate_kind=='time' else 1
-            if view.get('cursor_mode','dual')!='off':
+            if show_cursors and view.get('cursor_mode','dual')!='off':
                 for index, position in enumerate(view.get('cursors', [])[:1 if view.get('cursor_mode')=='point' else 2]):
                     color=CURSOR_COLORS[index]
                     axis.axvline(position*factor,color=color,linestyle='--',linewidth=1.3)
@@ -629,7 +630,7 @@ def render_comparison_pdf(path, store, workspace, evidence, summary, scorecard=N
             pages.paragraph(row['fingerprint_method'],size=8)
             pages.paragraph(row.get('source_sha256') or 'Source file SHA-256 not available',size=8)
         if pair and pair.get('status')=='compared':_paired_plot(pages,pair,store,colors)
-        _workspace_plots(pages,store,workspace,colors)
+        _workspace_plots(pages,store,workspace,colors,metadata)
         pages.page('3. Measurements and differences','All selected channel intervals')
         pages.paragraph('A/B and B−A follow each pane’s actual cursor positions and original sample locks. Min/Max/Average scope follows the selected statistics scope. Coverage and RMS retain the active-interval calculation policy; timing quality is listed separately.',size=8)
         for row in summary.to_dict('records'):

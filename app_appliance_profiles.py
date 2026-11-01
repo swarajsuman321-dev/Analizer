@@ -11,6 +11,9 @@ ROOT=Path(__file__).resolve().parent/'profiles'
 
 
 def validate_profile(record):
+    if isinstance(record,dict) and record.get('schema_version')==2:
+        from app_parameter_profiles import validate_profile_v2
+        return validate_profile_v2(record)
     if not isinstance(record,dict) or record.get('schema_version')!=1:raise ValueError('Unsupported appliance profile schema; expected 1')
     allowed={'schema_version','id','category','metadata','domains','channels','phases','kpis','tolerances','acceptance','anomalies','calibrations','extensions'}
     if set(record)-allowed:raise ValueError('Unknown profile keys: '+', '.join(sorted(set(record)-allowed)))

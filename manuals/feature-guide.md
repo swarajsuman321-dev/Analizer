@@ -1,7 +1,7 @@
 # Versioned manual source
 
 Each topic records the first version that supports it. For the current unpublished
-draft, run `python scripts/build_manuals.py 2.4.2` after changing this source.
+draft, run `python scripts/build_manuals.py 2.5.0` after changing this source.
 Keep published version manuals unchanged.
 
 ## Quick start | 2.1.0
@@ -783,3 +783,92 @@ These are user-provided notes. Entering a reviewer name does not digitally sign 
 Review the page estimate after choosing scope and optional notes. Readable pagination may add pages for comparison results, cursor evidence or long reviewed text; the report is not forced into exactly four pages. The established Analysis regression fixture remains the baseline for a concise default summary, rather than a universal page count for every data combination.
 
 The complete companion workbook and JSON retain the detailed results, source fingerprints, mappings, quality/coverage, definitions and configuration; the event CSV retains every original event. Data-quality gaps remain distinct from demonstrated appliance faults. Unconfigured or unsupported results retain their reasons and next actions. Manual notes and deviation colours do not invent acceptance limits or turn missing evidence into a pass.
+
+## Plot first with a simpler toolbar | 2.5.0
+
+1. Choose **Open Data Files**. After loading, **Data Portal** is brought forward so the signal checkboxes are accessible.
+2. Check signals to show them. Select rows to choose signals for operations; Ctrl/Shift selects several rows. Each recording retains its own Select All/Deselect All control.
+3. Use the one navigation bar beside **Analysis / Comparison** for zoom, pan, reset, cursor locks and fullscreen.
+4. Use **Analyse Selected Signals** to measure the chosen signals, or **Compare Selected Signals** to compare one reference with each other chosen signal.
+5. Choose **Export Report** for the current plots, or open the complete reports prepared by an explicit analysis/comparison action.
+
+The main toolbar keeps these plotting and reporting tasks visible. **More Tools** holds preset layouts, cursor display, sample snapping, theme, appearance and retained specialist commands. The permanent **Tools** menu and **Panels** button remain available. Properties, Channel Math, Channel Table and Interval Measurements start folded; their settings and contents are retained. Engineering Controls remains available in its existing dock tab. Saved workspace layouts take precedence over the new defaults.
+
+## Add and arrange your own graphs | 2.5.0
+
+Click **Add Graph** in the graph header to create a blank graph below the selected graph. Its arrow menu offers **Add Graph to the Right**, **Remove Selected Graph** and **Move Graph Up / Down / Left / Right**. Click a graph to select it, then double-click channels in Data Portal to add them there. Already checked channels can be added deliberately to another graph without switching their file checkbox off and on.
+
+Drag the dividers between rows or columns to resize the graphs. **Save workspace** keeps the custom positions, proportions and channel assignments. Fixed Single/split/grid/stacked presets remain available through **More Tools → Preset Graph Layout**; they are optional starting arrangements rather than the only possible graph counts.
+
+Removing a graph removes that viewport, not its source channels. Use **Close Dataset** when you intend to unload a complete recording. Unchecking and rechecking a file's channels restores their prior graph assignments where those graphs still exist, instead of crowding every trace into the active graph.
+
+## One shared cursor pair and all signal values | 2.5.0
+
+Time-based graphs share one cyan **A** (`#00D2FF`) and orange **B** (`#FF9F1C`) pair. Move either cursor in any split to update all time graphs and one combined **Readout** table. A line is rendered in each canvas so the same time position can be followed through the split layout. A short or late-starting signal shows **Unknown** outside its supported range; it does not pull the shared cursor onto its own endpoint.
+
+**Snap to Samples** selects real recorded timestamps across the visible time signals. Each other signal uses its own native observations and supported interpretation. **Lock Cursors…** can anchor a cursor to a chosen channel's sample; the lock value, source and index remain inspectable while other signals follow that time. Left/Right steps A; Shift+Left/Right steps B. Adding, rebinding or resetting graphs retains established cursor positions and locks.
+
+The combined Readout includes every visible compatible time signal once, with Channel, Unit, A, B, optional Match, signed value change, Min, Max, Average and **At Mouse**. Select a row for that signal's interval detail. **Cursor interval / Whole recording** changes the displayed range statistics; A/B values still follow the shared positions. Frequency and sample-index plots retain their own coordinate domains rather than receiving invented minute positions.
+
+**F11** shows all visible graphs and their combined time-signal values. The Active Graph selector chooses where navigation acts; it does not remove the other graphs from the combined table. **Shift+F11** deliberately shows only the selected graph and its values. Esc returns.
+
+## Hover across every visible signal | 2.5.0
+
+Move the mouse over a graph to inspect a common time across compatible split graphs. Each available trace receives a colored native-observation marker on its own value axis, and **At Mouse** in Readout shows its value. Hover evidence includes the source sample index, timestamp, unit and any missing-data reason. The mouse coordinate and the nearest recorded observation remain distinct; markers do not invent interpolated state codes or borrow a distant endpoint across unknown support.
+
+The fixed two-line Mouse X/Y strip remains outside the canvas. Its complete text is available through its tooltip/accessibility text and the value table; no large data popup covers the curves. Missing values, unsupported gaps and points outside a channel's recording show Unknown. Leaving the graphs clears hover markers/readings without moving A or B. The strip height stays stable while navigating.
+
+## CSV timestamp text literals and import options | 2.5.0
+
+CSV exports may store timestamps as ordinary strings or spreadsheet text literals, for example `="2026-01-02 10:20:30.123"`. Timestamp parsing removes only this complete quoted literal wrapper in its parsing projection. It does not evaluate formulas, run source expressions or replace the original source cells. Fractional seconds are retained. Open, engineering import and native inventory use the same interpretation; elapsed graph time is displayed in minutes.
+
+Separate Date/Time columns can form one clock. Invalid, duplicate or backward timestamps remain visible in source evidence; usable plotting projections can sort observations while preserving original row references. No usable clock means sample-domain analysis, not an assumed one-second logger.
+
+Choose **Channel → Import Text with Options…** to review delimiter, header row, decimal separator, encoding, time column, coordinate unit and acquisition policy. An unknown extension offers explicit **Import as Text** options rather than silently treating arbitrary binary bytes as CSV. Numeric values can plot; text/metadata and unsupported structured fields remain accounted for in the advanced source inventory.
+
+## Analyse signals or compare three and more | 2.5.0
+
+**Analysis** is for plotting, cursor inspection and independent measurements. **Comparison** keeps a separate plot arrangement for chosen signals from the same or different recordings. Opening its tab alone does not infer matching parameters or choose a reference.
+
+Select signal rows in Data Portal. If no rows are selected, the quick commands use signals currently visible in the active workspace. **Analyse Selected Signals** reports independent measurements, observed events and within-recording actuator overlap. It uses the current Cursor interval / Whole recording scope for time data and leaves the Analysis plot arrangement in place. It does not calculate reference-versus-candidate differences.
+
+**Compare Selected Signals** accepts two, three or more signals and places them in Comparison. The first signal in the selection's portal order is the reference; each remaining signal is compared with it. Use **Tools → Engineering Diagnostics → Choose Comparison Signals & Timing…** to choose a different reference, original versus elapsed coordinates, whole recording versus the shared native A–B interval, and maximum supported gap. The direct comparison defaults to whole-recording elapsed time from each recording's start. Late-starting channels retain their delay within the recording.
+
+Review **Summary** first, then expand Measurements, Comparisons, Inventory, Readiness & Quality or Events for the exact source evidence. The action prepares a uniquely named PDF, workbook and JSON together in the remembered report folder. Cancellation/failure retains prior complete outputs. **Compare Two Signals** remains under More Tools for the retained pair-specific workflow; it is no longer the primary comparison limit.
+
+Differences are Candidate minus Reference. Units, interpretation and support must be compatible; incompatible comparisons explain why. Raw-number differences do not certify a common physical meaning, calibration, test context or Pass/Fail decision. Relative percentages are withheld for zero/unsafe baselines, offset temperatures and opaque codes; duty changes use percentage points.
+
+## Measure arbitrary actuator overlap | 2.5.0
+
+1. Select actuator channels from the same recording. Confirm their **Properties → Value interpretation** when the source names or codes are ambiguous.
+2. For an ON/OFF interpretation, finite zero is OFF and finite nonzero integers are ON. Missing, infinite or fractional readings remain Unknown. Numeric sensors and opaque enums do not inherit this rule merely because they contain integers.
+3. Choose **Analyse Selected Signals**. The Summary shows available ON duration and duty, pairwise ON-together duration, any-selected-ON duration, all-selected-ON duration and all-selected-OFF duration.
+4. Inspect known shared support and reasons before interpreting an overlap. Pairwise totals use that pair's shared known support; all-selected totals use support shared by every selected actuator.
+
+States are held on supported half-open intervals `[start, end)`. A gap is not OFF. Activity already present at the start or still present at the end is censored; a state after a gap does not prove a newly observed physical start. Sampled transitions retain observation brackets. The automatic quick-analysis gap limit is three times each signal's median positive interval; use the timing chooser when the acquisition contract requires another limit.
+
+Overlap describes simultaneous observations within an original recording. Elapsed-aligned valves from unrelated recordings are separate histories, not physically simultaneous actuators. A command does not establish actual valve position, flow or delivered litres. Unknown shared support produces an unavailable duration rather than a false zero.
+
+## Clean exported plots and optional cursor annotations | 2.5.0
+
+Exported plots hide cursor lines, labels and lock markers by default. Cursor times, values, active interval and statistics remain in the report evidence. On-screen cursors, locks and navigation are unchanged.
+
+For an annotated export, open **More Tools → Report Details & Conclusions…**, check **Include cursor lines in exported plots**, then Save. Save the workspace to retain this preference and report notes. Turning on-screen cursors off is not required to prepare a clean report. The existing PDF/PNG and engineering/comparison export routes use the same export-only preference.
+
+Reports use four readable main sections with continuation pages when needed. Parameter reports contain run context, source/aligned plots and available event/stage timelines, measurements/comparisons, then quality/inventory/readiness. Complete Excel and strict JSON evidence retain source identities, every record, unavailable reasons, native support, matching decisions and provenance. Plot reduction does not change computed extrema, event counts or durations. The PDF summarizes supplied computed values; it does not recalculate them or invent conclusions.
+
+## Optional inventory, reviewed meanings and extensible analysis | 2.5.0
+
+Ordinary plotting and quick analysis do not require a mapping wizard. Use **More Tools → Analyse & Compare Recordings…** when reviewing an unfamiliar source, encoded signal or reusable physical interpretation.
+
+1. Inspect **All Source Fields**. Clocks, status companions, text, metadata, empty/all-invalid fields and unsupported vector/complex structures receive an explicit disposition rather than disappearing.
+2. Select a field and choose **Review Selected Field…**. Structure, role/instance/location/function, command/feedback, unit, stored raw-versus-engineering encoding, transform authority and acquisition policy are separate settings.
+3. Confirm documented meaning, decoding, scaling and timing. Unknown fields still receive useful raw/sample-domain results; unknown physics does not become RPM, litres, seconds or energy.
+4. Use **Template Compatibility** for a documented schema, device family and firmware family. Compatible source declarations can reuse the saved review. For a later file lacking those declarations, **Use Saved Source Family…** is an explicit user choice; encoding compatibility is still checked. New or changed fields remain reviewable.
+5. Under **Reviewed Field Pairing**, add and confirm compatible field pairs. Choose baseline, native scope and alignment, then **Analyse & Prepare Report**. Matching names alone do not confirm a pair or a reusable scale.
+
+The immutable original arrays feed a versioned result bundle shared by UI/PDF/Excel/JSON. Reviewed transforms are applied once; stored engineering values skip raw decoding/scaling, while supported unit conversion remains explicit. Source function names are inert metadata. Schema-1 profiles and old TDMS display templates remain readable; they are not silently promoted into physical calibration authority.
+
+The repository's **Plot, analyse and compare recordings** guide contains the metric/availability dictionary, migration notes, a synthetic custom-force profile and a trusted median-absolute-deviation analyser example. New roles using existing operations belong in a validated profile/template. New mathematics can be registered through a deliberately installed trusted Python extension; source data never loads Python code.
+
+Generic/quick results default to acceptance **Not Evaluated**. Established engineering reporting retains configured acceptance rules. Unsupported physical meanings, incomplete time support, calibration curves, controller phase codes, completion boundaries and success criteria require applicable evidence; no manufacturer values are supplied automatically.

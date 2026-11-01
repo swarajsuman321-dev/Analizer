@@ -28,10 +28,16 @@ MANUAL_WINDOWS_CHECKS = [
     'Long-running acquisition-sized workloads and antivirus policy interaction',
 ]
 
+PLOT_FIRST_CHECK_IDS = frozenset({
+    'CSV-LITERAL-NATIVE-TIMESTAMPS', 'SHARED-CURSORS-ALL-SPLIT-VALUES',
+    'FREE-GRAPHS-ARRANGE-RESTORE', 'ALL-SIGNAL-HOVER-NATIVE-VALUES',
+    'MULTI-SIGNAL-COMPARE-VALVE-OVERLAP', 'CLEAN-TOOLS-CURSOR-FREE-EXPORT',
+})
+
 # This finite contract inventory prevents a green but accidentally shortened
 # runner from satisfying a release gate simply by retaining its category labels.
 # New checks may be added without weakening any of the already approved ones.
-REQUIRED_CHECK_IDS = frozenset({
+REQUIRED_CHECK_IDS = PLOT_FIRST_CHECK_IDS | frozenset({
     'REAL-FIXTURE-INTEGRITY-IMPORT', 'ALL-15-FILE-COMBINATIONS',
     'PER-FILE-CHECKBOX-AND-CLOSE-DATASET', 'TDMS-FIRST-REVIEW-REUSE-UNKNOWN-ONLY',
     'SYNTHETIC-SOURCE-EDGE-CASES', 'LOCKED-SAMPLE-MARKER-HUD-EXPORT-RESTORE',
@@ -852,13 +858,13 @@ def _run_workbench(recorder, samples, output):
                 for _ in range(2):events()
                 assert controller.pane is first
                 assert {controller.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)
-                        for row in range(controller.readout.rowCount())} == set(first.ids)
+                        for row in range(controller.readout.rowCount())} == set(first.ids+second.ids)
                 controller.pane_selector.setCurrentIndex(1)
                 for _ in range(2):events()
                 assert controller.pane is second
                 rows = {controller.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole): row
                         for row in range(controller.readout.rowCount())}
-                assert set(rows) == set(second.ids)
+                assert set(rows) == set(first.ids+second.ids)
                 assert controller.readout.item(rows[speed.id], 2).text() == f'{y[sample]:.6g}'
                 workspace.navigation_actions['x'].trigger()
                 before_x = np.array(second.getViewBox().viewRange()[0])
@@ -898,7 +904,7 @@ def _run_workbench(recorder, samples, output):
                     'units': ['°C', 'Pa', 'RPM', 'state'], 'hover_canvas_rectangles': checked_geometries,
                     'fixed_hover_geometry': True, 'same_container_panes_curves_and_grid_restored': True,
                     'cursor_A_source_index': sample+1, 'shared_X_zoom_ratio': .8,
-                    'active_pane_values_and_raw_sources_preserved': True}
+                    'all_visible_values_and_raw_sources_preserved': True}
         recorder.check('REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE', complete_workspace_fullscreen,
                        'graph_fullscreen', requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
 
@@ -1387,7 +1393,9 @@ def _run_workbench(recorder, samples, output):
                     'adopted_ranges': adopted, 'restored_ranges': bounds, 'drawing_heights': heights,
                     'paint_settle_passes': paint_passes, 'time_pixel_alignment': pixel_checks,
                     'scroll_maximum': workspace.scroll.verticalScrollBar().maximum()}
-        for layout in LAYOUTS:
+        # Custom graphs have an explicit position inventory and their own
+        # arrangement/resize/restore gate below, rather than a fixed-grid shape.
+        for layout in (name for name in LAYOUTS if name != 'Custom'):
             for theme in ('Dark', 'Light'):
                 for size in ((1024, 680), (1536, 960)):
                     recorder.check(f'LAYOUT-{layout}-{theme}-{size[0]}',
@@ -1629,6 +1637,8 @@ def _run_workbench(recorder, samples, output):
         recorder.check('SOURCE-FILES-UNCHANGED', sources_unchanged, 'real_recordings',
                        requires=('REAL-FIXTURE-INTEGRITY-IMPORT',))
         window.grab().save(str(output/'accepted-workspace.png'))
+        window.hide()
+        _run_plot_first_acceptance(recorder, output/'plot-first')
     except Exception:
         recorder.result['runner_errors'].append({'id': recorder.current, 'error': traceback.format_exc()})
         recorder.save()
@@ -1638,3 +1648,323 @@ def _run_workbench(recorder, samples, output):
             events()
             QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
         sys.excepthook = old_hook
+
+
+def _run_plot_first_acceptance(recorder, output):
+    """Finite synthetic contracts run inside the actual packaged application.
+
+    These checks exercise the public user routes on a fresh workbench. They do
+    not replace the real-recording gates, source-data checks or platform limits
+    above. Fixtures here are deliberately small and synthetic so every edition
+    can retain the same evidence without publishing a user's current recording.
+    """
+    from copy import deepcopy
+    from unittest.mock import patch
+    import numpy as np
+    import pandas as pd
+    from PySide6 import QtCore, QtGui, QtWidgets, QtTest
+    from app_channel_store import Channel, ChannelStore, Dataset
+    from app_ingestion import ingest
+    from app_parameter_inventory import inventory_runs, source_field
+    from app_plot_workspace import PlotWorkspace
+    from app_presentation import CURSOR_COLORS
+    from app_quick_signal_analysis import analyse_selected_signals
+    from app_workbench import AdvancedStudioWindow
+    from app_workspace_io import save_workspace, load_workspace, render_report
+
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    window = AdvancedStudioWindow()
+    window.resize(1280, 900)
+    window.move(0, 0)
+    window.show()
+    window.activateWindow()
+    workspace = window.dashboard
+    context = {}
+
+    def events(repeats=1):
+        for _ in range(repeats):
+            app.processEvents()
+            QtTest.QTest.qWait(25)
+            app.processEvents()
+
+    def add_source(name, x, y, *, unit='V', coordinate_unit='min', actuator=False,
+                   dataset=None):
+        attributes = {'actuator_binary': actuator,
+                      'plot_style': {'color': '#075985'}}
+        return window.store.add(Channel(name, np.asarray(x, float), np.asarray(y, float),
+            unit='state' if actuator else unit, kind='discrete' if actuator else 'analog',
+            coordinate_unit=coordinate_unit, dataset_id=dataset.id if dataset else '',
+            source='synthetic://plot-first-acceptance', attributes=attributes))
+
+    def literal_csv():
+        path = output/'synthetic-literal-clock.csv'
+        # Exact ISO syntax wrapped as an inert Excel text literal. Millisecond
+        # spacing is deliberately unequal so row-index timing cannot pass.
+        path.write_text('datetime,Probe,Auxiliary\n'
+            '"=""2026-01-01 10:00:00.123""",3,8\n'
+            '"=""2026-01-01 10:00:00.221""",4,9\n'
+            '"=""2026-01-01 10:00:00.324""",5,10\n', encoding='utf-8-sig')
+        imported = ChannelStore()
+        ingest(imported, path)
+        assert len(imported.channels) == 2 and len(imported.datasets) == 1
+        dataset = next(iter(imported.datasets.values()))
+        original = dataset.frame.iloc[0, 0]
+        assert original == '="2026-01-01 10:00:00.123"'
+        expected = np.array([0, .098, .201])
+        for channel in imported.channels.values():
+            assert channel.coordinate_kind == 'time' and channel.coordinate_unit == 'min'
+            np.testing.assert_allclose(channel.x*60, expected, rtol=0, atol=1e-9)
+        field = next(field for run in inventory_runs(imported) for field in run['fields']
+                     if field['original_name'] == 'Probe')
+        native = source_field(imported, field)
+        np.testing.assert_allclose(native['x'], expected, rtol=0, atol=1e-9)
+        from app_data import extract_datetime_series
+        parsed = extract_datetime_series(dataset.frame, fallback=False)
+        np.testing.assert_allclose((parsed-parsed.iloc[0]).dt.total_seconds(), expected,
+                                   rtol=0, atol=1e-9)
+        window.finish_import(imported)
+        events(2)
+        assert not window.docks['Data Portal'].visibleRegion().isEmpty()
+        return {'rows': 3, 'measurement_channels': 2, 'milliseconds_preserved': True,
+                'source_literal_preserved': True, 'Open_engineering_native_clocks_agree': True}
+
+    def shared_split_values():
+        long = add_source('Full-span probe', np.arange(11.), np.arange(11.)*10)
+        short = add_source('Short-span probe', [3, 4, 5, 6], [30, 40, 50, 60])
+        workspace.set_layout('Single')
+        first = workspace.active
+        first.bind([long.id])
+        second = workspace.add_graph('below')
+        second.bind([short.id])
+        workspace.link()
+        first.setXRange(0, 10, padding=0)
+        first.cursor_lines[0].setValue(4)
+        second.cursor_lines[1].setValue(9)
+        events(2)
+        assert workspace.shared_cursor_positions('min') == [4, 9]
+        for pane in (first, second):
+            np.testing.assert_allclose([line.value() for line in pane.cursor_lines], [4, 9])
+        assert np.isnan(second.measurements()[short.id]['B']), 'Short data became extrapolated'
+        window._readouts()
+        for active in (first, second):
+            workspace.set_active(active)
+            window._readouts()
+            rows = {window.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole): row
+                    for row in range(window.readout.rowCount())}
+            assert set(rows) == {long.id, short.id}, 'Selecting a graph hid other split values'
+            assert window.readout.item(rows[long.id], 2).text() == '40'
+            assert window.readout.item(rows[long.id], 3).text() == '90'
+            assert window.readout.item(rows[short.id], 2).text() == '40'
+            assert window.readout.item(rows[short.id], 3).text() == 'Unknown'
+        context.update(long=long, short=short, first=first, second=second)
+        return {'graphs': 2, 'shared_A_B_min': [4, 9], 'combined_rows': 2,
+                'out_of_source_support': 'Unknown', 'source_values_verified': True}
+
+    def freely_arranged_graphs():
+        first, second = context['first'], context['second']
+        window.graph_controls.add_action.trigger()
+        events(2)
+        blank = workspace.active
+        assert blank.ids == [] and workspace.visible_count() == 3
+        positions = list(workspace.positions())
+        assert workspace.move_graph(blank, 'right')
+        assert workspace.positions() != positions
+        assert first.ids == [context['long'].id] and second.ids == [context['short'].id]
+        # Leave actual stretchable height beyond each graph's readable minimum.
+        # A scroll container with every row already at that minimum has no
+        # neighbouring space to redistribute until it is enlarged.
+        window.resize(1280, 1400)
+        events(3)
+        divider = next(item for item in workspace._dividers if item.orientation == 'rows')
+        before_height = first.height()
+        ranges = [deepcopy(pane.getViewBox().viewRange()) for pane in workspace.visible_panes()]
+        center = divider.rect().center()
+        global_center = divider.mapToGlobal(center)
+        QtTest.QTest.mousePress(divider, QtCore.Qt.MouseButton.LeftButton, pos=center)
+        move = QtGui.QMouseEvent(QtCore.QEvent.Type.MouseMove,
+            QtCore.QPointF(center.x(), center.y()+80),
+            QtCore.QPointF(global_center.x(), global_center.y()+80),
+            QtCore.Qt.MouseButton.NoButton, QtCore.Qt.MouseButton.LeftButton,
+            QtCore.Qt.KeyboardModifier.NoModifier)
+        app.sendEvent(divider, move)
+        QtTest.QTest.mouseRelease(divider, QtCore.Qt.MouseButton.LeftButton, pos=center)
+        events(4)
+        assert first.height() > before_height+30, 'The actual graph divider did not resize rows'
+        for pane, expected in zip(workspace.visible_panes(), ranges):
+            np.testing.assert_allclose(pane.getViewBox().viewRange(), expected, rtol=0, atol=1e-7)
+        workspace.set_visible([context['short'].id], False)
+        workspace.set_visible([context['short'].id], True)
+        assert second.ids == [context['short'].id] and first.ids == [context['long'].id]
+        state = deepcopy(workspace.state())
+        path = save_workspace(output/'custom-layout.json', window.store, [state], {})
+        restored, views, _ = load_workspace(path)
+        clone = PlotWorkspace(restored)
+        try:
+            clone.restore(views[0])
+            assert clone.positions() == workspace.positions()
+            assert clone.layout_proportions == workspace.layout_proportions
+            assert [pane.ids for pane in clone.visible_panes()] == [pane.ids for pane in workspace.visible_panes()]
+        finally:
+            clone.close()
+            clone.deleteLater()
+            events()
+        count = workspace.visible_count()
+        assert workspace.remove_graph(blank)
+        assert workspace.visible_count() == count-1
+        assert context['long'].id in window.store.channels and context['short'].id in window.store.channels
+        window.resize(1280, 900)
+        events(2)
+        return {'custom_graphs_saved': 3, 'blank_graph_added': True,
+                'move_resize_remove': True, 'source_placement_and_ranges_preserved': True,
+                'JSON_NPZ_roundtrip': True}
+
+    def native_hover_values():
+        first, second = context['first'], context['second']
+        workspace.set_layout('Vertical split')
+        first, second = workspace.visible_panes()
+        pressure = add_source('Pressure probe', [0, 2, 4, 6, 8, 10], [0, 200, 400, 600, 800, 1000], unit='Pa')
+        valve = add_source('Valve command', [0, 3, 6, 10], [0, 1, 0, 0], actuator=True)
+        first.bind([context['long'].id, pressure.id])
+        second.bind([context['short'].id, valve.id])
+        first.setXRange(0, 10, padding=0)
+        events(2)
+        before = deepcopy(workspace.state())
+        window._readouts()
+        point = first.getViewBox().mapViewToScene(QtCore.QPointF(4, 40))
+        first._mouse_hover((point,))
+        events(2)
+        values = {row['channel']: row for row in workspace.hover_values['values']}
+        expected = {context['long'].id: 40, pressure.id: 400,
+                    context['short'].id: 40, valve.id: 1}
+        assert set(values) == set(expected)
+        for channel_id, value in expected.items():
+            assert values[channel_id]['available'] and values[channel_id]['y'] == value
+            assert values[channel_id]['index'] is not None and values[channel_id]['x'] is not None
+        for pane in (first, second):
+            assert set(pane.hover_markers) == set(pane.ids)
+            for channel_id, (view, marker) in pane.hover_markers.items():
+                assert view is pane.curves[channel_id][0]
+                assert marker.opts['brush'].color().name() == pane.curves[channel_id][1].pen.color().name()
+            assert not hasattr(pane, 'hover_label'), 'Hover obscures the plot with a popup'
+        assert workspace.hover_readout.height() == 48
+        assert workspace.state() == before
+        rows = {window.readout.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole): row
+                for row in range(window.readout.rowCount())}
+        assert window.readout.item(rows[pressure.id], 9).text() == '400'
+        assert window.readout.item(rows[valve.id], 9).text() == 'ON'
+        first.clear_hover()
+        assert workspace.hover_values is None
+        assert all(window.readout.item(row, 9).text() == '—' for row in range(window.readout.rowCount()))
+        return {'visible_signals': 4, 'native_values_indices_and_times': True,
+                'independent_axis_marker_colors': True, 'fixed_hover_height': 48,
+                'all_split_mouse_column': True, 'cursor_and_plot_state_unchanged': True}
+
+    def multi_signal_and_valves():
+        dataset = Dataset('Synthetic shared recording', pd.DataFrame({'Clock': np.arange(8.)}),
+                          'synthetic://multi-signal-acceptance')
+        window.store.datasets[dataset.id] = dataset
+        analog = [add_source('Numeric signal '+str(index), [0, 1, 2],
+                    [index, index+1, index+2], unit='W', coordinate_unit='s', dataset=dataset)
+                  for index in range(3)]
+        raw = [(channel.x, channel.y, channel.x.copy(), channel.y.copy()) for channel in analog]
+        comparison = analyse_selected_signals(window.store, [channel.id for channel in analog], mode='comparison')
+        pointwise = [row for row in comparison['comparisons'] if row['comparison_type'].startswith('common_window')]
+        assert len(comparison['inventory']) == 3 and len(comparison['pairings']) == len(pointwise) == 2
+        for row, expected in zip(pointwise, [1, 2]):
+            assert row['status'] == 'computed'
+            np.testing.assert_allclose([row['mean_bias'], row['mae'], row['rmse']], [expected]*3, rtol=0, atol=1e-12)
+        times = np.arange(8.)
+        valves = [add_source('Valve '+str(index), times,
+                    np.where((times >= index) & (times < index+3), 128., 0.),
+                    coordinate_unit='s', actuator=True, dataset=dataset)
+                  for index in (1, 2, 3)]
+        analysis = analyse_selected_signals(window.store, [channel.id for channel in valves], mode='analysis')
+        assert analysis['kind'] == 'analysis' and analysis['comparisons'] == []
+        for valve in valves:
+            own = {row['metric_id']: row for row in analysis['metrics'] if row.get('field_id') == valve.id}
+            assert own['state.on_duration_s']['value'] == 3
+            assert own['state.rising_count']['value'] == 1
+        overlap = analysis['actuator_overlaps'][0]
+        assert overlap['all_on_duration_s'] == 1 and overlap['union_duration_s'] == 5
+        assert overlap['shared_supported_duration_s'] == 7
+        pair = next(row for row in overlap['overlaps'] if row['field_ids'] == [valves[0].id, valves[1].id])
+        assert pair['duration_s'] == 2 and pair['supported_duration_s'] == 7
+        for channel, (original_x, original_y, x, y) in zip(analog, raw):
+            assert channel.x is original_x and channel.y is original_y
+            np.testing.assert_array_equal(channel.x, x)
+            np.testing.assert_array_equal(channel.y, y)
+        from app_parameter_report import export_parameter_report
+        outputs = export_parameter_report(output/'three-signals.pdf', comparison)
+        for key in ('pdf', 'workbook', 'evidence'):
+            assert Path(outputs[key]).is_file() and Path(outputs[key]).stat().st_size > 100
+        evidence = json.loads(Path(outputs['evidence']).read_text(encoding='utf-8'))
+        assert evidence['metrics'] == comparison['metrics'] and evidence['comparisons'] == comparison['comparisons']
+        context['analog'] = analog
+        return {'selected_signals': 3, 'reference_vs_candidates': 2,
+                'signed_biases': [1, 2], 'valve_ON_s_each': [3, 3, 3],
+                'pair_overlap_s': 2, 'all_overlap_s': 1, 'union_s': 5,
+                'shared_support_s': 7, 'analysis_comparison_distinct': True,
+                'PDF_XLSX_JSON_share_completed_values': True}
+
+    def clean_tools_and_exports():
+        from matplotlib.figure import Figure
+        from app_report_appearance import CURSOR_LINES_OPTION
+        primary = [action.text() for action in window.main_toolbar.actions() if action.isVisible()]
+        assert 'Compare Selected Signals' in primary and 'Analyse Selected Signals' in primary
+        assert 'Compare Two Signals' not in primary and 'Calculate Channel' not in primary
+        assert window.signal_comparison.action in window.secondary_tools_menu.actions()
+        assert window.parameter_analysis.action in window.secondary_tools_menu.actions()
+        assert window.secondary_tools_button.isVisible()
+        assert window.graph_controls.add_action in workspace.navigation_bar.actions()
+        workspace.set_layout('Single')
+        pane = workspace.active
+        pane.bind([context['analog'][0].id])
+        pane.set_cursor_mode('dual')
+        pane.snap = False
+        pane.setXRange(0, 2, padding=0)
+        pane.cursor_lines[0].setValue(.5)
+        pane.cursor_lines[1].setValue(1.5)
+        events(2)
+        before = deepcopy(workspace.state())
+        original_save = Figure.savefig
+        captured = []
+        def save(figure, *args, **kwargs):
+            overlays = [line for axis in figure.axes for line in axis.lines
+                        if line.get_color() in CURSOR_COLORS and line.get_linestyle() == '--']
+            labels = [item.get_text() for axis in figure.axes for item in axis.texts
+                      if item.get_text().startswith(('A ', 'B '))]
+            captured.append({'lines': len(overlays), 'labels': len(labels)})
+            return original_save(figure, *args, **kwargs)
+        statistics = []
+        with patch.object(Figure, 'savefig', save):
+            for show in (False, True):
+                path = output/('cursors-shown.png' if show else 'cursor-free.png')
+                statistics.append(render_report(path, window.store, before,
+                    metadata={CURSOR_LINES_OPTION: show}))
+                assert path.is_file() and path.stat().st_size > 1000
+        assert captured == [{'lines': 0, 'labels': 0}, {'lines': 2, 'labels': 2}]
+        pd.testing.assert_frame_equal(pd.DataFrame(statistics[0]), pd.DataFrame(statistics[1]))
+        assert workspace.state() == before
+        assert all(line.isVisible() for line in pane.cursor_lines)
+        window.grab().save(str(output/'plot-first-workspace.png'))
+        return {'secondary_tools_retained': True, 'clean_primary_actions': primary,
+                'default_export_cursor_lines': 0, 'opt_in_cursor_lines': 2,
+                'cursor_times_and_statistics_unchanged': True, 'live_cursors_retained': True}
+
+    try:
+        events(2)
+        recorder.check('CSV-LITERAL-NATIVE-TIMESTAMPS', literal_csv, 'plot_first')
+        recorder.check('SHARED-CURSORS-ALL-SPLIT-VALUES', shared_split_values, 'plot_first')
+        recorder.check('FREE-GRAPHS-ARRANGE-RESTORE', freely_arranged_graphs, 'plot_first',
+                       requires=('SHARED-CURSORS-ALL-SPLIT-VALUES',))
+        recorder.check('ALL-SIGNAL-HOVER-NATIVE-VALUES', native_hover_values, 'plot_first',
+                       requires=('SHARED-CURSORS-ALL-SPLIT-VALUES',))
+        recorder.check('MULTI-SIGNAL-COMPARE-VALVE-OVERLAP', multi_signal_and_valves, 'plot_first')
+        recorder.check('CLEAN-TOOLS-CURSOR-FREE-EXPORT', clean_tools_and_exports, 'plot_first',
+                       requires=('MULTI-SIGNAL-COMPARE-VALVE-OVERLAP',))
+    finally:
+        window.close()
+        events()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)

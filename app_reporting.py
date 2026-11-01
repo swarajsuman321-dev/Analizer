@@ -39,10 +39,10 @@ def match_scorecard(score):
 
 
 def interval_tables(store,workspace):
-    from app_plot_workspace import LAYOUTS
-    rows,cols=LAYOUTS[workspace['layout']];frames=[];summary=[]
-    for pane_number,view in enumerate(workspace['panes'][:rows*cols],1):
-        checkpoint('Collecting active interval samples',pane_number-1,rows*cols)
+    from app_plot_workspace import workspace_panes
+    shown=workspace_panes(workspace);frames=[];summary=[]
+    for pane_number,(_,view) in enumerate(shown,1):
+        checkpoint('Collecting active interval samples',pane_number-1,len(shown))
         a,b=view.get('cursors',[0,0]);low,high=sorted((a,b))
         for channel_id in view['ids']:
             c=store.channels[channel_id];x,y=c.values();locks=view.get('cursor_locks',[]);mask=interval_rows(c,a,b,locks)
@@ -114,5 +114,5 @@ def export_report(path,store,workspace,scorecard=None,*,title='Signal analysis r
                             cell=sheet.cell(row,column);color=match_color(cell.value)
                             if color:cell.fill=PatternFill('solid',fgColor=color.lstrip('#'));cell.number_format='0.0"%"'
                 literal_workbook_text(writer.book)
-        else:render_report(temporary,store,workspace,title=title,scorecard=scorecard)
+        else:render_report(temporary,store,workspace,title=title,scorecard=scorecard,metadata=metadata)
     return data,summary

@@ -4,7 +4,9 @@ The entire existing graph container moves between scroll areas. Plot panes,
 curves, axis bindings, cursor/sample identities and layout weights are never
 copied or rebound. The selected-graph controller remains a separate capability.
 """
-from PySide6 import QtCore, QtWidgets
+import math
+
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from app_graph_fullscreen import GraphFullscreenController, _alive
 
@@ -13,8 +15,8 @@ class WorkspaceFullscreenController(GraphFullscreenController):
     """A reversible fullscreen host for every visible pane in one workspace.
 
     The proven fullscreen navigation and measurement widgets are shared with
-    selected-graph fullscreen. Clicking another pane changes the live readout;
-    it never hides the other plots or forces the previous pane active again.
+    selected-graph fullscreen. Clicking another pane chooses navigation focus;
+    one shared A/B pair and a combined value table inspect all temporal panes.
     """
     def __init__(self, window):
         super().__init__(window)
@@ -33,18 +35,21 @@ class WorkspaceFullscreenController(GraphFullscreenController):
         self.fullscreen_window.setObjectName('workspaceFullscreenWindow')
         self.graph_scroll.setObjectName('fullscreenWorkspaceGraphs')
         self.exit_button.setAccessibleName('Exit Fullscreen Workspace')
-        self.readout.setAccessibleName('Live active graph cursor values and range statistics')
+        self.readout.setAccessibleName('Shared cursor and mouse values for all plotted time-based graphs')
+        self.readout.setColumnCount(11)
+        self.readout.setHorizontalHeaderItem(10,QtWidgets.QTableWidgetItem('At Mouse'))
+        self.readout.horizontalHeader().setSectionResizeMode(10,QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         selector_row = QtWidgets.QWidget(self.readout_panel)
         row = QtWidgets.QHBoxLayout(selector_row)
         row.setContentsMargins(0, 0, 0, 0)
-        label = QtWidgets.QLabel('Values for', selector_row)
+        label = QtWidgets.QLabel('Active graph', selector_row)
         self.pane_selector = QtWidgets.QComboBox(selector_row)
         self.pane_selector.setObjectName('fullscreenActiveGraph')
         self.pane_selector.setMinimumContentsLength(18)
         self.pane_selector.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.pane_selector.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
-        self.pane_selector.setAccessibleName('Graph for live cursor values')
-        self.pane_selector.setToolTip('Click a graph, or choose it here, to inspect its cursor values and interval statistics. All graphs remain visible.')
+        self.pane_selector.setAccessibleName('Active graph for navigation')
+        self.pane_selector.setToolTip('Choose the graph to navigate. One shared A/B pair and the value table cover all plotted time-based graphs. Sample and frequency graphs retain their own coordinates.')
         label.setBuddy(self.pane_selector)
         row.addWidget(label)
         row.addWidget(self.pane_selector, 1)
@@ -129,6 +134,7 @@ class WorkspaceFullscreenController(GraphFullscreenController):
                         self.fullscreen_window.addAction(action)
                         self._extra_shortcuts.append(action)
             self._connect(workspace.measurementsChanged, self.queue_readouts)
+            self._connect(workspace.hoverValuesChanged, self._hover_values_changed)
             self._connect(workspace.activeChanged, self._keep_selected_pane)
             self._connect(self.window.tabs.currentChanged, self._keep_selected_workspace)
             for pane in panes:
@@ -146,6 +152,7 @@ class WorkspaceFullscreenController(GraphFullscreenController):
             QtWidgets.QApplication.instance().installEventFilter(self)
             self._pane_selector_signature = None
             self._workspace_hover_pane = None
+            for pane in panes:pane.clear_hover()
             self._pane_hover_changed(self.pane, None)
             self.refresh_readouts()
             host.showFullScreen()
@@ -229,7 +236,51 @@ class WorkspaceFullscreenController(GraphFullscreenController):
         self.pane_selector.setCurrentIndex(panes.index(self.pane))
         del blocker
         super().refresh_readouts()
-        self.interval_caption.setAccessibleDescription('Values and statistics for graph '+str(panes.index(self.pane)+1))
+        temporal=self.pane.coordinate is None or self.pane.coordinate[0]=='time'
+        if temporal:
+            self.interval_caption.setText(self.interval_caption.text()+'\nAll plotted time-based channels')
+        self.interval_caption.setAccessibleDescription('One shared A/B pair; all plotted time-based graphs are included once. Non-temporal graphs retain their own coordinates.')
+        self.readout.setAccessibleDescription('No channels selected' if not self.readout.rowCount() else
+            ('Shared cursor readings, interval statistics and live mouse values for all plotted time-based graphs.' if temporal else
+             'Selected non-temporal graph values; no physical time is inferred.'))
+        self._hover_values_changed(getattr(self.workspace,'hover_values',None))
+
+    def _readout_rows(self,pane):
+        """Use the same combined measurement source as the normal workbench."""
+        if self.window.active_workspace is self.workspace and hasattr(self.window,'workspace_measurements'):
+            return self.window.workspace_measurements()
+        panes=self.workspace.visible_panes()
+        if pane.coordinate and pane.coordinate[0]!='time':panes=[pane]
+        else:
+            panes=[item for item in panes if item.coordinate and item.coordinate[0]=='time'] or [pane]
+        rows={}
+        for item in panes:
+            if any(id not in item.store.channels for id in item.ids):continue
+            for id,stats in item.measurements().items():rows.setdefault(id,(item,stats))
+        return rows
+
+    def _hover_values_changed(self,payload):
+        """Refresh only passive mouse cells; never move A/B or resize plots."""
+        if not self.is_active:return
+        records={record.get('channel',record.get('channel_id')):record for record in (payload or {}).get('values',[])}
+        for row in range(self.readout.rowCount()):
+            identity=self.readout.item(row,0)
+            if identity is None:continue
+            id=identity.data(QtCore.Qt.ItemDataRole.UserRole);record=records.get(id)
+            value=record.get('value',record.get('y')) if record else None
+            channel=self.window.store.channels.get(id)
+            valid=isinstance(value,(int,float)) and math.isfinite(value)
+            if valid and channel is not None and channel.attributes.get('actuator_binary'):
+                from app_actuators import state_text
+                text=state_text(value)
+            else:text=f'{value:.6g}' if valid else ('Unknown' if record else '—')
+            cell=QtWidgets.QTableWidgetItem(text)
+            cell.setData(QtCore.Qt.ItemDataRole.UserRole,id)
+            if record:
+                cell.setToolTip(str(record.get('reason') or
+                    ('Native sample '+str(record.get('index',record.get('source_index','')))+' at '+str(record.get('x',''))+' '+str(record.get('coordinate_unit','')))))
+                if record.get('color'):cell.setForeground(QtGui.QColor(record['color']))
+            self.readout.setItem(row,10,cell)
 
     def _structure_changed(self):
         if not self.is_active:

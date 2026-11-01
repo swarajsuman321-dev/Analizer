@@ -404,11 +404,25 @@ def normalize_program_stage_series(series):
         result[~finite & label_mask] = stage
     return pd.Series(result, index=values.index, name=values.name, dtype=float)
 
+def timestamp_text(target):
+    """Normalise inert spreadsheet text literals for timestamp parsing only.
+
+    Some acquisition exporters write ``="2026-01-01 12:00:00.123"`` so Excel
+    displays all digits. This is a quoted text literal, not a date format.
+    Unwrap only that complete, single-line form; never evaluate expressions or
+    alter the preserved source column. Other formula-looking cells remain text
+    and are rejected by the ordinary timestamp parser.
+    """
+    text = target.astype('string').str.strip()
+    literal = text.str.extract(r'^="([^"\r\n]*)"$', expand=False)
+    return text.where(literal.isna(), literal)
+
+
 def _parse_timestamp_column(target, column_name, unit_hint='', excel=False):
     """Parse absolute timestamps, elapsed units and clock rollover consistently."""
     if pd.api.types.is_datetime64_any_dtype(target):
         return pd.to_datetime(target, errors='coerce', utc=True).dt.tz_localize(None)
-    text = target.astype('string').str.strip()
+    text = timestamp_text(target)
     numeric = pd.to_numeric(text, errors='coerce')
     present = text.notna() & text.ne('')
     if present.any() and numeric.notna().sum() >= present.sum() * 0.8:
@@ -459,8 +473,8 @@ def extract_datetime_series(df, fallback=True):
     date_col = next((c for c, name in names.items() if name in ('date', 'datum', 'day', 'tag')), None)
     time_col = next((c for c, name in names.items() if name in ('time', 'zeit', 'uhrzeit')), None)
     if date_col is not None and time_col is not None:
-        clocks = df[time_col].astype('string').str.strip()
-        clock_numbers = pd.to_numeric(df[time_col], errors='coerce')
+        clocks = timestamp_text(df[time_col])
+        clock_numbers = pd.to_numeric(clocks, errors='coerce')
         is_excel = df.attrs.get('source_format') == 'excel'
         parsed_dates = _parse_timestamp_column(df[date_col], date_col, excel=is_excel).dt.normalize()
         if is_excel and clock_numbers.notna().any() and clock_numbers.dropna().between(0, 1).all():

@@ -576,8 +576,8 @@ class StudioTools(QtCore.QObject):
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         fig=Figure();workspace=self.window.active_workspace
-        from app_plot_workspace import LAYOUTS
-        rows,cols=LAYOUTS[workspace.layout_name];axes=list(fig.subplots(rows,cols,squeeze=False).flat)
+        rows,cols=workspace.shape();grid=fig.add_gridspec(rows,cols)
+        axes=[fig.add_subplot(grid[row,column]) for row,column in workspace.positions()]
         for axis,pane in zip(axes,workspace.visible_panes()):
             for id in pane.ids:
                 c=self.window.store.channels[id];x,y=c.values();axis.plot(x,y,label=channel_label(self.window.store,c))

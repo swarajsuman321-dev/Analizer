@@ -219,7 +219,7 @@ class DataComparisonControls(QtCore.QObject):
         candidates = list(dict.fromkeys((workspace.layout_name, 'Horizontal split', '2×2', '10 panels')))
         for name in candidates:
             rows, columns = LAYOUTS[name]
-            count = rows * columns
+            count = current_count if name == workspace.layout_name else rows * columns
             if count < max(current_count, minimum):
                 continue
             slots = [workspace.panes[index].coordinate if index < len(workspace.panes) and workspace.panes[index].ids else None

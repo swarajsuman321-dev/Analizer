@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/swarajsuman321-dev/Analizer/profiles/parameter-profile-v2.schema.json",
+  "title": "Appliance Signal Studio extensible parameter profile schema 2",
+  "description": "Declarative domains, roles and bounded operations. app_parameter_profiles.validate_profile_v2 additionally checks registered dimensions, unit compatibility, operation prerequisites and legacy consumers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "category", "domains", "roles", "channels"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "id": {"$ref": "#/$defs/identifier"},
+    "category": {"type": "string", "minLength": 1},
+    "metadata": {"type": "object"},
+    "domains": {"type": "array", "items": {"$ref": "#/$defs/domain"}},
+    "roles": {"type": "array", "items": {"$ref": "#/$defs/role"}},
+    "channels": {"type": "array", "items": {"$ref": "#/$defs/channel"}},
+    "operations": {
+      "type": "array", "items": {
+        "type": "object", "additionalProperties": false, "required": ["id"],
+        "properties": {"id": {"$ref": "#/$defs/operation"}, "version": {"const": "1"}}
+      }
+    },
+    "phases": {"type": "array", "items": {"type": "object"}},
+    "kpis": {"type": "array", "items": {"$ref": "#/$defs/kpi"}},
+    "tolerances": {"type": "object"},
+    "acceptance": {"type": "object"},
+    "anomalies": {"type": "array", "items": {"type": "object"}},
+    "calibrations": {"type": "object"},
+    "extensions": {"type": "object"},
+    "migration": {"type": "object"}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "structure": {
+      "enum": ["analog", "quantized_analog", "binary", "enum", "bitfield", "pulse", "counter", "countdown", "setpoint", "categorical", "metadata", "unknown"]
+    },
+    "operation": {"enum": ["integral", "mean", "max", "min", "std", "rms", "first", "last", "slope", "absmax", "difference", "ratio", "duration", "counter", "on_duration", "pulse_volume"]},
+    "domain": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "dimensions"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"}, "name": {"type": "string"},
+        "dimensions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "role": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "domain", "structures", "dimensions"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"}, "name": {"type": "string"}, "domain": {"$ref": "#/$defs/identifier"},
+        "structures": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/structure"}},
+        "dimensions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "operations": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/operation"}}
+      }
+    },
+    "channel": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "mapping"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"}, "name": {"type": "string"},
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "patterns": {"type": "array", "items": {"type": "string", "maxLength": 120}},
+        "mapping": {"$ref": "#/$defs/mapping"},
+        "domain": {"$ref": "#/$defs/identifier"}, "unit": {"type": "string"},
+        "data_type": {"enum": ["analog", "state", "code", "count"]}, "calibration": {"type": "string"}
+      }
+    },
+    "mapping": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "schema_version": {"const": 2}, "field_id": {"type": "string"},
+        "source_identity": {"type": "string"}, "display_name": {"type": "string"},
+        "structure": {"$ref": "#/$defs/structure"}, "role": {"type": "string"},
+        "instance": {"type": "string"}, "location": {"type": "string"}, "function": {"type": "string"},
+        "signal_kind": {"enum": ["unknown", "measurement", "command", "feedback", "reference", "context", "status"]},
+        "domain": {"type": "string"}, "unit": {"type": "string"}, "dimension": {"type": "string"},
+        "encoding": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "stored_values": {"enum": ["unresolved", "raw", "engineering"]},
+            "signature": {"type": "string"}, "dtype": {"type": "string"}, "signed": {"type": "boolean"},
+            "bits": {"type": "integer", "minimum": 1, "maximum": 64},
+            "source_function": {"type": "string"}, "version": {"type": "string"},
+            "direction_encoding": {"type": ["string", "object"]}, "raw_unit": {"type": "string"}, "engineering_unit": {"type": "string"}
+          }
+        },
+        "transforms": {"type": "array", "items": {"type": "object", "required": ["op"], "properties": {"op": {"enum": ["sentinels", "integer_decode", "dictionary", "bit_mask", "scale_offset", "calibration", "unit_conversion"]}, "version": {"const": "1"}}}},
+        "authority": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "kind": {"enum": ["unresolved", "user_confirmed", "confirmed_template", "documented_schema", "compatible_metadata", "heuristic"]},
+            "source": {"type": "string"}, "version": {"type": "string"}, "reviewed": {"type": "boolean"}
+          }
+        },
+        "state_dictionary": {"type": "object"}, "decoder": {"type": "object"},
+        "acquisition_policy": {"type": "object"}, "status": {"type": "string"},
+        "reasons": {"type": "array", "items": {"type": "string"}}, "candidates": {"type": "array"},
+        "provenance": {"type": "object"}, "counter_policy": {"type": "object"},
+        "direction": {"type": ["object", "string"]}, "parameters": {"type": "object"}, "canonical_id": {"type": "string"}
+      }
+    },
+    "kpi": {
+      "type": "object", "additionalProperties": false, "required": ["id", "channel", "op"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"}, "channel": {"$ref": "#/$defs/identifier"},
+        "op": {"$ref": "#/$defs/operation"}, "unit": {"type": "string"}, "group": {"type": "string"},
+        "other_channel": {"$ref": "#/$defs/identifier"}, "phase": {"type": "string"}, "allow_any_time": {"type": "boolean"},
+        "calibration": {"type": "string"}, "scale": {"type": "number"}, "parameters": {"type": "object"}
+      }
+    }
+  }
+}

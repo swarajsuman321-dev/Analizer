@@ -319,6 +319,11 @@ class PackagedEvidenceTests(unittest.TestCase):
         }
         workspace_comparison_checks = {'REAL-WORKSPACE-FULLSCREEN-SPLITS-HOVER-RESTORE',
                                        'REAL-TWO-SIGNAL-COMPARISON-EVIDENCE'}
+        plot_first_checks = {
+            'CSV-LITERAL-NATIVE-TIMESTAMPS', 'SHARED-CURSORS-ALL-SPLIT-VALUES',
+            'FREE-GRAPHS-ARRANGE-RESTORE', 'ALL-SIGNAL-HOVER-NATIVE-VALUES',
+            'MULTI-SIGNAL-COMPARE-VALVE-OVERLAP', 'CLEAN-TOOLS-CURSOR-FREE-EXPORT',
+        }
         self.assertTrue(new_checks <= REQUIRED_CHECK_IDS)
         # Preserve the entire pre-existing 42-contract release gate.
         original_checks = {
@@ -336,7 +341,8 @@ class PackagedEvidenceTests(unittest.TestCase):
              for theme in ('Dark', 'Light') for width in (1024, 1536)}
         self.assertEqual(len(original_checks), 42)
         self.assertEqual(REQUIRED_CHECK_IDS, original_checks | new_checks |
-                         {'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'} | workspace_comparison_checks)
+                         {'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'} |
+                         workspace_comparison_checks | plot_first_checks)
         for edition in ('standalone', 'installed'):
             for missing in new_checks | workspace_comparison_checks:
                 with self.subTest(edition=edition, missing=missing):
@@ -346,11 +352,22 @@ class PackagedEvidenceTests(unittest.TestCase):
                     altered['summary'] = {'checks': len(altered['checks']), 'passed': len(altered['checks'])}
                     with self.assertRaisesRegex(ValueError, 'missing or duplicated'):
                         validate_packaged_report(altered, executable=self.exe, version='2.3.3', edition=edition)
+        for edition, form in (('standalone', 'standalone-onefile'),
+                              ('standalone', 'standalone-folder'), ('installed', 'installed')):
+            for missing in plot_first_checks:
+                with self.subTest(edition=edition, form=form, missing=missing):
+                    altered = copy.deepcopy(self.report)
+                    altered.update(edition=edition, distribution_form=form)
+                    altered['checks'] = [row for row in altered['checks'] if row['id'] != missing]
+                    altered['summary'] = {'checks': len(altered['checks']), 'passed': len(altered['checks'])}
+                    with self.assertRaisesRegex(ValueError, 'missing or duplicated'):
+                        validate_packaged_report(altered, executable=self.exe, version='2.3.3',
+                                                 edition=edition, form=form)
 
     def test_persistent_dialog_folders_contract_is_mandatory_for_every_packaged_edition(self):
         identity = 'PERSISTENT-DIALOG-FOLDERS-RESTART-CANCEL-SCOPES'
         self.assertIn(identity, REQUIRED_CHECK_IDS)
-        self.assertEqual(len(REQUIRED_CHECK_IDS), 49)
+        self.assertEqual(len(REQUIRED_CHECK_IDS), 55)
         for edition in ('standalone', 'installed'):
             with self.subTest(edition=edition):
                 altered = copy.deepcopy(self.report)

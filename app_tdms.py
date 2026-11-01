@@ -26,14 +26,42 @@ def read_tdms_tables(path):
     path=Path(path)
     try:file=TdmsFile.read(path)
     except Exception as exc:raise ValueError(f'Cannot read TDMS recording: {exc}') from exc
-    columns={};properties={};specs={};groups={};units={};lengths={};absolute=[]
+    columns={};properties={};specs={};groups={};units={};lengths={};absolute=[];inventory={};raw_arrays={};native_arrays={}
     for group in file.groups():
         groups[group.name]={'properties':portable(group.properties),'channels':{c.name:portable(c.properties) for c in group.channels()}}
         for channel in group.channels():
-            if not len(channel):continue
             data=channel[:]
-            if data.dtype.kind in 'Vc':continue
-            columns[channel.path]=pd.Series(data);lengths[channel.path]=len(data)
+            if data.ndim>1 or data.dtype.kind=='V':
+                series=pd.Series([row.copy() for row in data],dtype=object)
+            else:series=pd.Series(data)
+            columns[channel.path]=series;lengths[channel.path]=len(data)
+            raw_available=False;reader_scaled=False
+            try:
+                raw=channel.raw_data
+                raw_available=True
+                try:same=np.array_equal(raw,data,equal_nan=True)
+                except TypeError:same=np.array_equal(raw,data)
+                if not same:
+                    raw_arrays[channel.path]=raw;reader_scaled=True
+            except (AttributeError,ValueError,TypeError):
+                # DAQmx can have multiple raw scaler arrays. Keep each named
+                # array instead of pretending that one of them is the signal.
+                try:
+                    scalers=channel.raw_scaler_data
+                    if scalers:
+                        raw_arrays[channel.path]=np.array([dict((str(k),v[i]) for k,v in scalers.items()) for i in range(len(data))],dtype=object)
+                        raw_available=True;reader_scaled=True
+                except (AttributeError,ValueError,TypeError,IndexError):pass
+            from importlib.metadata import version
+            inventory[channel.path]={'original_name':channel.name,'tdms_group':group.name,'path':channel.path,'length':len(data),'dtype':str(data.dtype),
+                'reader_operations':[{'operation':'nptdms.read','version':version('npTDMS'),'raw_values_available':raw_available,
+                    'reader_transformed':reader_scaled,'authority':'nptdms reader; opaque source functions are inert metadata'}],
+                'scaling_authority':'reader transformation recorded; source calibration requires review',
+                'clock_description':{'kind':'sample','domain':'sample','unit':'sample','trust':'unavailable','candidates':[],'acquisition_policy':'unknown'}}
+            # DataFrame alignment can upcast shorter integer arrays to float.
+            # Keep an exact source array when this would lose integer precision,
+            # or when each source sample is itself a vector/structured record.
+            if data.ndim>1 or data.dtype.kind in 'Vu':native_arrays[channel.path]=data
             properties[channel.path]=portable(channel.properties)
             unit=channel.properties.get('unit_string') or group.properties.get('Unit') or (group.properties.get('LabSys_Scaling_OutputUnit','') if group.properties.get('LabSys_Scaling_Active') else '')
             units[channel.path]=str(channel.properties.get('unit_string') or 's') if is_clock(channel.name) else str(unit)
@@ -50,10 +78,9 @@ def read_tdms_tables(path):
             if channel.path not in columns or is_clock(channel.name):continue
             # LabSys stores one measurement, its clock and quality status in each group.
             labsys=channel.name.endswith('_Value') and channel.name[:-6]+'_dTime' in group
-            if channel.name.endswith('_Status') and channel.name[:-7]+'_Value' in group:continue
-            if columns[channel.path].dtype.kind not in 'biuf':
-                words=columns[channel.path].dropna().astype(str).str.upper()
-                if not len(words) or not words.isin(['ON','OFF','TRUE','FALSE']).all():continue
+            if channel.name.endswith('_Status') and channel.name[:-7]+'_Value' in group:
+                inventory[channel.path]['disposition']='quality/status source'
+                continue
             clock=group[channel.name[:-6]+'_dTime'] if labsys else (clocks[0] if len(clocks)==1 and 'wf_increment' not in channel.properties else None)
             time_col=None;unit='sample';kind='sample'
             if clock is not None:
@@ -67,20 +94,59 @@ def read_tdms_tables(path):
                 time_col=channel.path+' / waveform time (s)';columns[time_col]=pd.Series(offset+np.arange(len(channel))*increment);unit='s';kind='time'
             status=channel.name[:-6]+'_Status' if labsys else None
             status_path=group[status].path if status in group else None
-            specs[channel.path]={'name':group.name if labsys else channel.name,'group':'Measurements' if labsys else group.name,'tdms_group':group.name,'length':len(channel),'clock':time_col,'coordinate_unit':unit,'coordinate_kind':kind,'status':status_path}
-    if not columns:raise ValueError('Cannot read TDMS recording: no channel data (empty or incomplete file)')
+            spec={'name':group.name if labsys else channel.name,'group':'Measurements' if labsys else group.name,'tdms_group':group.name,'length':len(channel),'clock':time_col,'coordinate_unit':unit,'coordinate_kind':kind,'status':status_path}
+            inventory[channel.path].update(spec)
+            inventory[channel.path]['clock_description']={'kind':kind,'domain':'absolute' if unit=='datetime' or origin is not None and 'wf_increment' in channel.properties else 'relative' if kind=='time' else 'sample',
+                'origin':str(origin) if origin is not None else None,'trust':'declared' if time_col else 'unavailable',
+                'candidates':[c.path for c in clocks],'acquisition_policy':'sampled' if 'wf_increment' in channel.properties else 'unknown'}
+            if not len(channel) or columns[channel.path].dtype.kind in 'Vc':continue
+            if columns[channel.path].dtype.kind not in 'biuf':
+                words=columns[channel.path].dropna().astype(str).str.upper()
+                if not len(words) or not words.isin(['ON','OFF','TRUE','FALSE']).all():continue
+            specs[channel.path]=spec
+    if not columns and not groups and not file.properties:raise ValueError('Cannot read TDMS recording: no channel data (empty or incomplete file)')
+    for key in columns:
+        if key not in inventory:
+            inventory[key]={'original_name':key,'path':key,'length':len(columns[key]),'disposition':'supporting clock'}
+        if is_clock(inventory[key]['original_name']):inventory[key]['disposition']='supporting clock'
     frame=pd.DataFrame(columns)
+    for key,spec in inventory.items():
+        if key not in frame or key in native_arrays:continue
+        dtype=np.dtype(spec.get('dtype',frame[key].dtype))
+        if dtype.kind in 'i' and frame[key].dtype!=dtype:
+            # Signed 64-bit integers above 2**53 also require an exact array.
+            channel=file[spec['tdms_group']][spec['original_name']]
+            native_arrays[key]=channel[:]
+    # File/group metadata are inventory fields even in metadata-only TDMS files.
+    # Channel properties remain attached to their field, preserving that identity.
+    for scope,metadata in [('File',file.properties)]+[(g.name,g.properties) for g in file.groups()]:
+        for name,value in metadata.items():
+            key='@metadata/'+scope+'/'+str(name)
+            while key in inventory:key+=' '
+            inventory[key]={'source_type':'metadata','metadata_value':portable(value),'original_name':str(name),
+                            'group':scope,'path':key,'dtype':type(value).__name__,'length':1,'disposition':'metadata'}
     frame.attrs={'format':'TDMS','column_units':units,'tdms_file_properties':portable(file.properties),'tdms_groups':groups,
-                 'tdms_channel_properties':properties,'tdms_lengths':lengths,'tdms_projections':specs,'time_origin':str(origin) if origin is not None else None}
+                 'tdms_channel_properties':properties,'tdms_lengths':lengths,'tdms_projections':specs,'inventory_fields':inventory,
+                 'time_origin':str(origin) if origin is not None else None}
+    if raw_arrays:frame.attrs['source_raw_arrays']=raw_arrays
+    if native_arrays:frame.attrs['source_native_arrays']=native_arrays
     return [(path.name,frame)]
 
 
-def ingest_tdms(store,path,time_column=None,coordinate_unit=None,force_sample=False):
+def ingest_tdms(store,path,time_column=None,coordinate_unit=None,force_sample=False,reader_options=None):
     from app_actuators import interpret_channel
     from app_unit_detection import detect_unit
     pending=[]
-    for name,frame in read_tdms_tables(path):
+    from app_ingestion import read_tables
+    for name,frame in read_tables(path,reader_options):
         ds=Dataset(name,frame,str(path));channels=[]
+        for key,native in frame.attrs['inventory_fields'].items():
+            if native.get('disposition') in ('supporting clock','quality/status source'):continue
+            if force_sample:native.update(clock=None,coordinate_unit='sample',clock_description={**native.get('clock_description',{}),'kind':'sample','domain':'sample','trust':'unavailable'})
+            elif time_column:native.update(clock=time_column,coordinate_unit=coordinate_unit or frame.attrs['column_units'].get(time_column,'s'),clock_description={**native.get('clock_description',{}),'kind':'time','trust':'declared'})
+            if reader_options:
+                native.setdefault('clock_description',{}).update({k:reader_options[k] for k in ('acquisition_policy',) if k in reader_options})
+                if reader_options.get('clock_domain'):native['clock_description']['domain']=reader_options['clock_domain']
         for column,spec in frame.attrs['tdms_projections'].items():
             n=spec['length'];source=frame[column].iloc[:n];clock=None if force_sample else time_column or spec['clock']
             unit=coordinate_unit or (frame.attrs['column_units'].get(clock) or spec['coordinate_unit'] if clock else 'sample');kind='time' if clock and unit!='sample' else 'sample'
@@ -108,9 +174,10 @@ def ingest_tdms(store,path,time_column=None,coordinate_unit=None,force_sample=Fa
                 bad=np.flatnonzero(~quality);runs=np.split(bad,np.flatnonzero(np.diff(bad)>1)+1) if len(bad) else []
                 channel=replace(channel,y=projected,masks=[(float(channel.x[run[0]]),float(channel.x[run[-1]])) for run in runs],attributes={**channel.attributes,'quality_column':spec['status'],'invalid_quality_samples':int((~quality).sum())})
             channels.append(channel)
-        if channels:pending.append((ds,channels))
-    if not pending:raise ValueError('TDMS contains no supported measurement channels')
+        pending.append((ds,channels))
     ids=[]
+    from app_operation_context import checkpoint
+    checkpoint('Adding imported TDMS datasets')
     with store.batch():
         for ds,channels in pending:
             store.datasets[ds.id]=ds
