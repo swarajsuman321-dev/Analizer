@@ -1,23 +1,23 @@
 # Appliance Signal Studio
 
-**Version 2.5.1 release preparation is in progress.** This update fixes BOM-prefixed
+**Version 2.5.1 is published.** This update fixes BOM-prefixed
 CSV time headings and synchronizes horizontal navigation in same-recording sample
 graphs. See the [2.5.1 release record](docs/RELEASE_2.5.1.md).
-The downloads below become available after the Windows release workflow passes.
+The public downloads and matching update feeds below have been independently verified.
 
 Version 2.5.0 added confirmed program-start
 alignment, shared time cursors/readout, user-added graphs, shared hover,
 multi-signal comparison and actuator overlap, and clean report plots. See the
 [2.5.0 release record](docs/RELEASE_2.5.0.md) and [2.5.1 manual](manuals/v2.5.1.md).
 The [previous 2.5.0 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.5.0)
-remains available during publication.
+remains available as a previous version.
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
 **Windows installer: [Download Setup v2.5.1](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio-Setup-2.5.1.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.5.1.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. The CSV/panning correction passed **612 local tests with 5 platform skips**, plus exact-file GUI acceptance and the source self-test. Native Windows validation for 2.5.1 is required before publication. See the [release record](docs/RELEASE_2.5.1.md); [2.5.0 evidence](docs/validation/release-v2.5.0.json) remains a historical record.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Native Windows validation passed **616 of 617 regression tests (one skipped)**, **53 recording checks in each package form**, 7 installer lifecycle checks and 13 actual application update/recovery checks. Public files, update feeds, release source, ZIP integrity and the manual were independently verified. See the [release record](docs/RELEASE_2.5.1.md) and [permanent evidence](docs/validation/release-v2.5.1.json), including remaining manual Windows checks.
 
 Stacked panes align their actual drawing edges without changing numerical time ranges. Data Portal shows **Channel** and **Unit**; right-click a file header for file-wide/filtered selection and **Close Dataset**. Kind metadata remains in Properties, and the main About menu retains User Manual and About / Updates.
 
@@ -94,13 +94,13 @@ python -m pip check
 ```
 
 Linux GUI tests need an X display (Xorg dummy or Xvfb); Qt-only runs may use
-`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.5.0**. The Windows build artifact
-is **ApplianceSignalStudio-Windows-v2.5.0**. The source and frozen entry share the same Qt
+`QT_QPA_PLATFORM=offscreen`. The title bar and Windows EXE properties show **2.5.1**. The Windows build artifact
+is **ApplianceSignalStudio-Windows-v2.5.1**. The source and frozen entry share the same Qt
 frontend. See [VALIDATION.md](VALIDATION.md) for measured results and limitations.
 
 ## Feature history
 
-The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.5.0 manual](manuals/v2.5.0.md) and [release record](docs/RELEASE_2.5.0.md).
+The versioned entries below describe when features were introduced. Current placement, update behavior and release acceptance are documented in the [v2.5.1 manual](manuals/v2.5.1.md) and [release record](docs/RELEASE_2.5.1.md).
 
 ### Navigation and locked cursors (2.1.1)
 
@@ -173,7 +173,7 @@ Windows taskbar identity, in addition to being embedded in the executable.
 
 Open **About → About / Updates** and choose **Check for updates → Download update → Install update & restart**. Installed Setup, standalone EXE and complete standalone ZIP use matching verified feeds. Preparation saves independent recovery JSON/NPZ, stages the correct package in a worker and verifies the actual restored new startup; recovery runtimes remain available. Cancellation/failed preparation preserves the current app. Update checks never upload recordings. Use **About → User Manual** or F1 for the separate searchable version manual. Source users update their checkout as usual.
 
-ZIP builds older than v2.4.0 need one full v2.4.0-or-later ZIP download/extraction to gain folder-preserving updates; use the current v2.5.0 ZIP and retain the old folder/outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.5.0.md).
+ZIP builds older than v2.4.0 need one full v2.4.0-or-later ZIP download/extraction to gain folder-preserving updates; use the current v2.5.1 ZIP and retain the old folder/outputs until verified. Public downloads appear under [GitHub Releases](https://github.com/swarajsuman321-dev/Analizer/releases/latest) only after Windows tests, three packaged acceptance gates and production updater/recovery checks pass. CI publishes matching `update.json`, `zip-update.json` and `installer-update.json`; published versions remain immutable. See [migration and recovery details](docs/RELEASE_2.5.1.md).
 
 Installed updates launched by **v2.4.2 or later** run Setup quietly, then reopen the app and restore the workspace after verified startup. A downloaded Setup opened manually keeps its normal wizard. An installed **v2.4.1-or-earlier** copy can show Setup progress once while first installing v2.4.2 or later because the already-running old app owns that updater. Subsequent installed updates launched from v2.4.2 or later use the quiet path. Setup logs, startup checks, recovery snapshots and the previous runtime remain available; Windows security or organizational prompts remain outside this guarantee.
 
@@ -189,13 +189,13 @@ TDMS also works in recording alignment and bench comparison. Those workflows use
 
 **Info & manual** is now in the main top toolbar and opens a separate manual/update window. Only Analysis and Comparison remain in the graph-tab area. The offline version selector, topic navigation and Find next search provide a complete feature reference, including every processing operation, View panel, engineering/comparison workflow, export, shortcut, preset and extension facility. Archived manuals include only the features supported by their app version.
 
-In **v2.1.7**, every View panel and Show channel kind started enabled, including a one-time pre-2.1.7 update migration. This is historical behavior: current v2.5.0 fresh workspaces use the folded supporting panels described above, and Kind remains in Properties. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens panels without clearing data.
+In **v2.1.7**, every View panel and Show channel kind started enabled, including a one-time pre-2.1.7 update migration. This is historical behavior: current v2.5.1 fresh workspaces use the folded supporting panels described above, and Kind remains in Properties. Explicit workspace Restore respects saved layouts. **View → Show all panels** reopens panels without clearing data.
 
 Maintain the manuals in `manuals/feature-guide.md` (each topic includes its first supported version), add release notes in `scripts/build_manuals.py`, then run `python scripts/build_manuals.py`. Only generated version manuals are bundled in the EXE.
 
 ### Current status and future reference
 
-See the [current v2.5.0 implementation/verification record](docs/RELEASE_2.5.0.md), [full manual](manuals/v2.5.0.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
+See the [current v2.5.1 implementation/verification record](docs/RELEASE_2.5.1.md), [full manual](manuals/v2.5.1.md) and [shared installed/standalone policy](docs/DUAL_DISTRIBUTION_POLICY.md). The [historical v2.1.9 reference](docs/APP_STATUS_AND_REFERENCE.md) retains earlier recording-removal/TDMS/output decisions. Approved reusable fixtures have a committed SHA-256 manifest; generated measurement reports/workspaces remain outside Git.
 
 ### Desktop finalization (v2.2.0)
 

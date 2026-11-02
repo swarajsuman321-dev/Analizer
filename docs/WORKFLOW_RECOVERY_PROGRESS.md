@@ -1,35 +1,41 @@
 # Analysis workflow recovery
 
-Published release: **2.5.0**, independently verified on 31 October 2026.
+Published release: **2.5.1**, independently verified on 2 November 2026.
 Current release branch: `release/2.5.1`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: 2.5.1 release authorized; source ZIP/history backup requested
+## Current status: 2.5.1 published; corporate export delivery in preparation
 
-On 2 November 2026, the user requested publication of the CSV fix before providing
-a source ZIP and upload guide for their restricted corporate GitHub Enterprise
-repository. A new cloud workspace is connected after the original workspace went
-offline. The tested correction was recovered from `fix/aligned-graph-panning` at
-`2f5d81c`; the other development/archive branches are retained for the history
-backup and are not included as application changes in this release.
+The new cloud workspace is connected. The user explicitly requested publication
+of the CSV/panning fix before a source ZIP and corporate upload guide. The tested
+correction was recovered from `fix/aligned-graph-panning`; unrelated archived and
+older development branches remain separate and will be retained in the history
+backup rather than merged into current application code.
 
-Version resources, the current manual and Windows artifact identity are being
-updated to 2.5.1. The existing full native packaging, installer, recording and
-update/recovery gates must pass before publication. Release publication is now
-explicitly restricted to the original GitHub.com repository, so a corporate copy
-does not automatically publish through the old release configuration.
-The fresh environment passed all 42 release/manual/CSV/navigation checks, the
-2.5.1 source self-test and pip dependency consistency checks before submission.
-Main was fast-forwarded to `4300b79a9fbca8754e3f1b328b1dff703ddb4e78` and pushed.
-[Windows release run 41433633248](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41433633248)
-is running; its conclusion has not yet been observed. Documentation-only handoff
-commits do not restart this job.
+Release source `4300b79a9fbca8754e3f1b328b1dff703ddb4e78` passed
+[Windows run 41433633248](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41433633248)
+in **41m 52s** and published immutable v2.5.1. Actual native discovery ran
+**617 tests: 616 passed, 1 skip, zero expected failures**. All 53 recording checks
+passed in each package form, installer lifecycle passed 7 checks and actual
+application update/recovery passed 13 checks. Fresh local preparation also passed
+42 focused checks, the 2.5.1 source self-test and pip dependency consistency.
 
-After the actual release completes, verify public downloads/manifests and prepare
-a clean tracked-source ZIP, a separate complete Git-history bundle, checksums and
-an upload guide. Corporate authentication remains on the user's work computer;
-no direct corporate push has been performed. Private uploaded CSVs, local virtual
-environments and generated measurement reports must not enter the source package.
+All three public binaries were downloaded and their sizes/hashes matched native
+evidence and manifests. Latest/versioned feeds agree; ZIP CRC/inventory, the
+public tag and the published/bundled/source manual were independently checked.
+See `docs/validation/release-v2.5.1.json` and `docs/RELEASE_2.5.1.md`.
+The five manual Windows platform checks remain unrun and disclosed.
+
+Publication is now guarded to the original GitHub.com repository, so a corporate
+copy does not automatically publish with the old release configuration. Current
+app update feeds still use GitHub.com. Corporate configuration/authentication
+stays on the user's work computer; no direct corporate push has been performed.
+
+Final delivery exports are prepared outside Git: clean tracked-source ZIP,
+size/count-bounded browser-upload batches, a complete branches/tags/history bundle,
+checksums and a corporate guide. Their generated migration manifest records the
+actual source/ref snapshot and archive/restore verification. Private CSV uploads,
+local environments, credentials and generated measurement reports are excluded.
 
 ## Validated CSV clock and aligned-panning correction
 
@@ -64,12 +70,13 @@ with independently moving X views and A/B cursors. Work is on
   restoring an old sample-indexed workspace does not reimport its clock.
 - Local evidence is retained in
   `docs/validation/csv-clock-aligned-panning-local.json`. Native Windows validation
-  and a new installer/release have not been run for this source correction.
+  and a new installer/release had not been run at that local checkpoint; v2.5.1
+  now completes those native gates as recorded above.
 
 The file establishes recording time, not a verified program-start event. Program
 time zero still needs the confirmed start point; no start is inferred from the
-filename or signal activity. This correction is not yet in an installed Windows
-build or a new published release.
+filename or signal activity. The correction is now included in the published
+2.5.1 Windows packages.
 
 ## Published 2.5.0 release checkpoint
 

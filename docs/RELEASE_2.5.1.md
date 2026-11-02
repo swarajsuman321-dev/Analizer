@@ -1,10 +1,12 @@
 # Appliance Signal Studio 2.5.1 — CSV time headings and aligned panning
 
-Publication authorized on 2 November 2026. This is the release candidate until
-the main-branch Windows workflow succeeds and its public downloads are verified.
+**Published and independently verified on 2 November 2026.**
+Installed Setup, standalone EXE and portable ZIP share the tested source and
+matching update feeds. See the [release downloads](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.5.1)
+and [permanent native/public evidence](validation/release-v2.5.1.json).
 Release source: `4300b79a9fbca8754e3f1b328b1dff703ddb4e78`.
 [Windows release run 41433633248](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41433633248)
-is validating that exact revision. Documentation-only progress updates do not
+passed that exact revision in **41m 52s**. Documentation-only progress updates do not
 restart the job or change its release source.
 
 ## CSV time detection
@@ -47,10 +49,28 @@ tests: 612 passed, 5 platform skips, zero failures/errors** in 328.478 seconds.
 All 102 focused checks, the source self-test and nine exact-file GUI checks passed.
 See [local evidence](validation/csv-clock-aligned-panning-local.json).
 
-The final 2.5.1 native workflow must validate all three distributions, installer
-lifecycle and actual updates/workspace recovery, then publish matching manifests
-and `validation-v2.5.1.json`. Its final outcome and exact counts will be recorded
-after completion; previous-version checks do not establish a passing new build.
+The final native suite ran **617 tests: 616 passed, 1 skip, zero expected
+failures** in 491.308 seconds. All **53 recording checks passed in each of the
+standalone EXE, extracted ZIP and installed editions**, with zero runner or
+application-callback errors. Installer lifecycle passed 7 checks and actual
+application update/workspace recovery passed 13 checks.
+
+Independent verification downloaded and hashed all three public binaries,
+compared latest and versioned feeds for every edition, and matched the release
+tag to the tested source. The public ZIP passed CRC/inventory checks: 2,595 files,
+389,080,629 uncompressed bytes. The published manual matches the bundled copy
+byte-for-byte and source content after line-ending normalization. Windows binaries
+were not manually executed in this Linux cloud environment; execution evidence
+comes from native Windows CI.
+
+| Delivery form | Public file | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| Installed Setup | [ApplianceSignalStudio-Setup-2.5.1.exe](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio-Setup-2.5.1.exe) | 135,286,506 | `c14543a77c6e78b981e02b466631833d922c086c8cb5f82a36a2960bf1e99031` |
+| Standalone EXE | [ApplianceSignalStudio.exe](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio.exe) | 155,398,884 | `1bf61dacd1fdd270d39f29f362a03a0d315ba29e17341f01e99200d26615007d` |
+| Portable ZIP | [ApplianceSignalStudio_Portable.zip](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio_Portable.zip) | 156,240,442 | `da5bbab15a1a019271337ed7bff222c759947e4cdbf4bf3f03248dde846f9710` |
+
+Published/bundled manual: **104,400 bytes**, SHA-256
+`882bd5d86f7f0de837db8e5c0a677f0687253d7cd2cb7e9e2a26734bc933a5c7`. Historical manuals remain unchanged.
 
 Publication is restricted to the original GitHub.com repository. Corporate imports
 need reviewed server URLs, Windows runner configuration and release/update feeds
