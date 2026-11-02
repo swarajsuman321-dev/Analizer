@@ -20,6 +20,10 @@ explicitly restricted to the original GitHub.com repository, so a corporate copy
 does not automatically publish through the old release configuration.
 The fresh environment passed all 42 release/manual/CSV/navigation checks, the
 2.5.1 source self-test and pip dependency consistency checks before submission.
+Main was fast-forwarded to `4300b79a9fbca8754e3f1b328b1dff703ddb4e78` and pushed.
+[Windows release run 41433633248](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41433633248)
+is running; its conclusion has not yet been observed. Documentation-only handoff
+commits do not restart this job.
 
 After the actual release completes, verify public downloads/manifests and prepare
 a clean tracked-source ZIP, a separate complete Git-history bundle, checksums and

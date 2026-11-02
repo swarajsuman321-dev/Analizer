@@ -2,6 +2,10 @@
 
 Publication authorized on 2 November 2026. This is the release candidate until
 the main-branch Windows workflow succeeds and its public downloads are verified.
+Release source: `4300b79a9fbca8754e3f1b328b1dff703ddb4e78`.
+[Windows release run 41433633248](https://github.com/swarajsuman321-dev/Analizer/actions/runs/41433633248)
+is validating that exact revision. Documentation-only progress updates do not
+restart the job or change its release source.
 
 ## CSV time detection
 
