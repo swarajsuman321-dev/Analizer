@@ -1,10 +1,33 @@
 # Analysis workflow recovery
 
 Published release: **2.5.0**, independently verified on 31 October 2026.
-Release branch: `release/2.5.0`; recovered development branch:
+Current release branch: `release/2.5.1`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: CSV clock and aligned-panning source correction validated
+## Current status: 2.5.1 release authorized; source ZIP/history backup requested
+
+On 2 November 2026, the user requested publication of the CSV fix before providing
+a source ZIP and upload guide for their restricted corporate GitHub Enterprise
+repository. A new cloud workspace is connected after the original workspace went
+offline. The tested correction was recovered from `fix/aligned-graph-panning` at
+`2f5d81c`; the other development/archive branches are retained for the history
+backup and are not included as application changes in this release.
+
+Version resources, the current manual and Windows artifact identity are being
+updated to 2.5.1. The existing full native packaging, installer, recording and
+update/recovery gates must pass before publication. Release publication is now
+explicitly restricted to the original GitHub.com repository, so a corporate copy
+does not automatically publish through the old release configuration.
+The fresh environment passed all 42 release/manual/CSV/navigation checks, the
+2.5.1 source self-test and pip dependency consistency checks before submission.
+
+After the actual release completes, verify public downloads/manifests and prepare
+a clean tracked-source ZIP, a separate complete Git-history bundle, checksums and
+an upload guide. Corporate authentication remains on the user's work computer;
+no direct corporate push has been performed. Private uploaded CSVs, local virtual
+environments and generated measurement reports must not enter the source package.
+
+## Validated CSV clock and aligned-panning correction
 
 The user supplied a CSV after showing 2.5.0 plots labelled sample (ksample),
 with independently moving X views and A/B cursors. Work is on

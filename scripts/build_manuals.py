@@ -26,6 +26,7 @@ NOTES={'2.4.3':'F11 expands every graph in the current split workspace; selected
 
 
 NOTES['2.5.0']='Source-wide program-start alignment, stable shared time cursors and combined readouts, freely added/reordered/resized graphs, shared per-trace hover markers, multi-signal comparison and confirmed-actuator overlap. CSV Excel text-literal timestamps retain fractional precision. Exported cursor guides are hidden by default with an opt-in setting. Program starts require explicit evidence; no recording-start fallback is used by the comparison UI. Graph restoration and fullscreen transitions stop obsolete callbacks and avoid the unused native chart menu that caused a packaged Windows crash. Installed Setup, standalone EXE and portable ZIP retain matching update and workspace-recovery support.'
+NOTES['2.5.1']='CSV time detection now recognizes a UTF-8 encoding marker and surrounding spaces before the datetime heading, preserving the original source text and millisecond precision. Aligned graphs from the same recording pan and zoom together horizontally, including sample-indexed graphs, while retaining one A/B pair and combined readout. Shorter signals show Unknown outside their coverage; unrelated sample recordings and frequency plots remain independent. Original measurements and timestamps are preserved. Reopen a CSV to apply corrected time detection; restoring an old workspace retains its saved coordinates. Program start still requires a confirmed event.'
 
 
 def generate(versions=None):

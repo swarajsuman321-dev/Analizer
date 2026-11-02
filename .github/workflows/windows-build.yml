@@ -171,7 +171,7 @@ jobs:
       - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: ApplianceSignalStudio-Windows-v2.5.0
+          name: ApplianceSignalStudio-Windows-v2.5.1
           path: |
             dist/ApplianceSignalStudio.exe
             dist/ApplianceSignalStudio_Portable.zip
@@ -196,7 +196,7 @@ jobs:
             build/packaged-acceptance/*.log
           if-no-files-found: ignore
       - name: Publish tested version to GitHub Releases
-        if: success() && github.ref == 'refs/heads/main'
+        if: success() && github.ref == 'refs/heads/main' && github.repository == 'swarajsuman321-dev/Analizer' && github.server_url == 'https://github.com'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh

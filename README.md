@@ -1,18 +1,23 @@
 # Appliance Signal Studio
 
-**Version 2.5.0 is published.** This version adds confirmed program-start
+**Version 2.5.1 release preparation is in progress.** This update fixes BOM-prefixed
+CSV time headings and synchronizes horizontal navigation in same-recording sample
+graphs. See the [2.5.1 release record](docs/RELEASE_2.5.1.md).
+The downloads below become available after the Windows release workflow passes.
+
+Version 2.5.0 added confirmed program-start
 alignment, shared time cursors/readout, user-added graphs, shared hover,
 multi-signal comparison and actuator overlap, and clean report plots. See the
-[release record](docs/RELEASE_2.5.0.md) and [2.5.0 manual](manuals/v2.5.0.md).
-The downloads and matching update feeds below have been independently verified
-against the native Windows build evidence.
+[2.5.0 release record](docs/RELEASE_2.5.0.md) and [2.5.1 manual](manuals/v2.5.1.md).
+The [previous 2.5.0 release](https://github.com/swarajsuman321-dev/Analizer/releases/tag/v2.5.0)
+remains available during publication.
 
 A standalone Qt workbench for recording import, channel analysis and reporting.
 Python 3.12 is the supported development runtime.
 
-**Windows installer: [Download Setup v2.5.0](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio-Setup-2.5.0.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.0/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.5.0.md).
+**Windows installer: [Download Setup v2.5.1](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio-Setup-2.5.1.exe)** · [Install/uninstall guide](docs/WINDOWS_INSTALLER.md) · [Standalone EXE](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio.exe) · [Standalone ZIP](https://github.com/swarajsuman321-dev/Analizer/releases/download/v2.5.1/ApplianceSignalStudio_Portable.zip) · [User manual](manuals/v2.5.1.md).
 
-The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. Native Windows validation passed **608 of 609 regression tests (one test skipped)**, **53 recording checks in each package form**, 7 installer lifecycle checks and 13 actual application update/recovery checks. Public downloads, update feeds, ZIP integrity, manual and release source were independently verified. See the [release record](docs/RELEASE_2.5.0.md) and [permanent evidence](docs/validation/release-v2.5.0.json), including the remaining manual Windows checks.
+The unsigned per-user installer includes Python and dependencies, shortcuts, a verified update channel and data-preserving uninstall. The CSV/panning correction passed **612 local tests with 5 platform skips**, plus exact-file GUI acceptance and the source self-test. Native Windows validation for 2.5.1 is required before publication. See the [release record](docs/RELEASE_2.5.1.md); [2.5.0 evidence](docs/validation/release-v2.5.0.json) remains a historical record.
 
 Stacked panes align their actual drawing edges without changing numerical time ranges. Data Portal shows **Channel** and **Unit**; right-click a file header for file-wide/filtered selection and **Close Dataset**. Kind metadata remains in Properties, and the main About menu retains User Manual and About / Updates.
 
