@@ -4,7 +4,7 @@ Published release: **2.5.1**, independently verified on 2 November 2026.
 Current release branch: `release/2.5.1`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: 2.5.1 published; corporate export delivery in preparation
+## Current status: 2.5.1 published; corporate export delivery validated
 
 The new cloud workspace is connected. The user explicitly requested publication
 of the CSV/panning fix before a source ZIP and corporate upload guide. The tested
@@ -36,6 +36,12 @@ size/count-bounded browser-upload batches, a complete branches/tags/history bund
 checksums and a corporate guide. Their generated migration manifest records the
 actual source/ref snapshot and archive/restore verification. Private CSV uploads,
 local environments, credentials and generated measurement reports are excluded.
+Export verification passed for all 321 tracked source files: complete ZIP CRC,
+five browser batches matching every source byte, and an offline history-bundle
+restore retaining all 8 server branches and 17 tags. Each browser batch has at
+most 90 files and 20 MiB of raw source. Final package hashes and exact ref snapshots
+are delivered in `MIGRATION_MANIFEST.json` and `SHA256SUMS.txt`, outside the public
+repository. The corporate server has not been accessed or modified by this agent.
 
 ## Validated CSV clock and aligned-panning correction
 
