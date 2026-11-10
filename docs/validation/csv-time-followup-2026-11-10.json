@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-10",
+  "released_version_tested": "2.5.1",
+  "released_source_commit": "4300b79a9fbca8754e3f1b328b1dff703ddb4e78",
+  "input_format": "UTF-8 BOM-prefixed datetime heading with complete Excel text-literal timestamps",
+  "recordings": [
+    {"id": "input_1", "rows": 1685, "signals": 11, "valid_timestamps": 1685, "span_seconds": 168.402, "monotonic": true},
+    {"id": "input_2", "rows": 1882, "signals": 8, "valid_timestamps": 1882, "span_seconds": 188.103, "monotonic": true}
+  ],
+  "original_files_in_251": {"coordinate_kind": "time", "coordinate_unit": "min", "gui_signals": 19, "shared_cursors": true, "linked_x_ranges": true, "shorter_recording_unknown_outside_coverage": true, "application_callback_errors": 0},
+  "original_files_in_250": "Both reproduce sample-indexed import",
+  "compatible_copies": {"change": "Remove only the initial three-byte UTF-8 BOM", "all_subsequent_bytes_identical": true, "original_files_unchanged": true, "verified_in_250_importer": true, "channel_arrays_equal_251_originals": true, "zip_crc_and_contents_verified": true},
+  "existing_csv_regressions": {"ran": 7, "passed": 7, "failed": 0, "errors": 0},
+  "platform": "Linux Qt offscreen",
+  "application_code_changed": false,
+  "new_release_created": false,
+  "private_recordings_committed": false,
+  "user_installed_version_and_loading_method": "Requested; not yet provided"
+}

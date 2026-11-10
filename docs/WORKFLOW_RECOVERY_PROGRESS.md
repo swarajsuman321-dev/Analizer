@@ -4,7 +4,30 @@ Published release: **2.5.1**, independently verified on 2 November 2026.
 Current release branch: `release/2.5.1`; recovered development branch:
 `feature/recover-analysis-workflow`.
 
-## Current status: 2.5.1 published; corporate export delivery validated
+## Current status: CSV time follow-up verified on 10 November 2026
+
+Two newly supplied CSVs contain valid, monotonic Excel text-literal timestamps
+under a UTF-8 BOM-prefixed datetime heading, the format corrected in 2.5.1.
+Both original files import and plot as `time (min)` in the released 2.5.1 source:
+1,685 rows / 11 signals over 168.402 seconds and 1,882 rows / 8 signals over
+188.103 seconds. The workbench verified all 19 readout rows, shared A/B, linked
+X ranges and Unknown beyond the shorter recording, with zero callback errors.
+All seven existing CSV timestamp regressions passed in the fresh environment.
+
+Released 2.5.0 ingestion was separately reproduced as sample-indexed for both
+originals. Compatible copies remove only the three-byte BOM; every subsequent
+byte is identical. Those copies import as time in the 2.5.0 reader and match the
+2.5.1 originals' channel arrays exactly. The uploaded files remain unchanged and
+private; copies, checksums and a verified ZIP are outside Git.
+
+No new importer defect was reproduced in 2.5.1 and no application code/version
+was changed. The user's installed version and whether they open files directly
+or restore a sample-indexed workspace have been requested but are not yet known.
+Open compatible copies as new recordings; restoring an old workspace retains its
+saved coordinates. Local evidence is in
+`docs/validation/csv-time-followup-2026-11-10.json`.
+
+## Published 2.5.1 and corporate export checkpoint
 
 The new cloud workspace is connected. The user explicitly requested publication
 of the CSV/panning fix before a source ZIP and corporate upload guide. The tested
