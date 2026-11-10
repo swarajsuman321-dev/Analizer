@@ -15,5 +15,6 @@
   "application_code_changed": false,
   "new_release_created": false,
   "private_recordings_committed": false,
-  "user_installed_version_and_loading_method": "Requested; not yet provided"
+  "user_installed_version": "2.5.0 (confirmed by user)",
+  "user_loading_method": "Not specified; fresh file open recommended"
 }

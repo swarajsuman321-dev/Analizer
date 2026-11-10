@@ -20,11 +20,11 @@ byte is identical. Those copies import as time in the 2.5.0 reader and match the
 2.5.1 originals' channel arrays exactly. The uploaded files remain unchanged and
 private; copies, checksums and a verified ZIP are outside Git.
 
-No new importer defect was reproduced in 2.5.1 and no application code/version
-was changed. The user's installed version and whether they open files directly
-or restore a sample-indexed workspace have been requested but are not yet known.
-Open compatible copies as new recordings; restoring an old workspace retains its
-saved coordinates. Local evidence is in
+The user confirmed their installed version is **2.5.0**, matching the reproduced
+sample-indexed imports. No new importer defect was reproduced in 2.5.1 and no
+application code/version was changed. Use the compatible copies with 2.5.0 or
+upgrade to the already published 2.5.1 automatic fix. Open files as new recordings;
+restoring an old workspace retains its saved coordinates. Local evidence is in
 `docs/validation/csv-time-followup-2026-11-10.json`.
 
 ## Published 2.5.1 and corporate export checkpoint
